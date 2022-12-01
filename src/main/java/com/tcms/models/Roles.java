@@ -6,6 +6,7 @@ import lombok.Setter;
 import org.springframework.lang.NonNull;
 
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -13,7 +14,7 @@ import java.util.List;
 @Table(name="role")
 public class Roles {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column
     @NonNull
     private int roleId;
@@ -22,8 +23,11 @@ public class Roles {
     @NonNull
     private String roleName;
 
-    @ManyToMany(cascade = CascadeType.ALL, mappedBy = "roleId", fetch = FetchType.EAGER)
-    private List<UserRoles> userRolesList;
+    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinTable(name = "users_roles",
+            joinColumns = {@JoinColumn(name = "role_id", referencedColumnName = "roleId")},
+            inverseJoinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "user_id")})
+    private Set<UserRoles> userRolesList;
 
     @Override
     public String toString() {

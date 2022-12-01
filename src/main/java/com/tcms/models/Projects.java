@@ -12,7 +12,7 @@ import java.util.List;
 @Table(name="project")
 public class Projects {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "pro_id")
     @NonNull
     private int id;
@@ -21,7 +21,10 @@ public class Projects {
     @NonNull
     private String projectName;
 
-    @ManyToMany(cascade = CascadeType.ALL, mappedBy = "projectId", fetch = FetchType.EAGER)
+    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinTable(name = "users_projects",
+            joinColumns = {@JoinColumn(name = "pro_id", referencedColumnName = "pro_id")},
+            inverseJoinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "user_id")})
     private List<UserProjects> userProjectsList;
 
     @Override

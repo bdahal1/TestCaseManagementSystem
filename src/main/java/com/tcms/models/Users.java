@@ -6,6 +6,7 @@ import lombok.Setter;
 import org.springframework.lang.NonNull;
 
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -13,7 +14,7 @@ import java.util.List;
 @Table(name="users")
 public class Users {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "u_id")
     @NonNull
     private int id;
@@ -30,11 +31,23 @@ public class Users {
     @Column(name = "u_password")
     private String password;
 
-    @ManyToMany(cascade = CascadeType.ALL, mappedBy = "userId", fetch = FetchType.EAGER)
-    private List<UserProjects> userProjectsList;
+    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinTable(name = "users_projects",
+            joinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "u_id")},
+            inverseJoinColumns = {@JoinColumn(name = "pro_id", referencedColumnName = "pro_id")})
+    private Set<UserProjects> userProjectsList;
 
-    @ManyToMany(cascade = CascadeType.ALL, mappedBy = "userId", fetch = FetchType.EAGER)
-    private List<UserRoles> userRolesList;
+    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinTable(name = "users_roles",
+            joinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "u_id")},
+            inverseJoinColumns = {@JoinColumn(name = "role_id", referencedColumnName = "role_id")})
+    private Set<UserRoles> userRolesList;
+
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinTable(name = "users_department",
+            joinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "u_id")},
+            inverseJoinColumns = {@JoinColumn(name = "dep_id", referencedColumnName = "dep_id")})
+    private Set<UserDepartment> userDepartmentList;
 
     @Override
     public String toString() {

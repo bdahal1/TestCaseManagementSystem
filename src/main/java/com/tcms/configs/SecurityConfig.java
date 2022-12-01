@@ -39,6 +39,7 @@ public class SecurityConfig {
                 .disable()
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/login").permitAll()
+                        .requestMatchers("/refreshToken").permitAll()
                         .requestMatchers("/users/**").hasRole("QAManager")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
