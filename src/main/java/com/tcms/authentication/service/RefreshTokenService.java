@@ -32,17 +32,22 @@ public class RefreshTokenService {
 
 
     public RefreshToken createRefreshToken(UserDetails userDetails) {
-        RefreshToken refreshToken;
-        RefreshToken token = refreshTokenRepository.findByUserName(userDetails.getUsername());
+        RefreshToken token = null, refreshToken;
+        try {
+            token = refreshTokenRepository.findByUserName(userDetails.getUsername());
+        } catch (Exception e) {
+
+        }
         if (token != null) {
             try {
                 refreshToken = verifyExpiration(token);
             } catch (TokenRefreshException e) {
+                token.setExpiryDate(Instant.now().plusMillis(this.refreshTokenDurationMs));
                 token.setToken(UUID.randomUUID().toString());
                 refreshToken = token;
             }
         } else {
-            refreshToken=new RefreshToken();
+            refreshToken = new RefreshToken();
             refreshToken.setUserName(userDetails.getUsername());
             refreshToken.setExpiryDate(Instant.now().plusMillis(this.refreshTokenDurationMs));
             refreshToken.setToken(UUID.randomUUID().toString());

@@ -16,9 +16,9 @@ public class UserService {
         this.userRepository = userRepository;
     }
 
-    public List<Users> removePasswordFromList() {
+    public List<Users> removePasswordFromList(List<Users> usersList) {
         List<Users> tempList = new ArrayList<>();
-        for (Users users : userRepository.findAll()) {
+        for (Users users : usersList) {
             users.setPassword("");
             tempList.add(users);
         }

@@ -1,40 +1,29 @@
 package com.tcms.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.lang.NonNull;
 
-import java.util.List;
 import java.util.Set;
 
 @Entity
 @Getter
 @Setter
 @Table(name="role")
+@JsonIgnoreProperties("usersSet")
 public class Roles {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column
-    @NonNull
+    @Column(nullable = false)
     private int roleId;
 
-    @Column
-    @NonNull
+    @Column(nullable = false)
     private String roleName;
 
     @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinTable(name = "users_roles",
             joinColumns = {@JoinColumn(name = "role_id", referencedColumnName = "roleId")},
-            inverseJoinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "user_id")})
-    private Set<UserRoles> userRolesList;
-
-    @Override
-    public String toString() {
-        return "Roles{" +
-                "roleId=" + roleId +
-                ", roleName='" + roleName + '\'' +
-                ", userRolesList=" + userRolesList +
-                '}';
-    }
+            inverseJoinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "u_id")})
+    private Set<Users> usersSet;
 }

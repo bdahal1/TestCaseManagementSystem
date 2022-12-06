@@ -4,24 +4,21 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
-import org.springframework.lang.NonNull;
 
 @Entity
 @Getter
 @Setter
-@Table(name="users_department")
+@Table(name = "users_department")
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
 public class UserDepartment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ud_id")
+    @Column(name = "ud_id", nullable = false)
     private int id;
 
-    @Column(name = "user_id")
-    @NonNull
+    @Column(name = "user_id", nullable = false)
     private int userId;
 
-    @Column(name = "dep_id")
-    @NonNull
+    @Column(name = "dep_id", nullable = false)
     private int depId;
 }
