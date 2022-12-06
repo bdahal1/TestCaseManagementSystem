@@ -1,20 +1,18 @@
 package com.tcms.repositories;
 
 
-import com.tcms.models.Department;
-import com.tcms.models.Roles;
 import com.tcms.models.Users;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.Collection;
 import java.util.List;
 
 @Repository
-public interface UserRepository extends JpaRepository<Users, Integer> {
+public interface UserRepository extends CrudRepository<Users, Integer> {
 
-    List<Users> findAll();
+    Page<Users> findAll(Pageable pageable);
 
     Users findById(int id);
 
@@ -22,7 +20,7 @@ public interface UserRepository extends JpaRepository<Users, Integer> {
 
     void deleteById(int id);
 
-    List<Users> findUsersByRoleSetIn(List<Integer> roleIds);
+    Page<Users> findUsersByRoleSetIn(List<Integer> roleIds,Pageable pageable);
 
     Users findUsersByDepartment_DepName(String depName);
 }

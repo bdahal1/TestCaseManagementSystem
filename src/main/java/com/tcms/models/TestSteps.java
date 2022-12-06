@@ -4,11 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.lang.NonNull;
 
 import java.sql.Date;
-import java.util.List;
-import java.util.Set;
 
 @Entity
 @Getter
@@ -18,35 +15,28 @@ import java.util.Set;
 public class TestSteps {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ts_id")
-    @NonNull
+    @Column(name = "ts_id", nullable = false)
     private int id;
 
-    @Column(name = "ts_step_desc")
-    @NonNull
+    @Column(name = "ts_step_desc", nullable = false)
     private String testStepDesc;
 
-    @Column(name = "ts_expected_output")
-    @NonNull
+    @Column(name = "ts_expected_output", nullable = false)
     private String testExpectedOutput;
 
     @Column(name = "ts_remarks")
     private String testRemarks;
 
-    @Column(name = "ts_created_by")
-    @NonNull
+    @Column(name = "ts_created_by", nullable = false)
     private String testCreatedBy;
 
-    @Column(name = "ts_created_date")
-    @NonNull
+    @Column(name = "ts_created_date", nullable = false)
     private Date testCreatedDate;
 
-    @Column(name = "ts_modified_by")
-    @NonNull
+    @Column(name = "ts_modified_by", nullable = false)
     private String testModifiedBy;
 
-    @Column(name = "ts_modified_date")
-    @NonNull
+    @Column(name = "ts_modified_date", nullable = false)
     private Date testModifiedDate;
 
     @ManyToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)

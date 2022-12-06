@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.lang.NonNull;
 
 import java.util.Set;
 
@@ -17,7 +16,6 @@ public class Department {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "dep_id", nullable = false)
-    @NonNull
     private int depId;
 
     @Column(name = "dep_name", nullable = false)

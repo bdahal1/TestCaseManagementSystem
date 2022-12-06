@@ -39,4 +39,10 @@ public class TestCase {
             joinColumns = {@JoinColumn(name = "case_id", referencedColumnName = "tc_id")},
             inverseJoinColumns = {@JoinColumn(name = "step_id", referencedColumnName = "ts_id")})
     private Set<TestSteps> testStepsSet;
+
+    @ManyToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinTable(name = "project_tests",
+            joinColumns = {@JoinColumn(name = "case_id", referencedColumnName = "tc_id")},
+            inverseJoinColumns = {@JoinColumn(name = "pro_id", referencedColumnName = "pro_id")})
+    private Projects projects;
 }

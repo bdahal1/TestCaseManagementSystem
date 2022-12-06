@@ -1,4 +1,4 @@
-package com.tcms.models;
+package com.tcms.models.intermediate;
 
 import jakarta.persistence.*;
 import lombok.Getter;

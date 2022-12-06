@@ -26,4 +26,10 @@ public class Projects {
             joinColumns = {@JoinColumn(name = "pro_id", referencedColumnName = "pro_id")},
             inverseJoinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "u_id")})
     private Set<Users> usersSet;
+
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinTable(name = "project_tests",
+            joinColumns = {@JoinColumn(name = "pro_id", referencedColumnName = "pro_id")},
+            inverseJoinColumns = {@JoinColumn(name = "case_id", referencedColumnName = "tc_id")})
+    private Set<TestCase> testCaseSet;
 }

@@ -18,7 +18,7 @@ public class Roles {
     @Column(nullable = false)
     private int roleId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String roleName;
 
     @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)

@@ -1,9 +1,8 @@
-package com.tcms.models;
+package com.tcms.models.intermediate;
 
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.lang.NonNull;
 
 @Entity
 @Getter
@@ -19,6 +18,5 @@ public class CaseSteps {
     private int caseId;
 
     @Column(name = "step_id", nullable = false)
-    @NonNull
     private int stepId;
 }

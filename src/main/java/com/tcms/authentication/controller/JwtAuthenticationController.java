@@ -9,6 +9,7 @@ import com.tcms.authentication.pojo.TokenRefreshResponse;
 import com.tcms.authentication.service.CustomUserDetailService;
 import com.tcms.authentication.service.RefreshTokenService;
 import com.tcms.authentication.service.TokenRefreshException;
+import com.tcms.helper.pojo.CustomResponseMessage;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Date;
 import java.util.Objects;
 
 
@@ -42,17 +44,22 @@ public class JwtAuthenticationController {
     }
 
     @RequestMapping(value = "/login", method = RequestMethod.POST)
-    public ResponseEntity<?> createAuthenticationToken(@RequestBody JwtRequest authenticationRequest)
-            throws Exception {
-        authenticate(authenticationRequest.getUserName(), authenticationRequest.getPassword());
-        final UserDetails userDetails = customUserDetailService.loadUserByUsername(authenticationRequest.getUserName());
-        final String accessToken = jwtTokenUtil.generateToken(userDetails);
-        final String refToken = refreshTokenService.createRefreshToken(userDetails).getToken();
-        TokenRefreshResponse responseBody = new TokenRefreshResponse(accessToken, refToken);
-        if (accessToken == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Record not found.\n");
-        } else {
-            return ResponseEntity.status(HttpStatus.OK).body(new JwtResponse(responseBody));
+    public ResponseEntity<?> createAuthenticationToken(@RequestBody JwtRequest authenticationRequest) {
+        try {
+            authenticate(authenticationRequest.getUserName(), authenticationRequest.getPassword());
+            final UserDetails userDetails = customUserDetailService.loadUserByUsername(authenticationRequest.getUserName());
+            if (userDetails.getAuthorities().isEmpty())
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new CustomResponseMessage(new Date(), "Login Issue", "Authorities/Roles not found for the user!"));
+            final String accessToken = jwtTokenUtil.generateToken(userDetails);
+            final String refToken = refreshTokenService.createRefreshToken(userDetails).getToken();
+            TokenRefreshResponse responseBody = new TokenRefreshResponse(accessToken, refToken);
+            if (accessToken == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Record not found.\n");
+            } else {
+                return ResponseEntity.status(HttpStatus.OK).body(new JwtResponse(responseBody));
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new CustomResponseMessage(new Date(), "Login Issue", e.getMessage()));
         }
     }
 
