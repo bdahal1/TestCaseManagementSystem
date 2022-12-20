@@ -1,6 +1,9 @@
 package com.tcms.models.intermediate;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,10 +19,6 @@ import java.io.Serializable;
 @NoArgsConstructor
 public class UserProjects implements Serializable {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "up_id", nullable = false)
-    private int id;
-
     @Column(name = "user_id", nullable = false)
     private int userId;
 

@@ -1,8 +1,12 @@
 package com.tcms.controller;
 
+import com.tcms.dto.UsersInfoDTO;
 import com.tcms.helper.pojo.CustomResponseMessage;
+import com.tcms.models.Projects;
+import com.tcms.models.Roles;
 import com.tcms.models.Users;
 import com.tcms.repositories.DepartmentRepository;
+import com.tcms.repositories.ProjectRepository;
 import com.tcms.repositories.RoleRepository;
 import com.tcms.repositories.UserRepository;
 import com.tcms.services.UserService;
@@ -14,9 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 
 @RestController()
@@ -28,13 +30,16 @@ public class UserController {
     private final UserService userService;
     private final RoleRepository roleRepository;
     private final DepartmentRepository departmentRepository;
+
+    private final ProjectRepository projectRepository;
     private PasswordEncoder passwordEncoder;
 
-    public UserController(UserRepository userRepository, UserService userService, RoleRepository roleRepository, DepartmentRepository departmentRepository, PasswordEncoder passwordEncoder) {
+    public UserController(UserRepository userRepository, UserService userService, RoleRepository roleRepository, DepartmentRepository departmentRepository, ProjectRepository projectRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.userService = userService;
         this.roleRepository = roleRepository;
         this.departmentRepository = departmentRepository;
+        this.projectRepository = projectRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -97,14 +102,24 @@ public class UserController {
 
     @PostMapping("")
     @SuppressWarnings("Duplicates")
-    public ResponseEntity<Object> saveUser(@RequestBody Users users) {
-        if (users == null) {
+    public ResponseEntity<Object> saveUser(@RequestBody UsersInfoDTO usersInfoDTO) {
+        if (usersInfoDTO == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User Info Not Found inside body.\n");
         }
+        Set<Roles> roleSet = new HashSet<>();
+        Set<Projects> projectsSet = new HashSet<>();
         try {
-            Users user = users;
-            user.setPassword(passwordEncoder.encode(users.getPassword()));
-            user = userRepository.save(users);
+            roleSet.add(roleRepository.findByRoleId(usersInfoDTO.getRoleId()));
+            projectsSet.add(projectRepository.findById(usersInfoDTO.getProjectId()));
+            Users user = new Users();
+            user.setFirstName(usersInfoDTO.getFirstName());
+            user.setLastName(usersInfoDTO.getLastName());
+            user.setUserName(usersInfoDTO.getUserName());
+            user.setDepartment(departmentRepository.findByDepId(usersInfoDTO.getDepartmentId()));
+            user.setRoleSet(roleSet);
+            user.setProjectsSet(projectsSet);
+            user.setPassword(passwordEncoder.encode(usersInfoDTO.getPassword()));
+            userRepository.save(user);
             return ResponseEntity.status(HttpStatus.OK).body(userService.removePasswordForGivenUser(user));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));

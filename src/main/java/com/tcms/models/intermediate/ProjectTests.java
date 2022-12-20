@@ -1,6 +1,9 @@
 package com.tcms.models.intermediate;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,10 +17,6 @@ import lombok.Setter;
 @NoArgsConstructor
 public class ProjectTests {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "pt_id", nullable = false)
-    private int id;
-
     @Column(name = "case_id", nullable = false)
     private int caseId;
 
