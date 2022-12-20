@@ -2,7 +2,9 @@ package com.tcms.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.Set;
@@ -12,6 +14,8 @@ import java.util.Set;
 @Setter
 @Table(name = "users")
 @JsonIgnoreProperties({"projectsSet", "roleSet", "department"})
+@AllArgsConstructor
+@NoArgsConstructor
 public class Users {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

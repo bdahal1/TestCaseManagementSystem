@@ -14,7 +14,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 
 @RestController()
@@ -35,7 +37,6 @@ public class UserController {
         this.departmentRepository = departmentRepository;
         this.passwordEncoder = passwordEncoder;
     }
-
 
     @GetMapping("")
     public ResponseEntity<Object> getUsers(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
@@ -95,6 +96,7 @@ public class UserController {
     }
 
     @PostMapping("")
+    @SuppressWarnings("Duplicates")
     public ResponseEntity<Object> saveUser(@RequestBody Users users) {
         if (users == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User Info Not Found inside body.\n");
@@ -103,6 +105,28 @@ public class UserController {
             Users user = users;
             user.setPassword(passwordEncoder.encode(users.getPassword()));
             user = userRepository.save(users);
+            return ResponseEntity.status(HttpStatus.OK).body(userService.removePasswordForGivenUser(user));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+        }
+    }
+
+    @PutMapping("/{userId}")
+    @SuppressWarnings("Duplicates")
+    public ResponseEntity<Object> editUser(@RequestBody Users users, @PathVariable int userId) {
+        if (users == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User Info Not Found inside body.\n");
+        }
+        try {
+            Users user = userRepository.findById(userId);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User Not Found in database.\n");
+            }
+            user.setFirstName(users.getFirstName() == null ? user.getFirstName() : users.getFirstName());
+            user.setLastName(users.getLastName() == null ? user.getLastName() : users.getLastName());
+            user.setUserName(users.getUserName() == null ? user.getUserName() : users.getUserName());
+            user.setPassword(users.getPassword() == null ? user.getPassword() : passwordEncoder.encode(users.getPassword()));
+            userRepository.save(user);
             return ResponseEntity.status(HttpStatus.OK).body(userService.removePasswordForGivenUser(user));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));

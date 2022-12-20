@@ -1,7 +1,9 @@
 package com.tcms.models.intermediate;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.io.Serializable;
@@ -10,6 +12,8 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Table(name = "users_projects")
+@AllArgsConstructor
+@NoArgsConstructor
 public class UserProjects implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

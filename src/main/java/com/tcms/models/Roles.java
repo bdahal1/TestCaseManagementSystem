@@ -2,7 +2,9 @@ package com.tcms.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.Set;
@@ -10,8 +12,10 @@ import java.util.Set;
 @Entity
 @Getter
 @Setter
-@Table(name="role")
+@Table(name = "role")
 @JsonIgnoreProperties("usersSet")
+@AllArgsConstructor
+@NoArgsConstructor
 public class Roles {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -1,15 +1,18 @@
 package com.tcms.models.intermediate;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.CacheConcurrencyStrategy;
+
 
 @Entity
 @Getter
 @Setter
 @Table(name = "users_department")
-@org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
+@AllArgsConstructor
+@NoArgsConstructor
 public class UserDepartment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

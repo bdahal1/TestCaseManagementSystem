@@ -11,6 +11,8 @@ import java.util.List;
 public interface TestCaseRepository extends CrudRepository<TestCase, Integer> {
 
     List<TestCase> findAll();
+
     TestCase findById(int id);
+
     void deleteById(int tcId);
 }

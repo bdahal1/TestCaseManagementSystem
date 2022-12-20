@@ -1,13 +1,17 @@
 package com.tcms.models.intermediate;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
 @Getter
 @Setter
 @Table(name = "case_steps")
+@AllArgsConstructor
+@NoArgsConstructor
 public class CaseSteps {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

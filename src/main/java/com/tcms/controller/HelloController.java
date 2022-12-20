@@ -1,7 +1,6 @@
 package com.tcms.controller;
 
 import com.tcms.models.Projects;
-import com.tcms.models.Roles;
 import com.tcms.models.TestCase;
 import com.tcms.repositories.ProjectRepository;
 import com.tcms.repositories.RoleRepository;
@@ -31,11 +30,6 @@ public class HelloController {
     @GetMapping("/testCases")
     public List<TestCase> getTestCases() {
         return testCaseRepository.findAll();
-    }
-
-    @GetMapping("/roles")
-    public List<Roles> getRoles() {
-        return roleRepository.findAll();
     }
 
     @GetMapping("/projects")

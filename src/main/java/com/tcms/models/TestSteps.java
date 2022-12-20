@@ -2,7 +2,9 @@ package com.tcms.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.sql.Date;
@@ -10,8 +12,10 @@ import java.sql.Date;
 @Entity
 @Getter
 @Setter
-@Table(name="test_steps")
+@Table(name = "test_steps")
 @JsonIgnoreProperties("testCase")
+@AllArgsConstructor
+@NoArgsConstructor
 public class TestSteps {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

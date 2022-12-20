@@ -4,11 +4,13 @@ import com.tcms.models.Users;
 import com.tcms.repositories.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class UserService {
@@ -33,7 +35,7 @@ public class UserService {
         return users;
     }
 
-    public Map<String, Object> getUserListResponse(Page<Users> usersList, Pageable pageable){
+    public Map<String, Object> getUserListResponse(Page<Users> usersList, Pageable pageable) {
         Map<String, Object> response = new HashMap<>();
         response.put("users", removePasswordFromList(usersList, pageable).getContent());
         response.put("currentPage", usersList.getNumber());
