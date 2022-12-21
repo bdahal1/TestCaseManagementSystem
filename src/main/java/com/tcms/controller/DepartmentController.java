@@ -3,6 +3,7 @@ package com.tcms.controller;
 import com.tcms.helper.pojo.CustomResponseMessage;
 import com.tcms.models.Department;
 import com.tcms.repositories.DepartmentRepository;
+import com.tcms.services.DepartmentService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -19,9 +20,11 @@ public class DepartmentController {
 
 
     private final DepartmentRepository departmentRepository;
+    private final DepartmentService departmentService;
 
-    public DepartmentController(DepartmentRepository departmentRepository) {
+    public DepartmentController(DepartmentRepository departmentRepository, DepartmentService departmentService) {
         this.departmentRepository = departmentRepository;
+        this.departmentService = departmentService;
     }
 
     @GetMapping("")
@@ -31,7 +34,7 @@ public class DepartmentController {
         if (departmentList.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Record not found.\n");
         }
-        return ResponseEntity.status(HttpStatus.OK).body(departmentList);
+        return ResponseEntity.status(HttpStatus.OK).body(departmentService.getDepartmentListResponse(departmentList));
     }
 
     @GetMapping(path = "/depName/{departmentName}")
@@ -41,7 +44,7 @@ public class DepartmentController {
         if (departmentList.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Record not found.\n");
         } else {
-            return ResponseEntity.status(HttpStatus.OK).body(departmentList);
+            return ResponseEntity.status(HttpStatus.OK).body(departmentService.getDepartmentListResponse(departmentList));
         }
     }
 

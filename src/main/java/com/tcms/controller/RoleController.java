@@ -3,6 +3,7 @@ package com.tcms.controller;
 import com.tcms.helper.pojo.CustomResponseMessage;
 import com.tcms.models.Roles;
 import com.tcms.repositories.RoleRepository;
+import com.tcms.services.RoleService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -17,19 +18,21 @@ import java.util.Date;
 @RequestMapping("/roles")
 public class RoleController {
     private final RoleRepository roleRepository;
+    private final RoleService roleService;
 
-    public RoleController(RoleRepository roleRepository) {
+    public RoleController(RoleRepository roleRepository, RoleService roleService) {
         this.roleRepository = roleRepository;
+        this.roleService = roleService;
     }
 
     @GetMapping("")
     public ResponseEntity<Object> getRoles(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         Pageable paging = PageRequest.of(page, size);
-        Page<Roles> roleList = roleRepository.findAll(paging);
-        if (roleList.isEmpty()) {
+        Page<Roles> rolesList = roleRepository.findAll(paging);
+        if (rolesList.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Record not found.\n");
         }
-        return ResponseEntity.status(HttpStatus.OK).body(roleList);
+        return ResponseEntity.status(HttpStatus.OK).body(roleService.getRoleListResponse(rolesList));
     }
 
     @GetMapping(path = "/name/{roleName}")
@@ -40,7 +43,7 @@ public class RoleController {
         if (rolesList.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Record not found.\n");
         } else {
-            return ResponseEntity.status(HttpStatus.OK).body(rolesList);
+            return ResponseEntity.status(HttpStatus.OK).body(roleService.getRoleListResponse(rolesList));
         }
     }
 
