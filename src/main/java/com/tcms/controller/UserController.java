@@ -128,19 +128,26 @@ public class UserController {
 
     @PutMapping("/{userId}")
     @SuppressWarnings("Duplicates")
-    public ResponseEntity<Object> editUser(@RequestBody Users users, @PathVariable int userId) {
-        if (users == null) {
+    public ResponseEntity<Object> editUser(@RequestBody UsersInfoDTO usersInfoDTO, @PathVariable int userId) {
+        if (usersInfoDTO == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User Info Not Found inside body.\n");
         }
+        Set<Roles> roleSet = new HashSet<>();
+        Set<Projects> projectsSet = new HashSet<>();
         try {
+            roleSet.add(roleRepository.findByRoleId(usersInfoDTO.getRoleId()));
+            projectsSet.add(projectRepository.findById(usersInfoDTO.getProjectId()));
             Users user = userRepository.findById(userId);
             if (user == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User Not Found in database.\n");
             }
-            user.setFirstName(users.getFirstName() == null ? user.getFirstName() : users.getFirstName());
-            user.setLastName(users.getLastName() == null ? user.getLastName() : users.getLastName());
-            user.setUserName(users.getUserName() == null ? user.getUserName() : users.getUserName());
-            user.setPassword(users.getPassword() == null ? user.getPassword() : passwordEncoder.encode(users.getPassword()));
+            user.setFirstName(usersInfoDTO.getFirstName() == null ? user.getFirstName() : usersInfoDTO.getFirstName());
+            user.setLastName(usersInfoDTO.getLastName() == null ? user.getLastName() : usersInfoDTO.getLastName());
+            user.setUserName(usersInfoDTO.getUserName() == null ? user.getUserName() : usersInfoDTO.getUserName());
+            user.setPassword(usersInfoDTO.getPassword() == null ? user.getPassword() : passwordEncoder.encode(usersInfoDTO.getPassword()));
+            user.setDepartment(departmentRepository.findByDepId(usersInfoDTO.getDepartmentId()));
+            user.setRoleSet(roleSet);
+            user.setProjectsSet(projectsSet);
             userRepository.save(user);
             return ResponseEntity.status(HttpStatus.OK).body(userService.removePasswordForGivenUser(user));
         } catch (Exception e) {

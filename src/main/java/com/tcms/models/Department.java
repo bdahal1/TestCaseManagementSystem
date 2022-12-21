@@ -22,7 +22,7 @@ public class Department {
     @Column(name = "dep_id", nullable = false)
     private int depId;
 
-    @Column(name = "dep_name", nullable = false)
+    @Column(name = "dep_name", nullable = false, unique = true)
     private String depName;
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)

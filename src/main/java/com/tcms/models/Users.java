@@ -13,7 +13,6 @@ import java.util.Set;
 @Getter
 @Setter
 @Table(name = "users")
-@JsonIgnoreProperties({"projectsSet", "roleSet", "department"})
 @AllArgsConstructor
 @NoArgsConstructor
 public class Users {

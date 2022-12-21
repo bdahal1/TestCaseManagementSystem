@@ -22,7 +22,7 @@ public class Projects {
     @Column(name = "pro_id", nullable = false)
     private int id;
 
-    @Column(name = "pro_name", nullable = false)
+    @Column(name = "pro_name", nullable = false, unique = true)
     private String projectName;
 
     @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
