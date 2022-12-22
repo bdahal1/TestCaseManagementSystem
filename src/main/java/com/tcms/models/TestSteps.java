@@ -7,13 +7,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.sql.Date;
+import java.sql.Timestamp;
 
 @Entity
 @Getter
 @Setter
 @Table(name = "test_steps")
-@JsonIgnoreProperties("testCase")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "testStepsSet"})
 @AllArgsConstructor
 @NoArgsConstructor
 public class TestSteps {
@@ -35,18 +35,19 @@ public class TestSteps {
     private String testCreatedBy;
 
     @Column(name = "ts_created_date", nullable = false)
-    private Date testCreatedDate;
+    private Timestamp testCreatedDate;
 
     @Column(name = "ts_modified_by", nullable = false)
     private String testModifiedBy;
 
     @Column(name = "ts_modified_date", nullable = false)
-    private Date testModifiedDate;
+    private Timestamp testModifiedDate;
 
-    @ManyToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinTable(name = "case_steps",
-            joinColumns = {@JoinColumn(name = "step_id", referencedColumnName = "ts_id")},
-            inverseJoinColumns = {@JoinColumn(name = "case_id", referencedColumnName = "tc_id")})
+    @Column(name = "ts_order", nullable = false)
+    private int testStepOrder;
+
+    @ManyToOne(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.PERSIST}, fetch = FetchType.LAZY)
+    @JoinTable(name = "case_steps", joinColumns = {@JoinColumn(name = "step_id", referencedColumnName = "ts_id")}, inverseJoinColumns = {@JoinColumn(name = "case_id", referencedColumnName = "tc_id")})
     private TestCase testCase;
 
 

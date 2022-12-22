@@ -119,7 +119,7 @@ public class UserController {
             user.setRoleSet(roleSet);
             user.setProjectsSet(projectsSet);
             user.setPassword(passwordEncoder.encode(usersInfoDTO.getPassword()));
-            userRepository.save(user);
+            userService.saveUser(user);
             return ResponseEntity.status(HttpStatus.OK).body(userService.removePasswordForGivenUser(user));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
@@ -164,7 +164,7 @@ public class UserController {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new CustomResponseMessage(new Date(), "Error", "Provided user not found for Delete operation!"));
         }
-        userRepository.deleteById(Integer.parseInt(userId));
+        this.userService.deleteUser(user.getId());
         return ResponseEntity.status(HttpStatus.OK).body(new CustomResponseMessage(new Date(), "Success", "User Deleted Successfully!"));
     }
 }

@@ -13,7 +13,7 @@ import java.util.Set;
 @Getter
 @Setter
 @Table(name = "project")
-@JsonIgnoreProperties("usersSet")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "usersSet"})
 @AllArgsConstructor
 @NoArgsConstructor
 public class Projects {
@@ -25,15 +25,12 @@ public class Projects {
     @Column(name = "pro_name", nullable = false, unique = true)
     private String projectName;
 
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinTable(name = "users_projects",
-            joinColumns = {@JoinColumn(name = "pro_id", referencedColumnName = "pro_id")},
-            inverseJoinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "u_id")})
+    @ManyToMany(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.PERSIST}, fetch = FetchType.LAZY)
+    @JoinTable(name = "users_projects", joinColumns = {@JoinColumn(name = "pro_id", referencedColumnName = "pro_id")}, inverseJoinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "u_id")})
     private Set<Users> usersSet;
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinTable(name = "project_tests",
-            joinColumns = {@JoinColumn(name = "pro_id", referencedColumnName = "pro_id")},
-            inverseJoinColumns = {@JoinColumn(name = "case_id", referencedColumnName = "tc_id")})
+    @OneToMany(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.PERSIST}, fetch = FetchType.LAZY)
+    @JoinTable(name = "project_tests", joinColumns = {@JoinColumn(name = "pro_id", referencedColumnName = "pro_id")}, inverseJoinColumns = {@JoinColumn(name = "case_id", referencedColumnName = "tc_id")})
+    @JsonIgnoreProperties("projects")
     private Set<TestCase> testCaseSet;
 }

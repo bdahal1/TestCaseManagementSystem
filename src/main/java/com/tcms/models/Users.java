@@ -15,6 +15,7 @@ import java.util.Set;
 @Table(name = "users")
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Users {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,21 +34,18 @@ public class Users {
     @Column(name = "u_password", nullable = false)
     private String password;
 
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinTable(name = "users_projects",
-            joinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "u_id")},
-            inverseJoinColumns = {@JoinColumn(name = "pro_id", referencedColumnName = "pro_id")})
+    @ManyToMany(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.PERSIST}, fetch = FetchType.LAZY)
+    @JoinTable(name = "users_projects", joinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "u_id")}, inverseJoinColumns = {@JoinColumn(name = "pro_id", referencedColumnName = "pro_id")})
+    @JsonIgnoreProperties("usersSet")
     private Set<Projects> projectsSet;
 
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinTable(name = "users_roles",
-            joinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "u_id")},
-            inverseJoinColumns = {@JoinColumn(name = "role_id", referencedColumnName = "roleId")})
+    @ManyToMany(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.PERSIST}, fetch = FetchType.LAZY)
+    @JoinTable(name = "users_roles", joinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "u_id")}, inverseJoinColumns = {@JoinColumn(name = "role_id", referencedColumnName = "roleId")})
+    @JsonIgnoreProperties("usersSet")
     private Set<Roles> roleSet;
 
-    @ManyToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinTable(name = "users_department",
-            joinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "u_id")},
-            inverseJoinColumns = {@JoinColumn(name = "dep_id", referencedColumnName = "dep_id")})
+    @ManyToOne(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.PERSIST}, fetch = FetchType.LAZY)
+    @JoinTable(name = "users_department", joinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "u_id")}, inverseJoinColumns = {@JoinColumn(name = "dep_id", referencedColumnName = "dep_id")})
+    @JsonIgnoreProperties("usersSet")
     private Department department;
 }

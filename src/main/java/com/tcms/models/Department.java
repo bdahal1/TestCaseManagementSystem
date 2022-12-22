@@ -13,7 +13,7 @@ import java.util.Set;
 @Getter
 @Setter
 @Table(name = "department")
-@JsonIgnoreProperties("userDepartmentSet")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "usersSet"})
 @AllArgsConstructor
 @NoArgsConstructor
 public class Department {
@@ -25,10 +25,9 @@ public class Department {
     @Column(name = "dep_name", nullable = false, unique = true)
     private String depName;
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinTable(name = "users_department",
-            joinColumns = {@JoinColumn(name = "dep_id", referencedColumnName = "dep_id")},
-            inverseJoinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "u_id")})
-    private Set<Users> userDepartmentSet;
+    @OneToMany(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.PERSIST}, fetch = FetchType.LAZY)
+    @JoinTable(name = "users_department", joinColumns = {@JoinColumn(name = "dep_id", referencedColumnName = "dep_id")}, inverseJoinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "u_id")})
+    @JsonIgnoreProperties("department")
+    private Set<Users> usersSet;
 
 }

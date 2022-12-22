@@ -51,14 +51,14 @@ UNLOCK TABLES;
 
 LOCK TABLES `users_projects` WRITE;
 
-INSERT INTO `users_projects`(up_id,user_id,pro_id) VALUES (1,1,1),(2,2,1);
+INSERT INTO `users_projects`(user_id,pro_id) VALUES (1,1),(2,1);
 
 UNLOCK TABLES;
 
 
 LOCK TABLES `users_roles` WRITE;
 
-INSERT INTO `users_roles`(ur_id,user_id,role_id) VALUES (1,1,1),(2,1,2),(3,2,2);
+INSERT INTO `users_roles`(user_id,role_id) VALUES (1,1),(1,2),(2,2);
 
 UNLOCK TABLES;
 

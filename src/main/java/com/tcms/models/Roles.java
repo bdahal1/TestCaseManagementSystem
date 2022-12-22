@@ -13,7 +13,7 @@ import java.util.Set;
 @Getter
 @Setter
 @Table(name = "role")
-@JsonIgnoreProperties("usersSet")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "usersSet"})
 @AllArgsConstructor
 @NoArgsConstructor
 public class Roles {
@@ -25,9 +25,7 @@ public class Roles {
     @Column(nullable = false, unique = true)
     private String roleName;
 
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinTable(name = "users_roles",
-            joinColumns = {@JoinColumn(name = "role_id", referencedColumnName = "roleId")},
-            inverseJoinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "u_id")})
+    @ManyToMany(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.PERSIST}, fetch = FetchType.LAZY)
+    @JoinTable(name = "users_roles", joinColumns = {@JoinColumn(name = "role_id", referencedColumnName = "roleId")}, inverseJoinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "u_id")})
     private Set<Users> usersSet;
 }
