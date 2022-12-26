@@ -20,7 +20,7 @@ public class TestSteps {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "ts_id", nullable = false)
-    private int id;
+    private Integer id;
 
     @Column(name = "ts_step_desc", nullable = false)
     private String testStepDesc;
@@ -44,7 +44,7 @@ public class TestSteps {
     private Timestamp testModifiedDate;
 
     @Column(name = "ts_order", nullable = false)
-    private int testStepOrder;
+    private Integer testStepOrder;
 
     @ManyToOne(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.PERSIST}, fetch = FetchType.LAZY)
     @JoinTable(name = "case_steps", joinColumns = {@JoinColumn(name = "step_id", referencedColumnName = "ts_id")}, inverseJoinColumns = {@JoinColumn(name = "case_id", referencedColumnName = "tc_id")})

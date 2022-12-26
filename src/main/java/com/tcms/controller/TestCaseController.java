@@ -2,9 +2,7 @@ package com.tcms.controller;
 
 import com.tcms.dto.TestCaseInfoDTO;
 import com.tcms.helper.pojo.CustomResponseMessage;
-import com.tcms.helper.util.Util;
 import com.tcms.models.TestCase;
-import com.tcms.models.Users;
 import com.tcms.repositories.ProjectRepository;
 import com.tcms.repositories.TestCaseRepository;
 import com.tcms.repositories.UserRepository;
@@ -78,45 +76,22 @@ public class TestCaseController {
             if (testCaseInfoDTO.getTestName() == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Testcase Name Not Found inside body.\n");
             }
-            TestCase testCase = new TestCase();
-            testCase.setTestName(testCaseInfoDTO.getTestName());
-            Users user = userRepository.findById(testCaseInfoDTO.getTestCreatedBy());
-            String fullName = user.getFirstName() + " " + user.getLastName();
-            testCase.setTestCreatedBy(fullName);
-            testCase.setTestCreatedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
-            testCase.setTestModifiedBy(fullName);
-            testCase.setTestModifiedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
-            if (testCaseInfoDTO.getProjectId() == 0) {
-                testCase.setProjects(null);
-            } else {
-                testCase.setProjects(projectRepository.findById(testCaseInfoDTO.getProjectId()));
-            }
-            testCaseRepository.save(testCase);
-            return ResponseEntity.status(HttpStatus.OK).body(testCaseInfoDTO);
+            return testCaseService.saveTestCase(testCaseInfoDTO);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
         }
     }
 
     @PutMapping("/{testCaseId}")
     @SuppressWarnings("Duplicates")
-    public ResponseEntity<Object> editTestCase(@RequestBody TestCase testCase, @PathVariable int testCaseId) {
-        if (testCase == null) {
+    public ResponseEntity<Object> editTestCase(@RequestBody TestCaseInfoDTO testCaseInfoDTO, @PathVariable int testCaseId) {
+        if (testCaseInfoDTO == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Testcase Info Not Found inside body.\n");
         }
         try {
-            TestCase testCaseEdit = testCaseRepository.findById(testCaseId);
-            if (testCaseEdit == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Testcase Not Found in database.\n");
-            }
-            testCaseEdit.setTestName(testCase.getTestName() == null ? testCaseEdit.getTestName() : testCase.getTestName());
-            testCaseEdit.setTestModifiedBy(testCase.getTestModifiedBy());
-            testCaseEdit.setTestModifiedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
-            testCaseEdit.setTestModifiedBy(testCase.getTestModifiedBy() == null ? testCaseEdit.getTestModifiedBy() : testCase.getTestModifiedBy());
-            testCaseRepository.save(testCaseEdit);
-            return ResponseEntity.status(HttpStatus.OK).body(testCaseEdit);
+            return testCaseService.editTestCase(testCaseInfoDTO, testCaseId);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
         }
     }
 

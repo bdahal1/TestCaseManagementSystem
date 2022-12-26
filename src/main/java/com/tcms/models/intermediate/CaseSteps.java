@@ -18,8 +18,8 @@ import lombok.Setter;
 public class CaseSteps {
     @Id
     @Column(name = "case_id", nullable = false)
-    private int caseId;
+    private Integer caseId;
 
     @Column(name = "step_id", nullable = false)
-    private int stepId;
+    private Integer stepId;
 }

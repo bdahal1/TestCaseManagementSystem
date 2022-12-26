@@ -20,7 +20,7 @@ public class Department {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "dep_id", nullable = false)
-    private int depId;
+    private Integer depId;
 
     @Column(name = "dep_name", nullable = false, unique = true)
     private String depName;

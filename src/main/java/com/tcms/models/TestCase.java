@@ -21,7 +21,7 @@ public class TestCase {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "tc_id", nullable = false)
-    private int id;
+    private Integer id;
 
     @Column(name = "tc_name", nullable = false)
     private String testName;

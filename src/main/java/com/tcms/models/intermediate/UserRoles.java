@@ -18,8 +18,8 @@ import lombok.Setter;
 public class UserRoles {
     @Id
     @Column(name = "user_id", nullable = false)
-    private int userId;
+    private Integer userId;
 
     @Column(name = "role_id", nullable = false)
-    private int roleId;
+    private Integer roleId;
 }

@@ -2,8 +2,6 @@ package com.tcms.controller;
 
 import com.tcms.dto.UsersInfoDTO;
 import com.tcms.helper.pojo.CustomResponseMessage;
-import com.tcms.models.Projects;
-import com.tcms.models.Roles;
 import com.tcms.models.Users;
 import com.tcms.repositories.DepartmentRepository;
 import com.tcms.repositories.ProjectRepository;
@@ -18,7 +16,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
 
 
 @RestController()
@@ -28,25 +29,21 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final UserService userService;
-    private final RoleRepository roleRepository;
-    private final DepartmentRepository departmentRepository;
-
-    private final ProjectRepository projectRepository;
-    private PasswordEncoder passwordEncoder;
 
     public UserController(UserRepository userRepository, UserService userService, RoleRepository roleRepository, DepartmentRepository departmentRepository, ProjectRepository projectRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.userService = userService;
-        this.roleRepository = roleRepository;
-        this.departmentRepository = departmentRepository;
-        this.projectRepository = projectRepository;
-        this.passwordEncoder = passwordEncoder;
     }
 
     @GetMapping("")
-    public ResponseEntity<Object> getUsers(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+    public ResponseEntity<Object> getUsers(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size, @RequestParam(required = false) Boolean status) {
         Pageable paging = PageRequest.of(page, size);
-        Page<Users> usersList = userService.removePasswordFromList(userRepository.findAll(paging), paging);
+        Page<Users> usersList;
+        if (status == null) {
+            usersList = userService.removePasswordFromList(userRepository.findAll(paging), paging);
+        } else {
+            usersList = userService.removePasswordFromList(userRepository.findUsersByIsActive(status, paging), paging);
+        }
         if (usersList.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Record not found.\n");
         }
@@ -85,17 +82,16 @@ public class UserController {
 
     @GetMapping(path = "/role/{roleIds}")
     public ResponseEntity<Object> getUsersByRoleIds(@PathVariable String roleIds, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        Pageable paging = PageRequest.of(page, size);
         List<Integer> roles = new ArrayList<>();
         for (String id : roleIds.split(",")) {
             int role = Integer.parseInt(id);
             roles.add(role);
         }
-        Pageable paging = PageRequest.of(page, size);
         Page<Users> users = userRepository.findUsersByRoleSetIn(roles, paging);
         if (users == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Record not found.\n");
         } else {
-
             return ResponseEntity.status(HttpStatus.OK).body(userService.getUserListResponse(users, paging));
         }
     }
@@ -106,24 +102,7 @@ public class UserController {
         if (usersInfoDTO == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User Info Not Found inside body.\n");
         }
-        Set<Roles> roleSet = new HashSet<>();
-        Set<Projects> projectsSet = new HashSet<>();
-        try {
-            roleSet.add(roleRepository.findByRoleId(usersInfoDTO.getRoleId()));
-            projectsSet.add(projectRepository.findById(usersInfoDTO.getProjectId()));
-            Users user = new Users();
-            user.setFirstName(usersInfoDTO.getFirstName());
-            user.setLastName(usersInfoDTO.getLastName());
-            user.setUserName(usersInfoDTO.getUserName());
-            user.setDepartment(departmentRepository.findByDepId(usersInfoDTO.getDepartmentId()));
-            user.setRoleSet(roleSet);
-            user.setProjectsSet(projectsSet);
-            user.setPassword(passwordEncoder.encode(usersInfoDTO.getPassword()));
-            userService.saveUser(user);
-            return ResponseEntity.status(HttpStatus.OK).body(userService.removePasswordForGivenUser(user));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
-        }
+        return this.userService.saveUser(usersInfoDTO);
     }
 
     @PutMapping("/{userId}")
@@ -132,27 +111,7 @@ public class UserController {
         if (usersInfoDTO == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User Info Not Found inside body.\n");
         }
-        Set<Roles> roleSet = new HashSet<>();
-        Set<Projects> projectsSet = new HashSet<>();
-        try {
-            roleSet.add(roleRepository.findByRoleId(usersInfoDTO.getRoleId()));
-            projectsSet.add(projectRepository.findById(usersInfoDTO.getProjectId()));
-            Users user = userRepository.findById(userId);
-            if (user == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User Not Found in database.\n");
-            }
-            user.setFirstName(usersInfoDTO.getFirstName() == null ? user.getFirstName() : usersInfoDTO.getFirstName());
-            user.setLastName(usersInfoDTO.getLastName() == null ? user.getLastName() : usersInfoDTO.getLastName());
-            user.setUserName(usersInfoDTO.getUserName() == null ? user.getUserName() : usersInfoDTO.getUserName());
-            user.setPassword(usersInfoDTO.getPassword() == null ? user.getPassword() : passwordEncoder.encode(usersInfoDTO.getPassword()));
-            user.setDepartment(departmentRepository.findByDepId(usersInfoDTO.getDepartmentId()));
-            user.setRoleSet(roleSet);
-            user.setProjectsSet(projectsSet);
-            userRepository.save(user);
-            return ResponseEntity.status(HttpStatus.OK).body(userService.removePasswordForGivenUser(user));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
-        }
+        return this.userService.editUser(usersInfoDTO, userId);
     }
 
     @DeleteMapping("/{userId}")
@@ -164,7 +123,9 @@ public class UserController {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new CustomResponseMessage(new Date(), "Error", "Provided user not found for Delete operation!"));
         }
-        this.userService.deleteUser(user.getId());
+        user.setRoleSet(new HashSet<>());
+        user.setIsActive(false);
+        this.userService.deleteUser(user);
         return ResponseEntity.status(HttpStatus.OK).body(new CustomResponseMessage(new Date(), "Success", "User Deleted Successfully!"));
     }
 }

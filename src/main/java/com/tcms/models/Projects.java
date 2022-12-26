@@ -20,7 +20,7 @@ public class Projects {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "pro_id", nullable = false)
-    private int id;
+    private Integer id;
 
     @Column(name = "pro_name", nullable = false, unique = true)
     private String projectName;

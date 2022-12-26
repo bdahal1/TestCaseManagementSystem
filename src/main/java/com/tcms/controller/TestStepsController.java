@@ -109,7 +109,7 @@ public class TestStepsController {
 
     @PutMapping("/{testStepId}")
     @SuppressWarnings("Duplicates")
-    public ResponseEntity<Object> editTestStep(@RequestBody TestCase testCase, @PathVariable int testStepId) {
+    public ResponseEntity<Object> editTestStep(@RequestBody TestSteps testSteps, @PathVariable int testStepId) {
         //TODO
         return null;
     }

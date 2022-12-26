@@ -10,7 +10,8 @@ public class UsersInfoDTO {
     private String lastName;
     private String userName;
     private String password;
-    private int roleId;
-    private int projectId;
-    private int departmentId;
+    private Integer roleId;
+    private Integer projectId;
+    private Integer departmentId;
+    private Boolean isActive;
 }

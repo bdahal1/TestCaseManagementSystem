@@ -9,7 +9,7 @@ public class TestStepInfoDTO {
     String testStepDesc;
     String testExpectedOutput;
     String testRemarks;
-    int testStepOrder;
-    int testCaseId;
-    int userId;
+    Integer testStepOrder;
+    Integer testCaseId;
+    Integer userId;
 }

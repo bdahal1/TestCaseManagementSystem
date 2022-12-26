@@ -7,6 +7,6 @@ import lombok.Setter;
 @Setter
 public class TestCaseInfoDTO {
     String testName;
-    int testCreatedBy;
-    int projectId;
+    Integer userId;
+    Integer projectId;
 }

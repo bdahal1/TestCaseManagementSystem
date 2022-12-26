@@ -19,6 +19,8 @@ public interface UserRepository extends PagingAndSortingRepository<Users, Intege
 
     Users findByUserName(String username);
 
+    Page<Users> findUsersByIsActive(boolean status, Pageable pageable);
+
     void deleteById(int id);
 
     Page<Users> findUsersByRoleSetIn(List<Integer> roleIds, Pageable pageable);

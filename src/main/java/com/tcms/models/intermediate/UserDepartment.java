@@ -19,8 +19,8 @@ import lombok.Setter;
 public class UserDepartment {
     @Id
     @Column(name = "user_id", nullable = false)
-    private int userId;
+    private Integer userId;
 
     @Column(name = "dep_id", nullable = false)
-    private int depId;
+    private Integer depId;
 }

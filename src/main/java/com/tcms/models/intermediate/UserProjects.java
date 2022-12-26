@@ -20,8 +20,8 @@ import java.io.Serializable;
 public class UserProjects implements Serializable {
     @Id
     @Column(name = "user_id", nullable = false)
-    private int userId;
+    private Integer userId;
 
     @Column(name = "pro_id", nullable = false)
-    private int projectId;
+    private Integer projectId;
 }
