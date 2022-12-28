@@ -16,11 +16,13 @@ public interface TestStepsRepository extends PagingAndSortingRepository<TestStep
 
     Page<TestSteps> findAll(Pageable pageable);
 
+    List<TestSteps> findTestStepsByTestCaseOrderByTestStepOrderAsc(TestCase testCase);
     Page<TestSteps> findAllByTestCase(TestCase testCase, Pageable pageable);
 
     TestSteps findById(int id);
 
     void deleteById(int tcId);
+    TestSteps save(TestSteps testSteps);
 
-    List<TestSteps> save(List<TestSteps> testSteps);
+    TestSteps findFirstByTestCaseOrderByTestStepOrderDesc(TestCase testCase);
 }

@@ -38,7 +38,7 @@ public class TestCase {
     @Column(name = "tc_modified_date", nullable = false)
     private Timestamp testModifiedDate;
 
-    @OneToMany(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.PERSIST}, fetch = FetchType.LAZY)
+    @OneToMany(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.PERSIST}, fetch = FetchType.LAZY, orphanRemoval = true)
     @JoinTable(name = "case_steps", joinColumns = {@JoinColumn(name = "case_id", referencedColumnName = "tc_id")}, inverseJoinColumns = {@JoinColumn(name = "step_id", referencedColumnName = "ts_id")})
     private Set<TestSteps> testStepsSet;
 

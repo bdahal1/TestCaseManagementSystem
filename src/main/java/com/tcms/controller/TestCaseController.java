@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
+import java.util.HashSet;
 
 @RestController()
 @CrossOrigin()
@@ -105,7 +106,7 @@ public class TestCaseController {
         if (testCase == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new CustomResponseMessage(new Date(), "Error", "Provided testcase not found for Delete operation!"));
         }
-        testCaseRepository.deleteById(Integer.parseInt(testCaseId));
+        testCaseRepository.deleteById(testCase.getId());
         return ResponseEntity.status(HttpStatus.OK).body(new CustomResponseMessage(new Date(), "Success", "Testcase Deleted Successfully!"));
     }
 }

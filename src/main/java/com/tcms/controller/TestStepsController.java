@@ -1,6 +1,7 @@
 package com.tcms.controller;
 
 import com.tcms.dto.TestStepInfoDTO;
+import com.tcms.dto.TestStepOrderDTO;
 import com.tcms.helper.pojo.CustomResponseMessage;
 import com.tcms.helper.util.Util;
 import com.tcms.models.TestCase;
@@ -72,35 +73,15 @@ public class TestStepsController {
     }
 
     @PostMapping("")
-    @SuppressWarnings("Duplicates")
     public ResponseEntity<Object> saveTestSteps(@RequestBody List<TestStepInfoDTO> testStepInfoDTO) {
         if (testStepInfoDTO == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("TestSteps Info Not Found inside body.\n");
         }
         try {
-            List<TestSteps> testStepsList = new ArrayList<>();
-            for (TestStepInfoDTO each : testStepInfoDTO) {
-                if (each.getTestStepDesc() == null || each.getTestCaseId() == 0 || each.getTestExpectedOutput() == null) {
-                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body("TestStep required info Not Found inside body.\n" + each);
-                }
-                Users user = userRepository.findById(each.getUserId());
-                String fullName = user.getFirstName() + " " + user.getLastName();
-                TestSteps testSteps = new TestSteps();
-                testSteps.setTestCase(testCaseRepository.findById(each.getTestCaseId()));
-                testSteps.setTestRemarks(each.getTestRemarks());
-                testSteps.setTestStepDesc(each.getTestStepDesc());
-                testSteps.setTestExpectedOutput(each.getTestExpectedOutput());
-                testSteps.setTestStepOrder(each.getTestStepOrder());
-                testSteps.setTestCreatedBy(fullName);
-                testSteps.setTestCreatedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
-                testSteps.setTestModifiedBy(fullName);
-                testSteps.setTestModifiedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
-                testStepsList.add(testSteps);
+            List<TestSteps> testStepsList = testStepService.saveTestSteps(testStepInfoDTO);
+            if (testStepsList == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("TestStepInfo is invalid or cannot be created. Check your request body.\n");
             }
-            if (testStepsList.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", "Teststeps cannot be added. Please review and try again!!"));
-            }
-            testStepsRepository.save(testStepsList);
             return ResponseEntity.status(HttpStatus.OK).body(testStepsList);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
@@ -109,9 +90,61 @@ public class TestStepsController {
 
     @PutMapping("/{testStepId}")
     @SuppressWarnings("Duplicates")
-    public ResponseEntity<Object> editTestStep(@RequestBody TestSteps testSteps, @PathVariable int testStepId) {
-        //TODO
-        return null;
+    public ResponseEntity<Object> editTestStep(@RequestBody TestStepInfoDTO testStepInfoDTO, @PathVariable int testStepId) {
+        if (testStepInfoDTO == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("TestSteps Info Not Found inside body.\n");
+        }
+        try {
+            if (testStepInfoDTO.getTestStepDesc() == null || testStepInfoDTO.getTestCaseId() == 0 || testStepInfoDTO.getTestExpectedOutput() == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("TestStep required info Not Found inside body.\n" + testStepInfoDTO);
+            }
+            TestSteps testSteps = testStepService.editTestSteps(testStepInfoDTO, testStepId);
+            if (testSteps == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("TestStep Not found in database.\n" + testStepInfoDTO);
+            }
+            return ResponseEntity.status(HttpStatus.OK).body(testSteps);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+        }
+    }
+
+    @GetMapping("/order/{testCaseId}")
+    @SuppressWarnings("Duplicates")
+    public ResponseEntity<Object> orderTestSteps(@PathVariable int testCaseId) {
+        TestCase testCase = testCaseRepository.findById(testCaseId);
+        if (testCase == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Testcase Not Found for given id.\n");
+        }
+        try {
+            List<TestSteps> testStepsList = testStepService.orderTestSteps(testCase);
+            if(testStepsList==null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("TestSteps Not Found for given testcaseid.\n");
+            }
+            return ResponseEntity.status(HttpStatus.OK).body(testStepsList);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+        }
+    }
+
+    @PutMapping("/updateOrder")
+    @SuppressWarnings("Duplicates")
+    public ResponseEntity<Object> editTestStepOrder(@RequestBody List<TestStepOrderDTO> testStepOrderDTO) {
+        List<TestSteps> testStepsList = new ArrayList<>();
+        try {
+            for (TestStepOrderDTO temp : testStepOrderDTO) {
+                TestSteps testSteps = testStepsRepository.findById(temp.getTestStepId());
+                if (testSteps == null) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body("TestStep Not Found for given id.\n");
+                }
+                testSteps.setTestStepOrder(temp.getTestStepOrder());
+                testStepsRepository.save(testSteps);
+                testStepsList.add(testSteps);
+            }
+            this.orderTestSteps(testStepsList.get(0).getTestCase().getId());
+            return ResponseEntity.status(HttpStatus.OK).body(testStepsRepository.findTestStepsByTestCaseOrderByTestStepOrderAsc(testStepsList.get(0).getTestCase()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+        }
     }
 
     @DeleteMapping("/{testStepId}")
