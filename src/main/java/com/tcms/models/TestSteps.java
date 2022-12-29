@@ -25,6 +25,9 @@ public class TestSteps {
     @Column(name = "ts_step_desc", nullable = false)
     private String testStepDesc;
 
+    @Column(name = "ts_test_data")
+    private String testStepData;
+
     @Column(name = "ts_expected_output", nullable = false)
     private String testExpectedOutput;
 
