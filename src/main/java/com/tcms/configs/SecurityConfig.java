@@ -3,6 +3,7 @@ package com.tcms.configs;
 import com.tcms.authentication.config.JwtAuthenticationEntryPoint;
 import com.tcms.authentication.config.JwtRequestFilter;
 import com.tcms.authentication.service.CustomUserDetailService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -49,6 +50,17 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and().userDetailsService(customUserDetailService);
         http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+        http.logout()
+                .logoutUrl("/logout") // Define the logout endpoint
+                .logoutSuccessHandler((request, response, authentication) -> {
+                    // Custom success handler (optional)
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    response.getWriter().write("Logout successful!");
+                })
+                .invalidateHttpSession(true) // Invalidate session
+                .clearAuthentication(true) // Clear authentication
+                .deleteCookies("JSESSIONID"); // Delete session cookie (if applicable)
+
         return http.build();
     }
 
