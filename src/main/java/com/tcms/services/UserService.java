@@ -1,5 +1,6 @@
 package com.tcms.services;
 
+import com.tcms.dto.ProjectDTO;
 import com.tcms.dto.UsersInfoDTO;
 import com.tcms.helper.pojo.CustomResponseMessage;
 import com.tcms.models.Projects;
@@ -18,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -61,10 +63,9 @@ public class UserService {
 
     public ResponseEntity<Object> saveUser(UsersInfoDTO usersInfoDTO) {
         Set<Roles> roleSet = new HashSet<>();
-        Set<Projects> projectsSet = new HashSet<>();
+        Set<Projects> projectsSet=getListOfProjects(usersInfoDTO);
         try {
             roleSet.add(roleRepository.findByRoleId(usersInfoDTO.getRoleId()));
-            projectsSet.add(projectRepository.findById(usersInfoDTO.getProjectId()));
             Users user = new Users();
             user.setFirstName(usersInfoDTO.getFirstName());
             user.setLastName(usersInfoDTO.getLastName());
@@ -80,8 +81,23 @@ public class UserService {
         }
     }
 
+    private Set<Projects> getListOfProjects(UsersInfoDTO usersInfoDTO) {
+        Set<Projects> projectsSet = new HashSet<>();
+        List<Integer> idList = usersInfoDTO.getProjectsSet()
+                .stream()
+                .map(ProjectDTO::getId)
+                .toList();
+        if(!idList.isEmpty()){
+            for(Integer id:idList) {
+                projectsSet.add(projectRepository.findById(id));
+            }
+        }
+        return projectsSet;
+    }
+
     public ResponseEntity<Object> editUser(UsersInfoDTO usersInfoDTO, Integer userId) {
         try {
+            Set<Projects> projectsSet=getListOfProjects(usersInfoDTO);
             Users user = userRepository.findById(userId);
             if (user == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User Not Found in database.\n");
@@ -92,7 +108,7 @@ public class UserService {
             user.setPassword(usersInfoDTO.getPassword() == null ? user.getPassword() : passwordEncoder.encode(usersInfoDTO.getPassword()));
             user.setDepartment(usersInfoDTO.getDepartmentId() == null ? user.getDepartment() : departmentRepository.findByDepId(usersInfoDTO.getDepartmentId()));
             user.setRoleSet(usersInfoDTO.getRoleId() == null ? user.getRoleSet() : new HashSet<>(Arrays.asList(roleRepository.findByRoleId(usersInfoDTO.getRoleId()))));
-            user.setProjectsSet(usersInfoDTO.getProjectId() == null ? user.getProjectsSet() : new HashSet<>(Arrays.asList(projectRepository.findById(usersInfoDTO.getProjectId()))));
+            user.setProjectsSet(usersInfoDTO.getProjectsSet() == null ? user.getProjectsSet() : new HashSet<>(projectsSet));
             user.setIsActive(usersInfoDTO.getIsActive() == null ? user.getIsActive() : usersInfoDTO.getIsActive());
             saveUserOperation(user);
             return ResponseEntity.status(HttpStatus.OK).body(removePasswordForGivenUser(user));
