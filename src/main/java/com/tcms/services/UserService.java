@@ -105,7 +105,7 @@ public class UserService {
             user.setFirstName(usersInfoDTO.getFirstName() == null ? user.getFirstName() : usersInfoDTO.getFirstName());
             user.setLastName(usersInfoDTO.getLastName() == null ? user.getLastName() : usersInfoDTO.getLastName());
             user.setUserName(usersInfoDTO.getUserName() == null ? user.getUserName() : usersInfoDTO.getUserName());
-            user.setPassword(usersInfoDTO.getPassword() == null ? user.getPassword() : passwordEncoder.encode(usersInfoDTO.getPassword()));
+            user.setPassword(user.getPassword());
             user.setDepartment(usersInfoDTO.getDepartmentId() == null ? user.getDepartment() : departmentRepository.findByDepId(usersInfoDTO.getDepartmentId()));
             user.setRoleSet(usersInfoDTO.getRoleId() == null ? user.getRoleSet() : new HashSet<>(Arrays.asList(roleRepository.findByRoleId(usersInfoDTO.getRoleId()))));
             user.setProjectsSet(usersInfoDTO.getProjectsSet() == null ? user.getProjectsSet() : new HashSet<>(projectsSet));
