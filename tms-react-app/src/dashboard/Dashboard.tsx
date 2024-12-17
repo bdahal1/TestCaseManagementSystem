@@ -18,8 +18,10 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
-import UserComponent from "../user/./UserComponent.tsx";
-import RoleComponent from "../role/RoleComponent.tsx";
+import UserComponent from "./user/UserComponent.tsx";
+import RoleComponent from "./role/RoleComponent.tsx";
+import DepartmentComponent from "./department/DepartmentComponent.tsx";
+import ProjectComponent from "./project/ProjectComponent.tsx";
 
 const drawerWidth = 240;
 
@@ -167,6 +169,24 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                         </ListItemButton>
                     </ListItem>
                     <ListItem disablePadding>
+                        <ListItemButton
+                            onClick={() => {
+                                setView("Department");
+                            }}
+                        >
+                            <ListItemText primary="Department" />
+                        </ListItemButton>
+                    </ListItem>
+                    <ListItem disablePadding>
+                        <ListItemButton
+                            onClick={() => {
+                                setView("Project");
+                            }}
+                        >
+                            <ListItemText primary="Project" />
+                        </ListItemButton>
+                    </ListItem>
+                    <ListItem disablePadding>
                         <ListItemButton onClick={handleLogout}>
                             <ListItemText primary="Logout" />
                         </ListItemButton>
@@ -183,6 +203,8 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 )}
                 {view === "Users" && <UserComponent />}
                 {view === "Roles" && <RoleComponent />}
+                {view === "Department" && <DepartmentComponent />}
+                {view === "Project" && <ProjectComponent />}
             </Main>
         </Box>
     );
