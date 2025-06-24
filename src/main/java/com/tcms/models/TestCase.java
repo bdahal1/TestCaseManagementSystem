@@ -26,6 +26,9 @@ public class TestCase {
     @Column(name = "tc_name", nullable = false)
     private String testName;
 
+    @Column(name = "tc_proj_id", nullable = false)
+    private String testProjectId;
+
     @Column(name = "tc_created_by", nullable = false)
     private String testCreatedBy;
 

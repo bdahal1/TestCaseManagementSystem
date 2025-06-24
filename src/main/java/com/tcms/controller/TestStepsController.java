@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController()
 @CrossOrigin()
@@ -73,15 +75,22 @@ public class TestStepsController {
     }
 
     @PostMapping("")
-    public ResponseEntity<Object> saveTestSteps(@RequestBody List<TestStepInfoDTO> testStepInfoDTO) {
-        if (testStepInfoDTO == null) {
+    public ResponseEntity<Object> saveTestSteps(@RequestBody List<TestStepInfoDTO> testStepInfoDTOList) {
+        if (testStepInfoDTOList == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("TestSteps Info Not Found inside body.\n");
         }
         try {
-            List<TestSteps> testStepsList = testStepService.saveTestSteps(testStepInfoDTO);
-            if (testStepsList == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("TestStepInfo is invalid or cannot be created. Check your request body.\n");
+            List<TestSteps> existingList = testStepService.getAllTestStepsFromTestCase(testStepInfoDTOList.get(0).getTestCaseId());
+            List<TestSteps> testStepsList = new ArrayList<>();
+            for (TestStepInfoDTO testStepInfoDTO : testStepInfoDTOList) {
+                if (testStepInfoDTO.getStepId() == null || testStepInfoDTO.getStepId() == 0) {
+                    testStepsList.add(testStepService.saveTestSteps(testStepInfoDTO));
+                } else {
+                    testStepsList.add(testStepService.editTestSteps(testStepInfoDTO, testStepInfoDTO.getStepId()));
+                }
             }
+            existingList.removeAll(testStepsList);
+            testStepService.deleteAllTestSteps(existingList);
             return ResponseEntity.status(HttpStatus.OK).body(testStepsList);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
@@ -117,7 +126,7 @@ public class TestStepsController {
         }
         try {
             List<TestSteps> testStepsList = testStepService.orderTestSteps(testCase);
-            if(testStepsList==null) {
+            if (testStepsList == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("TestSteps Not Found for given testcaseid.\n");
             }
             return ResponseEntity.status(HttpStatus.OK).body(testStepsList);

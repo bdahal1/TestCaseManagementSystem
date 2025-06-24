@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import axios from 'axios';
 import {
     Table,
@@ -87,7 +87,7 @@ const UserComponent: React.FC = () => {
     const fetchUsers = async () => {
         try {
             const response = await axios.get(API_URL, {
-                headers: { Authorization: `Bearer ` + localStorage.getItem('authToken') },
+                headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
             });
             setUsers(response.data.users);
         } catch (error) {
@@ -99,10 +99,10 @@ const UserComponent: React.FC = () => {
         try {
             const [rolesResponse, departmentsResponse] = await Promise.all([
                 axios.get('http://localhost:8080/dhtcms/api/v1/roles', {
-                    headers: { Authorization: `Bearer ` + localStorage.getItem('authToken') },
+                    headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
                 }),
                 axios.get('http://localhost:8080/dhtcms/api/v1/department', {
-                    headers: { Authorization: `Bearer ` + localStorage.getItem('authToken') },
+                    headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
                 }),
             ]);
             setRoles(rolesResponse.data.roles);
@@ -116,7 +116,7 @@ const UserComponent: React.FC = () => {
     const fetchProjects = async () => {
         try {
             const response = await axios.get('http://localhost:8080/dhtcms/api/v1/project', {
-                headers: { Authorization: `Bearer ` + localStorage.getItem('authToken') },
+                headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
             });
             const data = response.data.projects;  // Assuming response.data is the array you want to transform
 
@@ -141,9 +141,9 @@ const UserComponent: React.FC = () => {
     const handleChange = (
         e: React.ChangeEvent<{ name?: string; value: unknown }> | SelectChangeEvent<string>
     ) => {
-        const { name, value } = e.target;
+        const {name, value} = e.target;
         if (name) {
-            setFormData({ ...formData, [name]: value });
+            setFormData({...formData, [name]: value});
         }
     };
 
@@ -156,7 +156,7 @@ const UserComponent: React.FC = () => {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 userName: user.userName,
-                password:user.password,
+                password: user.password,
                 isActive: user.isActive,
                 roleId: user.roleSet.length > 0 ? user.roleSet[0].roleId.toString() : '',
                 departmentId: user.department?.depId.toString() || '',
@@ -197,25 +197,25 @@ const UserComponent: React.FC = () => {
                     `${API_URL}/${selectedUser.id}`,
                     payload,
                     {
-                        headers: { Authorization: `Bearer ` + localStorage.getItem('authToken') },
+                        headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
                     }
                 );
-                setAlert({ open: true, message: 'User Updated Successfully!', severity: 'success' });
+                setAlert({open: true, message: 'User Updated Successfully!', severity: 'success'});
             } else {
                 await axios.post(
                     API_URL,
                     payload,
                     {
-                        headers: { Authorization: `Bearer ` + localStorage.getItem('authToken') },
+                        headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
                     }
                 );
-                setAlert({ open: true, message: 'User Added Successfully!', severity: 'success' });
+                setAlert({open: true, message: 'User Added Successfully!', severity: 'success'});
             }
             fetchUsers().then();
             handleClose();
         } catch (error) {
             console.error('Error saving user:', error);
-            setAlert({ open: true, message: 'Error saving user!', severity: 'Error' });
+            setAlert({open: true, message: 'Error saving user!', severity: 'Error'});
         }
     };
 
@@ -224,13 +224,13 @@ const UserComponent: React.FC = () => {
         if (window.confirm('Are you sure you want to delete this user?')) {
             try {
                 await axios.delete(`${API_URL}/${id}`, {
-                    headers: { Authorization: `Bearer ` + localStorage.getItem('authToken') },
+                    headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
                 });
                 fetchUsers().then();
-                setAlert({ open: true, message: 'User Deleted Successfully!', severity: 'success' });
+                setAlert({open: true, message: 'User Deleted Successfully!', severity: 'success'});
             } catch (error) {
                 console.error('Error deleting user:', error);
-                setAlert({ open: true, message: 'Error deleting user!', severity: 'error' });
+                setAlert({open: true, message: 'Error deleting user!', severity: 'error'});
             }
         }
     };
@@ -240,13 +240,13 @@ const UserComponent: React.FC = () => {
         try {
             await axios.put(
                 `${API_URL}/${user.id}`,
-                { ...user, isActive: !user.isActive },
+                {...user, isActive: !user.isActive},
                 {
-                    headers: { Authorization: `Bearer ` + localStorage.getItem('authToken') },
+                    headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
                 }
             );
             fetchUsers().then();
-            setAlert({ open: true, message: 'User active status changed!', severity: 'success' });
+            setAlert({open: true, message: 'User active status changed!', severity: 'success'});
         } catch (error) {
             console.error('Error updating active status:', error);
         }
@@ -257,10 +257,10 @@ const UserComponent: React.FC = () => {
             <Snackbar
                 open={alert.open}
                 autoHideDuration={3000}
-                onClose={() => setAlert({ ...alert, open: false })}
-                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+                onClose={() => setAlert({...alert, open: false})}
+                anchorOrigin={{vertical: 'top', horizontal: 'center'}}
             >
-                <Alert onClose={() => setAlert({ ...alert, open: false })} variant="filled">
+                <Alert onClose={() => setAlert({...alert, open: false})} variant="filled">
                     {alert.message}
                 </Alert>
             </Snackbar>
@@ -270,11 +270,11 @@ const UserComponent: React.FC = () => {
             </Button>
 
             {/* Users Table */}
-            <TableContainer component={Paper} style={{ marginTop: 20 }}>
+            <TableContainer component={Paper} style={{marginTop: 20}}>
                 <Table>
                     <TableHead>
                         <TableRow>
-                            <TableCell>ID</TableCell>
+                            <TableCell>S.N.</TableCell>
                             <TableCell>First Name</TableCell>
                             <TableCell>Last Name</TableCell>
                             <TableCell>Username</TableCell>
@@ -286,9 +286,9 @@ const UserComponent: React.FC = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {users.map((user) => (
+                        {users.map((user, index) => (
                             <TableRow key={user.id}>
-                                <TableCell>{user.id}</TableCell>
+                                <TableCell>{index + 1}</TableCell>
                                 <TableCell>{user.firstName}</TableCell>
                                 <TableCell>{user.lastName}</TableCell>
                                 <TableCell>{user.userName}</TableCell>
@@ -304,10 +304,10 @@ const UserComponent: React.FC = () => {
                                 </TableCell>
                                 <TableCell>
                                     <IconButton color="primary" onClick={() => handleOpen(user)}>
-                                        <EditIcon />
+                                        <EditIcon/>
                                     </IconButton>
                                     <IconButton color="secondary" onClick={() => handleDelete(user.id)}>
-                                        <DeleteIcon />
+                                        <DeleteIcon/>
                                     </IconButton>
                                 </TableCell>
                             </TableRow>
@@ -344,14 +344,14 @@ const UserComponent: React.FC = () => {
                         fullWidth
                         margin="dense"
                     />
-                    {isEdit ?formData.password:<TextField
-                            name="password"
-                            label="Password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            fullWidth
-                            margin="dense"
-                        />}
+                    {isEdit ? formData.password : <TextField
+                        name="password"
+                        label="Password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        fullWidth
+                        margin="dense"
+                    />}
                     <FormControl fullWidth margin="dense">
                         <InputLabel>Role</InputLabel>
                         <Select
@@ -398,7 +398,7 @@ const UserComponent: React.FC = () => {
                                                 } else {
                                                     updatedProjectsSet = updatedProjectsSet.filter(p => p.id !== project.id);
                                                 }
-                                                return { ...prevData, projectsSet: updatedProjectsSet };
+                                                return {...prevData, projectsSet: updatedProjectsSet};
                                             });
                                         }}
                                     />

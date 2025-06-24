@@ -15,9 +15,9 @@ const Login: React.FC<{ onLoginSuccess: () => void }> = ({onLoginSuccess}) => {
     const [showAlert, setShowAlert] = useState(false);
     const navigate = useNavigate();
 
-    useEffect(()=>{
+    useEffect(() => {
         const isLoggedIn = localStorage.getItem("isLoggedIn");
-        if (isLoggedIn && isLoggedIn==="false") {
+        if (isLoggedIn && isLoggedIn === "false") {
             setShowAlert(true);
             const timeId = setTimeout(() => {
                 // After 3 seconds set the show value to false
@@ -49,6 +49,7 @@ const Login: React.FC<{ onLoginSuccess: () => void }> = ({onLoginSuccess}) => {
             });
             console.log("API Response:", response.data);
             localStorage.setItem("isLoggedIn", "true");
+            localStorage.setItem("userId", response.data.data.userId)
             localStorage.setItem("authToken", response.data.data.accessToken); // Store token in localStorage
             onLoginSuccess(); // Trigger success in App.tsx
             console.log(localStorage.getItem("authToken"))
@@ -80,7 +81,7 @@ const Login: React.FC<{ onLoginSuccess: () => void }> = ({onLoginSuccess}) => {
                     Logout successful!
                 </Alert>
             )}
-            <TextField id="userName" label="Enter your UserComponent Name" variant="standard" value={userName}
+            <TextField id="userName" label="Enter your UserName" variant="standard" value={userName}
                        onChange={(e) => setUserName(e.target.value)} required/>
             <br/>
             <TextField id="password" label="Enter your Password" type="password" variant="standard" value={password}

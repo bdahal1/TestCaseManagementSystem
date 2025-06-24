@@ -66,6 +66,13 @@ public class TestCaseService {
         } else {
             testCase.setProjects(projectRepository.findById(testCaseInfoDTO.getProjectId()));
         }
+        testCase.setTestProjectId("");
+        testCaseRepository.save(testCase);
+        if (testCaseInfoDTO.getProjectId() == 0) {
+            testCase.setTestProjectId("");
+        } else {
+            testCase.setTestProjectId(projectRepository.findById(testCaseInfoDTO.getProjectId()).getProjectInitials() + "-" + testCase.getId());
+        }
         testCaseRepository.save(testCase);
         return ResponseEntity.status(HttpStatus.OK).body(testCase);
     }
@@ -91,6 +98,8 @@ public class TestCaseService {
             }
             testCaseEdit.setTagsSet(tagsList);
         }
+        testCaseEdit.setProjects(testCaseInfoDTO.getProjectId() == null ? testCaseEdit.getProjects() : projectRepository.findById(testCaseInfoDTO.getProjectId()));
+        testCaseEdit.setTestProjectId(testCaseInfoDTO.getProjectId() == null ? testCaseEdit.getProjects().getProjectInitials() : projectRepository.findById(testCaseInfoDTO.getProjectId()).getProjectInitials() + "-" + testCaseEdit.getId());
         testCaseRepository.save(testCaseEdit);
         return ResponseEntity.status(HttpStatus.OK).body(testCaseEdit);
     }

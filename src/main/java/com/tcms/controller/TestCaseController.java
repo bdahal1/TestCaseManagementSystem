@@ -40,7 +40,7 @@ public class TestCaseController {
         Pageable paging = PageRequest.of(page, size);
         Page<TestCase> testCaseList = testCaseRepository.findAll(paging);
         if (testCaseList.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Record not found.\n");
+            return ResponseEntity.status(HttpStatus.OK).body("Record not found.\n");
         }
         return ResponseEntity.status(HttpStatus.OK).body(testCaseService.getTestCaseListResponse(testCaseList));
     }

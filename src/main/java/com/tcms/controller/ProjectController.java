@@ -47,6 +47,17 @@ public class ProjectController {
         }
     }
 
+    @GetMapping(path = "/projInitials/{projectInitials}")
+    public ResponseEntity<Object> getProjectsByProjectInitials(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size, @PathVariable String projectInitials) {
+        Pageable paging = PageRequest.of(page, size);
+        Page<Projects> projectList = projectRepository.findByProjectInitials(projectInitials, paging);
+        if (projectList.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Record not found.\n");
+        } else {
+            return ResponseEntity.status(HttpStatus.OK).body(projectService.getProjectListResponse(projectList));
+        }
+    }
+
     @GetMapping(path = "/id/{id}")
     public ResponseEntity<Object> getProjectById(@PathVariable int id) {
         Projects projects = projectRepository.findById(id);

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import axios from 'axios';
 import {
     Table,
@@ -38,7 +38,7 @@ const RoleComponent: React.FC = () => {
     // Fetch roles from the API
     const fetchRoles = async () => {
         try {
-            const response = await axios.get(API_URL,{ headers: {"Authorization" : `Bearer `+localStorage.getItem("authToken")} });
+            const response = await axios.get(API_URL, {headers: {"Authorization": `Bearer ` + localStorage.getItem("authToken")}});
             setRoles(response.data.roles);
         } catch (error) {
             console.error('Error fetching roles:', error);
@@ -48,11 +48,11 @@ const RoleComponent: React.FC = () => {
     // Add a new role
     const addRole = async () => {
         if (!newRoleName.trim()) {
-            setAlert({ open: true, message: 'Role name cannot be empty.', severity: 'error' });
+            setAlert({open: true, message: 'Role name cannot be empty.', severity: 'error'});
             return;
         }
         try {
-            const response = await axios.post(API_URL, { roleName: newRoleName },{ headers: {"Authorization" : `Bearer `+localStorage.getItem("authToken")} });
+            const response = await axios.post(API_URL, {roleName: newRoleName}, {headers: {"Authorization": `Bearer ` + localStorage.getItem("authToken")}});
             const newRole: Role = response.data;
 
             if (newRole && newRole.roleId && newRole.roleName) {
@@ -60,46 +60,50 @@ const RoleComponent: React.FC = () => {
                 setNewRoleName('');
             } else {
                 console.error('Invalid role data received:', response.data);
-                setAlert({ open: true, message: 'Failed to add role: Invalid data received from the server.', severity: 'error' });
+                setAlert({
+                    open: true,
+                    message: 'Failed to add role: Invalid data received from the server.',
+                    severity: 'error'
+                });
             }
-            setAlert({ open: true, message: 'Role added successfully!', severity: 'success' });
+            setAlert({open: true, message: 'Role added successfully!', severity: 'success'});
         } catch (error) {
             console.error('Error adding role:', error);
-            setAlert({ open: true, message: 'Error adding role.', severity: 'error' });
+            setAlert({open: true, message: 'Error adding role.', severity: 'error'});
         }
     };
 
     // Update an existing role
     const updateRole = async () => {
         if (!editRoleName.trim()) {
-            setAlert({ open: true, message: 'Role name cannot be empty.', severity: 'error' });
+            setAlert({open: true, message: 'Role name cannot be empty.', severity: 'error'});
             return;
         }
         try {
-            await axios.put(`${API_URL}/${editRoleId}`, { roleName: editRoleName },{ headers: {"Authorization" : `Bearer `+localStorage.getItem("authToken")} });
+            await axios.put(`${API_URL}/${editRoleId}`, {roleName: editRoleName}, {headers: {"Authorization": `Bearer ` + localStorage.getItem("authToken")}});
             setRoles(
                 roles.map((role) =>
-                    role.roleId === editRoleId ? { ...role, roleName: editRoleName } : role
+                    role.roleId === editRoleId ? {...role, roleName: editRoleName} : role
                 )
             );
             setEditRoleId(null);
             setEditRoleName('');
-            setAlert({ open: true, message: 'Role edited successfully!', severity: 'error' });
+            setAlert({open: true, message: 'Role edited successfully!', severity: 'error'});
         } catch (error) {
             console.error('Error updating role:', error);
-            setAlert({ open: true, message: 'Error Updating role.', severity: 'error' });
+            setAlert({open: true, message: 'Error Updating role.', severity: 'error'});
         }
     };
 
     // Delete a role
     const deleteRole = async (roleId: number) => {
         try {
-            await axios.delete(`${API_URL}/${roleId}`,{ headers: {"Authorization" : `Bearer `+localStorage.getItem("authToken")} });
+            await axios.delete(`${API_URL}/${roleId}`, {headers: {"Authorization": `Bearer ` + localStorage.getItem("authToken")}});
             setRoles(roles.filter((role) => role.roleId !== roleId));
-            setAlert({ open: true, message: 'Role deleted successfully!', severity: 'success' });
+            setAlert({open: true, message: 'Role deleted successfully!', severity: 'success'});
         } catch (error) {
             console.error('Error deleting role:', error);
-            setAlert({ open: true, message: 'Error deleting role.', severity: 'error' });
+            setAlert({open: true, message: 'Error deleting role.', severity: 'error'});
         }
     };
 
@@ -112,20 +116,20 @@ const RoleComponent: React.FC = () => {
             <h1>Roles Management</h1>
 
             {/* Add Role Section */}
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{marginBottom: '20px'}}>
                 <TextField
                     label="New Role Name"
                     value={newRoleName}
                     onChange={(e) => setNewRoleName(e.target.value)}
                 />
-                <Button variant="contained" color="primary" onClick={addRole} style={{ marginLeft: '10px' }}>
+                <Button variant="contained" color="primary" onClick={addRole} style={{marginLeft: '10px'}}>
                     Add Role
                 </Button>
             </div>
 
             {/* Edit Role Section */}
             {editRoleId && (
-                <div style={{ marginBottom: '20px' }}>
+                <div style={{marginBottom: '20px'}}>
                     <TextField
                         label="Edit Role Name"
                         value={editRoleName}
@@ -135,7 +139,7 @@ const RoleComponent: React.FC = () => {
                         variant="contained"
                         color="secondary"
                         onClick={updateRole}
-                        style={{ marginLeft: '10px' }}
+                        style={{marginLeft: '10px'}}
                     >
                         Update Role
                     </Button>
@@ -147,15 +151,15 @@ const RoleComponent: React.FC = () => {
                 <Table>
                     <TableHead>
                         <TableRow>
-                            <TableCell>ID</TableCell>
+                            <TableCell>S.N.</TableCell>
                             <TableCell>Name</TableCell>
                             <TableCell>Actions</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {Array.isArray(roles) && roles.map((role) => (
+                        {Array.isArray(roles) && roles.map((role, index) => (
                             <TableRow key={role.roleId}>
-                                <TableCell>{role.roleId}</TableCell>
+                                <TableCell>{index + 1}</TableCell>
                                 <TableCell>{role.roleName}</TableCell>
                                 <TableCell>
                                     <IconButton
@@ -165,13 +169,13 @@ const RoleComponent: React.FC = () => {
                                             setEditRoleName(role.roleName);
                                         }}
                                     >
-                                        <EditIcon />
+                                        <EditIcon/>
                                     </IconButton>
                                     <IconButton
                                         color="secondary"
                                         onClick={() => deleteRole(role.roleId)}
                                     >
-                                        <DeleteIcon />
+                                        <DeleteIcon/>
                                     </IconButton>
                                 </TableCell>
                             </TableRow>
@@ -183,10 +187,10 @@ const RoleComponent: React.FC = () => {
             <Snackbar
                 open={alert.open}
                 autoHideDuration={3000}
-                onClose={() => setAlert({ ...alert, open: false })}
-                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+                onClose={() => setAlert({...alert, open: false})}
+                anchorOrigin={{vertical: 'top', horizontal: 'center'}}
             >
-                <Alert onClose={() => setAlert({ ...alert, open: false })} variant="filled">
+                <Alert onClose={() => setAlert({...alert, open: false})} variant="filled">
                     {alert.message}
                 </Alert>
             </Snackbar>

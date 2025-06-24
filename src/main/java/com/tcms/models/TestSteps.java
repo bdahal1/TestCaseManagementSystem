@@ -35,16 +35,16 @@ public class TestSteps {
     private String testRemarks;
 
     @Column(name = "ts_created_by", nullable = false)
-    private String testCreatedBy;
+    private String tsCreatedBy;
 
     @Column(name = "ts_created_date", nullable = false)
-    private Timestamp testCreatedDate;
+    private Timestamp tsCreatedDate;
 
     @Column(name = "ts_modified_by", nullable = false)
-    private String testModifiedBy;
+    private String tsModifiedBy;
 
     @Column(name = "ts_modified_date", nullable = false)
-    private Timestamp testModifiedDate;
+    private Timestamp tsModifiedDate;
 
     @Column(name = "ts_order", nullable = false)
     private Integer testStepOrder;

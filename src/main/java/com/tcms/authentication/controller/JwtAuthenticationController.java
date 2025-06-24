@@ -10,6 +10,9 @@ import com.tcms.authentication.service.CustomUserDetailService;
 import com.tcms.authentication.service.RefreshTokenService;
 import com.tcms.authentication.service.TokenRefreshException;
 import com.tcms.helper.pojo.CustomResponseMessage;
+import com.tcms.models.Users;
+import com.tcms.repositories.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +20,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,12 +39,14 @@ public class JwtAuthenticationController {
 
     private final CustomUserDetailService customUserDetailService;
     final RefreshTokenService refreshTokenService;
+    private final UserRepository userRepository;
 
-    public JwtAuthenticationController(AuthenticationManager authenticationManager, JwtTokenUtil jwtTokenUtil, CustomUserDetailService customUserDetailService, RefreshTokenService refreshTokenService) {
+    public JwtAuthenticationController(AuthenticationManager authenticationManager, JwtTokenUtil jwtTokenUtil, CustomUserDetailService customUserDetailService, RefreshTokenService refreshTokenService, UserRepository userRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtTokenUtil = jwtTokenUtil;
         this.customUserDetailService = customUserDetailService;
         this.refreshTokenService = refreshTokenService;
+        this.userRepository = userRepository;
     }
 
     @RequestMapping(value = "/login", method = RequestMethod.POST)
@@ -52,7 +58,8 @@ public class JwtAuthenticationController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new CustomResponseMessage(new Date(), "Login Issue", "Authorities/Roles not found for the user!"));
             final String accessToken = jwtTokenUtil.generateToken(userDetails);
             final String refToken = refreshTokenService.createRefreshToken(userDetails).getToken();
-            TokenRefreshResponse responseBody = new TokenRefreshResponse(accessToken, refToken);
+            Users user = userRepository.findByUserName(authenticationRequest.getUserName());
+            TokenRefreshResponse responseBody = new TokenRefreshResponse(accessToken, refToken, user.getId());
             if (accessToken == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Record not found.\n");
             } else {
@@ -71,7 +78,8 @@ public class JwtAuthenticationController {
                 .map(RefreshToken::getUserName)
                 .map(user -> {
                     String token = jwtTokenUtil.generateToken(customUserDetailService.loadUserByUsername(user));
-                    return ResponseEntity.ok(new JwtResponse(new TokenRefreshResponse(token, requestRefreshToken)));
+                    Users loggedInUser = userRepository.findByUserName(user);
+                    return ResponseEntity.ok(new JwtResponse(new TokenRefreshResponse(token, requestRefreshToken, loggedInUser.getId())));
                 })
                 .orElseThrow(() -> new TokenRefreshException(requestRefreshToken,
                         "Refresh token is not in database!"));

@@ -11,4 +11,5 @@ public class TestStepInfoDTO {
     String testRemarks;
     Integer testCaseId;
     Integer userId;
+    Integer stepId;
 }

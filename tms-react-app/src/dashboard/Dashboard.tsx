@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from "react";
-import { styled } from "@mui/material/styles";
-import { useNavigate } from "react-router-dom";
-import { Alert, useTheme } from "@mui/material";
+import React, {useEffect, useState} from "react";
+import {styled} from "@mui/material/styles";
+import {useNavigate} from "react-router-dom";
+import {Alert, useTheme} from "@mui/material";
 import axios from "axios";
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
 import CssBaseline from "@mui/material/CssBaseline";
-import MuiAppBar, { AppBarProps as MuiAppBarProps } from "@mui/material/AppBar";
+import MuiAppBar, {AppBarProps as MuiAppBarProps} from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import List from "@mui/material/List";
 import Typography from "@mui/material/Typography";
@@ -22,12 +22,13 @@ import UserComponent from "./user/UserComponent.tsx";
 import RoleComponent from "./role/RoleComponent.tsx";
 import DepartmentComponent from "./department/DepartmentComponent.tsx";
 import ProjectComponent from "./project/ProjectComponent.tsx";
+import TestCaseComponent from "./testCase/TestCaseComponent.tsx";
 
 const drawerWidth = 240;
 
-const Main = styled("main", { shouldForwardProp: (prop) => prop !== "open" })<{
+const Main = styled("main", {shouldForwardProp: (prop) => prop !== "open"})<{
     open?: boolean;
-}>(({ theme, open }) => ({
+}>(({theme, open}) => ({
     flexGrow: 1,
     padding: theme.spacing(3),
     transition: theme.transitions.create("margin", {
@@ -50,7 +51,7 @@ interface AppBarProps extends MuiAppBarProps {
 
 const AppBar = styled(MuiAppBar, {
     shouldForwardProp: (prop) => prop !== "open",
-})<AppBarProps>(({ theme, open }) => ({
+})<AppBarProps>(({theme, open}) => ({
     transition: theme.transitions.create(["margin", "width"], {
         easing: theme.transitions.easing.sharp,
         duration: theme.transitions.duration.leavingScreen,
@@ -65,7 +66,7 @@ const AppBar = styled(MuiAppBar, {
     }),
 }));
 
-const DrawerHeader = styled("div")(({ theme }) => ({
+const DrawerHeader = styled("div")(({theme}) => ({
     display: "flex",
     alignItems: "center",
     padding: theme.spacing(0, 1),
@@ -73,7 +74,7 @@ const DrawerHeader = styled("div")(({ theme }) => ({
     justifyContent: "flex-end",
 }));
 
-const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
+const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
     const navigate = useNavigate();
     const theme = useTheme();
     const [open, setOpen] = useState(false);
@@ -90,7 +91,7 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
     const handleLogout = async () => {
         try {
-            await axios.post("http://localhost:8080/dhtcms/api/v1/logout", {}, { withCredentials: true });
+            await axios.post("http://localhost:8080/dhtcms/api/v1/logout", {}, {withCredentials: true});
             localStorage.setItem("isLoggedIn", "false");
             onLogout();
         } catch (err: any) {
@@ -111,8 +112,8 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     }, [navigate]);
 
     return (
-        <Box sx={{ display: "flex" }}>
-            <CssBaseline />
+        <Box sx={{display: "flex"}}>
+            <CssBaseline/>
             <AppBar position="fixed" open={open}>
                 <Toolbar>
                     <IconButton
@@ -120,9 +121,9 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                         aria-label="open drawer"
                         onClick={handleDrawerOpen}
                         edge="start"
-                        sx={{ ...(open && { display: "none" }) }}
+                        sx={{...(open && {display: "none"})}}
                     >
-                        <MenuIcon />
+                        <MenuIcon/>
                     </IconButton>
                     <Typography variant="h6" noWrap component="div">
                         {view}
@@ -143,12 +144,12 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 open={open}
             >
                 <DrawerHeader>
-                    QA Board
+                    <img src="../../src/assets/images.jpeg" height="80%" width="40%"/>
                     <IconButton onClick={handleDrawerClose}>
-                        {theme.direction === "ltr" ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+                        {theme.direction === "ltr" ? <ChevronLeftIcon/> : <ChevronRightIcon/>}
                     </IconButton>
                 </DrawerHeader>
-                <Divider />
+                <Divider/>
                 <List>
                     <ListItem disablePadding>
                         <ListItemButton
@@ -156,7 +157,7 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                 setView("Users");
                             }}
                         >
-                            <ListItemText primary="Users" />
+                            <ListItemText primary="Users"/>
                         </ListItemButton>
                     </ListItem>
                     <ListItem disablePadding>
@@ -165,7 +166,7 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                 setView("Roles");
                             }}
                         >
-                            <ListItemText primary="Roles" />
+                            <ListItemText primary="Roles"/>
                         </ListItemButton>
                     </ListItem>
                     <ListItem disablePadding>
@@ -174,7 +175,7 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                 setView("Department");
                             }}
                         >
-                            <ListItemText primary="Department" />
+                            <ListItemText primary="Department"/>
                         </ListItemButton>
                     </ListItem>
                     <ListItem disablePadding>
@@ -183,28 +184,38 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                 setView("Project");
                             }}
                         >
-                            <ListItemText primary="Project" />
+                            <ListItemText primary="Project"/>
+                        </ListItemButton>
+                    </ListItem>
+                    <ListItem disablePadding>
+                        <ListItemButton
+                            onClick={() => {
+                                setView("TestCase");
+                            }}
+                        >
+                            <ListItemText primary="TestCase"/>
                         </ListItemButton>
                     </ListItem>
                     <ListItem disablePadding>
                         <ListItemButton onClick={handleLogout}>
-                            <ListItemText primary="Logout" />
+                            <ListItemText primary="Logout"/>
                         </ListItemButton>
                     </ListItem>
                 </List>
-                <Divider />
+                <Divider/>
             </Drawer>
             <Main open={open}>
-                <DrawerHeader />
+                <DrawerHeader/>
                 {showAlert && (
                     <Alert severity="success" onClose={() => setShowAlert(false)}>
                         Login successful!
                     </Alert>
                 )}
-                {view === "Users" && <UserComponent />}
-                {view === "Roles" && <RoleComponent />}
-                {view === "Department" && <DepartmentComponent />}
-                {view === "Project" && <ProjectComponent />}
+                {view === "Users" && <UserComponent/>}
+                {view === "Roles" && <RoleComponent/>}
+                {view === "Department" && <DepartmentComponent/>}
+                {view === "Project" && <ProjectComponent/>}
+                {view === "TestCase" && <TestCaseComponent/>}
             </Main>
         </Box>
     );

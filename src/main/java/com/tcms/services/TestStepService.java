@@ -35,30 +35,34 @@ public class TestStepService {
         return response;
     }
 
-    @SuppressWarnings("Duplicates")
-    public List<TestSteps> saveTestSteps(List<TestStepInfoDTO> testStepInfoDTO) {
-        List<TestSteps> testStepsList = new ArrayList<>();
-        for (TestStepInfoDTO each : testStepInfoDTO) {
-            if (each.getTestStepDesc() == null || each.getTestCaseId() == 0 || each.getTestExpectedOutput() == null) {
-                return null;
-            }
-            Users user = userRepository.findById(each.getUserId());
-            String fullName = user.getFirstName() + " " + user.getLastName();
-            TestSteps testSteps = new TestSteps();
-            testSteps.setTestCase(testCaseRepository.findById(each.getTestCaseId()));
-            testSteps.setTestRemarks(each.getTestRemarks());
-            testSteps.setTestStepDesc(each.getTestStepDesc());
-            testSteps.setTestExpectedOutput(each.getTestExpectedOutput());
-            TestSteps newOrder = testStepsRepository.findFirstByTestCaseOrderByTestStepOrderDesc(testCaseRepository.findById(each.getTestCaseId()));
-            testSteps.setTestStepOrder(newOrder == null ? 1 : newOrder.getTestStepOrder() + 1);
-            testSteps.setTestCreatedBy(fullName);
-            testSteps.setTestCreatedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
-            testSteps.setTestModifiedBy(fullName);
-            testSteps.setTestModifiedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
-            testStepsRepository.save(testSteps);
-            testStepsList.add(testSteps);
+    public List<TestSteps> getAllTestStepsFromTestCase(Integer testCaseId) {
+        TestCase testCase = testCaseRepository.findById(testCaseId);
+        return testStepsRepository.findTestStepsByTestCaseOrderByTestStepOrderAsc(testCase);
+    }
+
+    public void deleteAllTestSteps(List<TestSteps> testSteps) {
+        for (TestSteps testStep : testSteps) {
+            testStepsRepository.deleteById(testStep.getId());
         }
-        return testStepsList;
+    }
+
+    @SuppressWarnings("Duplicates")
+    public TestSteps saveTestSteps(TestStepInfoDTO testStepInfoDTO) {
+        Users user = userRepository.findById(testStepInfoDTO.getUserId());
+        String fullName = user.getFirstName() + " " + user.getLastName();
+        TestSteps testSteps = new TestSteps();
+        testSteps.setTestCase(testCaseRepository.findById(testStepInfoDTO.getTestCaseId()));
+        testSteps.setTestStepData(testStepInfoDTO.getTestRemarks());
+        testSteps.setTestStepDesc(testStepInfoDTO.getTestStepDesc());
+        testSteps.setTestExpectedOutput(testStepInfoDTO.getTestExpectedOutput());
+        TestSteps newOrder = testStepsRepository.findFirstByTestCaseOrderByTestStepOrderDesc(testCaseRepository.findById(testStepInfoDTO.getTestCaseId()));
+        testSteps.setTestStepOrder(newOrder == null ? 1 : newOrder.getTestStepOrder() + 1);
+        testSteps.setTsCreatedBy(fullName);
+        testSteps.setTsCreatedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
+        testSteps.setTsModifiedBy(fullName);
+        testSteps.setTsModifiedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
+        testStepsRepository.save(testSteps);
+        return testSteps;
     }
 
     @SuppressWarnings("Duplicates")
@@ -70,14 +74,14 @@ public class TestStepService {
             return null;
         }
         testSteps.setTestCase(testSteps.getTestCase());
-        testSteps.setTestRemarks(testStepInfoDTO.getTestRemarks() == null ? testSteps.getTestRemarks() : testStepInfoDTO.getTestRemarks());
+        testSteps.setTestStepData(testStepInfoDTO.getTestRemarks() == null ? testSteps.getTestRemarks() : testStepInfoDTO.getTestRemarks());
         testSteps.setTestStepDesc(testStepInfoDTO.getTestStepDesc() == null ? testSteps.getTestStepDesc() : testStepInfoDTO.getTestStepDesc());
         testSteps.setTestExpectedOutput(testStepInfoDTO.getTestExpectedOutput() == null ? testSteps.getTestExpectedOutput() : testStepInfoDTO.getTestExpectedOutput());
         testSteps.setTestStepOrder(testSteps.getTestStepOrder());
-        testSteps.setTestCreatedBy(testSteps.getTestCreatedBy());
-        testSteps.setTestCreatedDate(testSteps.getTestCreatedDate());
-        testSteps.setTestModifiedBy(fullName);
-        testSteps.setTestModifiedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
+        testSteps.setTsCreatedBy(testSteps.getTsCreatedBy());
+        testSteps.setTsCreatedDate(testSteps.getTsCreatedDate());
+        testSteps.setTsModifiedBy(fullName);
+        testSteps.setTsModifiedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
         testStepsRepository.save(testSteps);
         return testSteps;
     }
