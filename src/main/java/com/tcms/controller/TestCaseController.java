@@ -36,7 +36,7 @@ public class TestCaseController {
     }
 
     @GetMapping("")
-    public ResponseEntity<Object> getTestCase(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+    public ResponseEntity<Object> getTestCase(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "100") int size) {
         Pageable paging = PageRequest.of(page, size);
         Page<TestCase> testCaseList = testCaseRepository.findAll(paging);
         if (testCaseList.isEmpty()) {

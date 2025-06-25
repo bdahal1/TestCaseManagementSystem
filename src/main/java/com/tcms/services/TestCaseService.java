@@ -51,9 +51,9 @@ public class TestCaseService {
         testCase.setTestCreatedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
         testCase.setTestModifiedBy(fullName);
         testCase.setTestModifiedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
-        if (testCaseInfoDTO.getTagIdList() != null) {
+        if (testCaseInfoDTO.getSelectedTags() != null) {
             Set<Tags> tagsList = new HashSet<>();
-            for (Integer tagId : Arrays.asList(testCaseInfoDTO.getTagIdList())) {
+            for (Integer tagId : Arrays.asList(testCaseInfoDTO.getSelectedTags())) {
                 Tags tag = tagsRepository.findById(tagId);
                 if (tag != null) {
                     tagsList.add(tag);
@@ -88,9 +88,9 @@ public class TestCaseService {
         String fullName = user.getFirstName() + " " + user.getLastName();
         testCaseEdit.setTestModifiedBy(fullName);
         testCaseEdit.setTestModifiedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
-        if (testCaseInfoDTO.getTagIdList() != null) {
+        if (testCaseInfoDTO.getSelectedTags() != null) {
             Set<Tags> tagsList = new HashSet<>();
-            for (Integer tagId : Arrays.asList(testCaseInfoDTO.getTagIdList())) {
+            for (Integer tagId : Arrays.asList(testCaseInfoDTO.getSelectedTags())) {
                 Tags tag = tagsRepository.findById(tagId);
                 if (tag != null) {
                     tagsList.add(tag);

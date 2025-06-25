@@ -30,7 +30,7 @@ public class TagsController {
         Pageable paging = PageRequest.of(page, size);
         Page<Tags> tagList = tagsRepository.findAll(paging);
         if (tagList.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Record not found.\n");
+            return ResponseEntity.status(HttpStatus.OK).body("Record not found.\n");
         }
         return ResponseEntity.status(HttpStatus.OK).body(tagService.getTagsListResponse(tagList));
     }

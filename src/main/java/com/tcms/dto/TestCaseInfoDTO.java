@@ -9,5 +9,5 @@ public class TestCaseInfoDTO {
     String testName;
     Integer userId;
     Integer projectId;
-    Integer[] tagIdList;
+    Integer[] selectedTags;
 }

@@ -23,6 +23,7 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
+    Autocomplete
 } from "@mui/material";
 import {Box} from "@mui/system";
 import EditIcon from "@mui/icons-material/Edit";
@@ -30,11 +31,17 @@ import DeleteIcon from "@mui/icons-material/Delete";
 
 const API_URL_TESTCASE = "http://localhost:8080/dhtcms/api/v1/testCase";
 const API_URL_PROJECT = "http://localhost:8080/dhtcms/api/v1/project";
+const API_URL_TAGS = "http://localhost:8080/dhtcms/api/v1/tags";
 const API_URL_TESTSTEPS = "http://localhost:8080/dhtcms/api/v1/testSteps";
 
 interface Project {
     id: number;
     projectName: string;
+}
+
+interface TagsSet {
+    id: number;
+    tagName: string
 }
 
 interface TestCase {
@@ -46,18 +53,21 @@ interface TestCase {
     testModifiedBy: string;
     testModifiedDate: string;
     projects: Project;
+    tagsSet: TagsSet[];
 }
 
 const TestCaseComponent: React.FC = () => {
     const [testCases, setTestCases] = useState<TestCase[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
+    const [tags, setTags] = useState<TagsSet[]>([]);
+    const [selectedTags, setSelectedTags] = useState<TagsSet[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
     const [snackbarMessage, setSnackbarMessage] = useState<string>("");
     const [dialogOpen, setDialogOpen] = useState(false);
     const [selectedTestCase, setSelectedTestCase] = useState<TestCase | null>(null);
-    const [formMode, setFormMode] = useState<"create" | "edit">("create");
+    const [formMode, setFormMode] = useState("create");
 
     // Form state
     const [testName, setTestName] = useState<string>("");
@@ -115,21 +125,33 @@ const TestCaseComponent: React.FC = () => {
             setError("Failed to fetch projects.");
         }
     };
+    // Fetch all Tags
+    const fetchTags = async () => {
+        try {
+            const response = await axios.get(API_URL_TAGS, {
+                headers: {Authorization: `Bearer ` + localStorage.getItem("authToken")},
+            });
+            setTags(response.data.tags);
+        } catch (err) {
+            setError("Failed to fetch tags.");
+        }
+    };
 
     const handleOpenDialog = async (testCase: TestCase | null) => {
         if (testCase) {
             setFormMode("edit");
             setSelectedTestCase(testCase);
-            setTestCaseId(testCase.id)
+            setTestCaseId(testCase.id);
             setTestName(testCase.testName);
             setProjectId(testCase.projects.id);
+            setSelectedTags(testCase.tagsSet);
             try {
                 const response = await axios.get(`${API_URL_TESTSTEPS}/testCaseId/${testCase.id}`, {
                     headers: {Authorization: `Bearer ` + localStorage.getItem("authToken")},
                 });
                 setSteps(response.data.testSteps);
             } catch (err) {
-                setError("Failed to fetch projects.");
+                setError("Failed to fetch steps.");
             }
         } else {
             setFormMode("create");
@@ -146,23 +168,30 @@ const TestCaseComponent: React.FC = () => {
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
-
+        if (!testName.trim()) {
+            setSnackbarMessage("Test Name is required.");
+            setSnackbarOpen(true);
+            return;
+        }
         const testPayload = {
             testName,
             projectId,
             userId: localStorage.getItem("userId"),
+            selectedTags: selectedTags.map(tag => tag.id)
         };
-
+        let currentTestCaseId = testCaseId;
         try {
             if (formMode === "edit" && selectedTestCase) {
                 await axios.put(`${API_URL_TESTCASE}/${selectedTestCase.id}`, testPayload, {
                     headers: {Authorization: `Bearer ` + localStorage.getItem("authToken")},
                 });
+                currentTestCaseId = selectedTestCase.id;
                 setSnackbarMessage("Test case updated successfully!");
             } else {
-                await axios.post(API_URL_TESTCASE, testPayload, {
+                const response = await axios.post(API_URL_TESTCASE, testPayload, {
                     headers: {Authorization: `Bearer ` + localStorage.getItem("authToken")},
                 });
+                currentTestCaseId = response.data.id;
                 setSnackbarMessage("Test case created successfully!");
             }
 
@@ -178,9 +207,9 @@ const TestCaseComponent: React.FC = () => {
             const testStepsPayload = steps.map((step, index) => ({
                 testStepDesc: step.testStepDesc,
                 testExpectedOutput: step.testExpectedOutput,
-                testRemarks: step.testStepData, // Map data to remarks or adjust fields
+                testRemarks: step.testStepData,
                 testStepOrder: index + 1,
-                testCaseId,
+                testCaseId: currentTestCaseId,
                 userId: localStorage.getItem("userId"),
                 stepId: step.id
             }));
@@ -218,11 +247,13 @@ const TestCaseComponent: React.FC = () => {
         setTestName("");
         setProjectId(0);
         setSelectedTestCase(null);
+        setSelectedTags([]);
     };
 
     useEffect(() => {
         fetchTestCases().then();
         fetchProjects().then();
+        fetchTags().then();
     }, []);
 
     if (loading) return <CircularProgress/>;
@@ -231,68 +262,64 @@ const TestCaseComponent: React.FC = () => {
     return (
         <Box sx={{padding: 2}}>
             <h1>Test Case Manager</h1>
-
-            <Box>
-                <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => handleOpenDialog(null)}
-                    sx={{marginBottom: 2}}
-                >
-                    Add Test Case
-                </Button>
-
-                <TableContainer component={Paper}>
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Test-ID</TableCell>
-                                <TableCell>Name</TableCell>
-                                <TableCell>Project</TableCell>
-                                <TableCell>Created By</TableCell>
-                                <TableCell>Actions</TableCell>
+            <Button variant="contained" color="primary" onClick={() => handleOpenDialog(null)} sx={{mb: 2}}>
+                Add Test Case
+            </Button>
+            <TableContainer component={Paper}>
+                <Table>
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>Test-ID</TableCell>
+                            <TableCell>Name</TableCell>
+                            <TableCell>Project</TableCell>
+                            <TableCell>Tags</TableCell>
+                            <TableCell>Created By</TableCell>
+                            <TableCell>Actions</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {testCases.map((testCase) => (
+                            <TableRow key={testCase.id}>
+                                <TableCell>
+                                    <Link component="button" onClick={() => handleOpenDialog(testCase)}>
+                                        {testCase.testProjectId}
+                                    </Link>
+                                </TableCell>
+                                <TableCell>
+                                    <Link component="button" onClick={() => handleOpenDialog(testCase)}>
+                                        {testCase.testName}
+                                    </Link>
+                                </TableCell>
+                                <TableCell>{testCase.projects.projectName}</TableCell>
+                                <TableCell>
+                                    {testCase.tagsSet.map((tag, index) => (
+                                        <span key={tag.id}>
+                                        {tag.tagName}{index < testCase.tagsSet.length - 1 ? ', ' : ''}
+                                    </span>
+                                    ))}
+                                </TableCell>
+                                <TableCell>{testCase.testCreatedBy}</TableCell>
+                                <TableCell>
+                                    <IconButton color="primary" onClick={() => handleOpenDialog(testCase)}>
+                                        <EditIcon/>
+                                    </IconButton>
+                                    <IconButton color="secondary" onClick={() => deleteTestCase(testCase.id)}>
+                                        <DeleteIcon/>
+                                    </IconButton>
+                                </TableCell>
                             </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {Array.isArray(testCases) && testCases.map((testCase) => (
-                                <TableRow key={testCase.id}>
-                                    <TableCell>
-                                        <Link component="button" onClick={() => handleOpenDialog(testCase)}>
-                                            {testCase.testProjectId}
-                                        </Link>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Link component="button" onClick={() => handleOpenDialog(testCase)}>
-                                            {testCase.testName}
-                                        </Link>
-                                    </TableCell>
-                                    <TableCell>{testCase.projects.projectName}</TableCell>
-                                    <TableCell>{testCase.testCreatedBy}</TableCell>
-                                    <TableCell>
-                                        <IconButton color="primary" onClick={() => handleOpenDialog(testCase)}>
-                                            <EditIcon/>
-                                        </IconButton>
-                                        <IconButton color="secondary" onClick={() => deleteTestCase(testCase.id)}>
-                                            <DeleteIcon/>
-                                        </IconButton>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-            </Box>
+                        ))}
+                    </TableBody>
+                </Table>
+            </TableContainer>
 
             <Dialog open={dialogOpen} onClose={handleCloseDialog} fullWidth>
                 <DialogTitle>{formMode === "create" ? "Add Test Case" : "Edit Test Case"}</DialogTitle>
                 <DialogContent>
-                    <FormControl fullWidth sx={{marginBottom: 2}}>
+                    <FormControl fullWidth sx={{mb: 2}}>
                         <InputLabel>Project</InputLabel>
-                        <Select
-                            value={projectId}
-                            onChange={(e) => setProjectId(Number(e.target.value))}
-                            label="Project"
-                        >
+                        <Select required value={projectId} onChange={(e) => setProjectId(Number(e.target.value))}
+                                label="Project">
                             <MenuItem value={0} disabled>
                                 Select a project
                             </MenuItem>
@@ -302,17 +329,27 @@ const TestCaseComponent: React.FC = () => {
                                 </MenuItem>
                             ))}
                         </Select>
+                        <Autocomplete
+                            multiple
+                            options={tags}
+                            getOptionLabel={(option) => option.tagName}
+                            value={selectedTags}
+                            onChange={(_, newValue) => setSelectedTags(newValue)}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    variant="outlined"
+                                    label="Tags"
+                                    placeholder="Select tags"
+                                />
+                            )}>
+                        </Autocomplete>
                     </FormControl>
 
-                    <TextField
-                        label="Test Name"
-                        value={testName}
-                        onChange={(e) => setTestName(e.target.value)}
-                        required
-                        fullWidth
-                    />
-                    {Array.isArray(steps) && steps.map((step, index) => (
-                        <Box key={index} sx={{display: 'flex', alignItems: 'center', gap: 1, marginBottom: 2}}>
+                    <TextField label="Test Name" value={testName} onChange={(e) => setTestName(e.target.value)} required
+                               fullWidth/>
+                    {steps.map((step, index) => (
+                        <Box key={index} sx={{display: "flex", alignItems: "center", gap: 1, mb: 2}}>
                             <TextField
                                 label={`Step ${index + 1}`}
                                 value={step.testStepDesc}
@@ -336,6 +373,7 @@ const TestCaseComponent: React.FC = () => {
                             </IconButton>
                         </Box>
                     ))}
+
                     <Button onClick={addStep} variant="contained" color="primary">
                         + Add Step
                     </Button>
@@ -350,15 +388,9 @@ const TestCaseComponent: React.FC = () => {
                 </DialogActions>
             </Dialog>
 
-            <Snackbar
-                open={snackbarOpen}
-                autoHideDuration={6000}
-                onClose={() => setSnackbarOpen(false)}
-            >
-                <Alert
-                    onClose={() => setSnackbarOpen(false)}
-                    severity={snackbarMessage.includes("success") ? "success" : "error"}
-                >
+            <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={() => setSnackbarOpen(false)}>
+                <Alert onClose={() => setSnackbarOpen(false)}
+                       severity={snackbarMessage.includes("success") ? "success" : "error"}>
                     {snackbarMessage}
                 </Alert>
             </Snackbar>

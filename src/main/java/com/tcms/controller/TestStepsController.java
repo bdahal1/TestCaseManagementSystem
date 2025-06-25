@@ -63,7 +63,7 @@ public class TestStepsController {
     }
 
     @GetMapping(path = "/testCaseId/{id}")
-    public ResponseEntity<Object> getTestStepsByTestCaseId(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size, @PathVariable int id) {
+    public ResponseEntity<Object> getTestStepsByTestCaseId(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "100") int size, @PathVariable int id) {
         Pageable paging = PageRequest.of(page, size);
         TestCase testCase = testCaseRepository.findById(id);
         if (testCase == null) {
