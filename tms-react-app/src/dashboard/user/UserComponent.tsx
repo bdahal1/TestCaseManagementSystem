@@ -351,6 +351,7 @@ const UserComponent: React.FC = () => {
                         onChange={handleChange}
                         fullWidth
                         margin="dense"
+                        type="password"
                     />}
                     <FormControl fullWidth margin="dense">
                         <InputLabel>Role</InputLabel>

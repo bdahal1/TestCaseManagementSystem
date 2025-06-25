@@ -19,13 +19,16 @@ import EditIcon from '@mui/icons-material/Edit';
 interface Project {
     id: number;
     projectName: string;
+    projectInitials: string;
 }
 
 const ProjectComponent: React.FC = () => {
     const [projects, setProjects] = useState<Project[]>([]);
     const [newProjectName, setNewProjectName] = useState<string>('');
+    const [newProjectInitials, setNewProjectInitials] = useState<string>('');
     const [editProjectId, setEditProjectId] = useState<number | null>(null);
     const [editProjectName, setEditProjectName] = useState<string>('');
+    const [editProjectInitials, setEditProjectInitials] = useState<string>('');
     const [alert, setAlert] = useState({
         open: false,
         message: '',
@@ -52,12 +55,13 @@ const ProjectComponent: React.FC = () => {
             return;
         }
         try {
-            const response = await axios.post(API_URL, {projectName: newProjectName}, {headers: {"Authorization": `Bearer ` + localStorage.getItem("authToken")}});
+            const response = await axios.post(API_URL, {projectName: newProjectName,projectInitials: newProjectInitials}, {headers: {"Authorization": `Bearer ` + localStorage.getItem("authToken")}});
             const newProject: Project = response.data;
 
             if (newProject && newProject.id && newProject.projectName) {
                 setProjects([...projects, newProject]); // Add the new Project to the list
                 setNewProjectName('');
+                setNewProjectInitials('');
             } else {
                 console.error('Invalid Project data received:', response.data);
                 setAlert({
@@ -80,14 +84,15 @@ const ProjectComponent: React.FC = () => {
             return;
         }
         try {
-            await axios.put(`${API_URL}/${editProjectId}`, {projectName: editProjectName}, {headers: {"Authorization": `Bearer ` + localStorage.getItem("authToken")}});
+            await axios.put(`${API_URL}/${editProjectId}`, {projectName: editProjectName, projectInitials: editProjectInitials}, {headers: {"Authorization": `Bearer ` + localStorage.getItem("authToken")}});
             setProjects(
                 projects.map((project) =>
-                    project.id === editProjectId ? {...project, projectName: editProjectName} : project
+                    project.id === editProjectId ? {...project, projectName: editProjectName, projectInitials: editProjectInitials} : project
                 )
             );
             setEditProjectId(null);
             setEditProjectName('');
+            setEditProjectInitials('');
             setAlert({open: true, message: 'Project edited successfully!', severity: 'error'});
         } catch (error) {
             console.error('Error updating Project:', error);
@@ -122,6 +127,11 @@ const ProjectComponent: React.FC = () => {
                     value={newProjectName}
                     onChange={(e) => setNewProjectName(e.target.value)}
                 />
+                <TextField
+                    label="New Project Initials"
+                    value={newProjectInitials}
+                    onChange={(e) => setNewProjectInitials(e.target.value)}
+                />
                 <Button variant="contained" color="primary" onClick={addProject} style={{marginLeft: '10px'}}>
                     Add Project
                 </Button>
@@ -134,6 +144,11 @@ const ProjectComponent: React.FC = () => {
                         label="Edit Project Name"
                         value={editProjectName}
                         onChange={(e) => setEditProjectName(e.target.value)}
+                    />
+                    <TextField
+                        label="Edit Project Initials"
+                        value={editProjectInitials}
+                        onChange={(e) => setEditProjectInitials(e.target.value)}
                     />
                     <Button
                         variant="contained"
@@ -153,6 +168,7 @@ const ProjectComponent: React.FC = () => {
                         <TableRow>
                             <TableCell>S.N.</TableCell>
                             <TableCell>Name</TableCell>
+                            <TableCell>Initials</TableCell>
                             <TableCell>Actions</TableCell>
                         </TableRow>
                     </TableHead>
@@ -161,12 +177,14 @@ const ProjectComponent: React.FC = () => {
                             <TableRow key={project.id}>
                                 <TableCell>{index + 1}</TableCell>
                                 <TableCell>{project.projectName}</TableCell>
+                                <TableCell>{project.projectInitials}</TableCell>
                                 <TableCell>
                                     <IconButton
                                         color="primary"
                                         onClick={() => {
                                             setEditProjectId(project.id);
                                             setEditProjectName(project.projectName);
+                                            setEditProjectInitials(project.projectInitials);
                                         }}
                                     >
                                         <EditIcon/>
