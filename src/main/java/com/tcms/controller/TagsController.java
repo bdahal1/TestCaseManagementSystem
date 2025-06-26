@@ -26,7 +26,7 @@ public class TagsController {
     }
 
     @GetMapping("")
-    public ResponseEntity<Object> getTags(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+    public ResponseEntity<Object> getTags(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "1000") int size) {
         Pageable paging = PageRequest.of(page, size);
         Page<Tags> tagList = tagsRepository.findAll(paging);
         if (tagList.isEmpty()) {
@@ -37,7 +37,7 @@ public class TagsController {
 
     @GetMapping(path = "/name/{tagName}")
     @SuppressWarnings("Duplicates")
-    public ResponseEntity<Object> getTagsByTagName(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size, @PathVariable String tagName) {
+    public ResponseEntity<Object> getTagsByTagName(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "1000") int size, @PathVariable String tagName) {
         Pageable paging = PageRequest.of(page, size);
         Page<Tags> tagsList = tagsRepository.findByTagNameContaining(tagName, paging);
         if (tagsList.isEmpty()) {

@@ -40,7 +40,7 @@ interface Project {
 }
 
 interface TagsSet {
-    id: number;
+    id: number | null;
     tagName: string
 }
 
@@ -136,6 +136,43 @@ const TestCaseComponent: React.FC = () => {
             setError("Failed to fetch tags.");
         }
     };
+    const syncMissingTags = async (incomingTags: TagsSet[]): Promise<TagsSet[]> => {
+        const existingTagNames = new Set(tags.map(tag => tag.tagName.toLowerCase()));
+
+        const createdTags: TagsSet[] = [];
+
+        for (const tag of incomingTags) {
+            if (!existingTagNames.has(tag.tagName.toLowerCase())) {
+                try {
+                    const res = await axios.post("http://localhost:8080/dhtcms/api/v1/tags", {tagName: tag.tagName}, {
+                        headers: {Authorization: `Bearer ` + localStorage.getItem("authToken")},
+                    });
+                    createdTags.push(res.data);
+                } catch (err) {
+                    console.error(`Error creating tag "${tag.tagName}"`, err);
+                }
+            }
+        }
+
+        // Combine and deduplicate
+        const updatedTagList = [...tags, ...createdTags];
+        const tagMap = new Map<string, TagsSet>();
+        updatedTagList.forEach(tag =>
+            tagMap.set(tag.tagName.toLowerCase(), tag)
+        );
+
+        const deduplicatedTagList = Array.from(tagMap.values());
+
+        // Update state with full tag list
+        setTags(deduplicatedTagList);
+
+        // Return resolved versions of incoming tags with IDs filled in
+        return incomingTags.map(tag => {
+            const found = deduplicatedTagList.find(t => t.tagName.toLowerCase() === tag.tagName.toLowerCase());
+            return found || tag;
+        });
+    };
+
 
     const handleOpenDialog = async (testCase: TestCase | null) => {
         if (testCase) {
@@ -331,19 +368,34 @@ const TestCaseComponent: React.FC = () => {
                         </Select>
                         <Autocomplete
                             multiple
+                            freeSolo
                             options={tags}
-                            getOptionLabel={(option) => option.tagName}
+                            getOptionLabel={(option) =>
+                                typeof option === 'string' ? option : option.tagName
+                            }
                             value={selectedTags}
-                            onChange={(_, newValue) => setSelectedTags(newValue)}
+                            onChange={async (_, newValue) => {
+                                const formattedTags: TagsSet[] = newValue.map(item =>
+                                    typeof item === 'string' ? { id: null, tagName: item } as TagsSet : item
+                                );
+                                const tagMap = new Map<string, TagsSet>();
+                                formattedTags.forEach(tag =>
+                                    tagMap.set(tag.tagName.toLowerCase(), tag)
+                                );
+                                const deduplicated = Array.from(tagMap.values());
+                                const resolved = await syncMissingTags(deduplicated);
+                                setSelectedTags(resolved);
+                            }}
                             renderInput={(params) => (
                                 <TextField
                                     {...params}
                                     variant="outlined"
                                     label="Tags"
-                                    placeholder="Select tags"
+                                    placeholder="Select or add tags"
                                 />
-                            )}>
-                        </Autocomplete>
+                            )}
+                        />
+
                     </FormControl>
 
                     <TextField label="Test Name" value={testName} onChange={(e) => setTestName(e.target.value)} required

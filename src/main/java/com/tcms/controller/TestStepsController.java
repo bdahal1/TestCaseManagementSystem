@@ -3,10 +3,8 @@ package com.tcms.controller;
 import com.tcms.dto.TestStepInfoDTO;
 import com.tcms.dto.TestStepOrderDTO;
 import com.tcms.helper.pojo.CustomResponseMessage;
-import com.tcms.helper.util.Util;
 import com.tcms.models.TestCase;
 import com.tcms.models.TestSteps;
-import com.tcms.models.Users;
 import com.tcms.repositories.TestCaseRepository;
 import com.tcms.repositories.TestStepsRepository;
 import com.tcms.repositories.UserRepository;
@@ -21,8 +19,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @RestController()
 @CrossOrigin()
