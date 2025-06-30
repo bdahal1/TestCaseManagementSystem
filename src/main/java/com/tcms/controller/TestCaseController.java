@@ -2,7 +2,9 @@ package com.tcms.controller;
 
 import com.tcms.dto.TestCaseInfoDTO;
 import com.tcms.helper.pojo.CustomResponseMessage;
+import com.tcms.models.Projects;
 import com.tcms.models.TestCase;
+import com.tcms.models.Users;
 import com.tcms.repositories.ProjectRepository;
 import com.tcms.repositories.TestCaseRepository;
 import com.tcms.repositories.UserRepository;
@@ -14,8 +16,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.Date;
-import java.util.HashSet;
 
 @RestController()
 @CrossOrigin()
@@ -36,9 +38,9 @@ public class TestCaseController {
     }
 
     @GetMapping("")
-    public ResponseEntity<Object> getTestCase(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "100") int size) {
+    public ResponseEntity<Object> getTestCase(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "1000") int size, @RequestParam String projectId) {
         Pageable paging = PageRequest.of(page, size);
-        Page<TestCase> testCaseList = testCaseRepository.findAll(paging);
+        Page<TestCase> testCaseList = testCaseRepository.findByProjectsIn(Collections.singleton(projectRepository.findById(Integer.parseInt(projectId))),paging);
         if (testCaseList.isEmpty()) {
             return ResponseEntity.status(HttpStatus.OK).body("Record not found.\n");
         }
@@ -47,7 +49,7 @@ public class TestCaseController {
 
     @GetMapping(path = "/name/{testCaseName}")
     @SuppressWarnings("Duplicates")
-    public ResponseEntity<Object> getTestCaseByTestCaseName(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size, @PathVariable String testCaseName) {
+    public ResponseEntity<Object> getTestCaseByTestCaseName(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "1000") int size, @PathVariable String testCaseName) {
         Pageable paging = PageRequest.of(page, size);
         Page<TestCase> testCasesList = testCaseRepository.findByTestNameContaining(testCaseName, paging);
         if (testCasesList.isEmpty()) {

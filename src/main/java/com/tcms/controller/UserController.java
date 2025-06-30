@@ -114,6 +114,15 @@ public class UserController {
         return this.userService.editUser(usersInfoDTO, userId);
     }
 
+    @GetMapping("/{userId}/projects")
+    @SuppressWarnings("Duplicates")
+    public ResponseEntity<Object> getUserProjects(@PathVariable int userId) {
+        if (userId == 0) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User Id Not Found inside body.\n");
+        }
+        return ResponseEntity.status(HttpStatus.OK).body(this.userRepository.findById(userId).getProjectsSet());
+    }
+
     @DeleteMapping("/{userId}")
     public ResponseEntity<Object> deleteUser(@PathVariable String userId) {
         if (userId == null) {

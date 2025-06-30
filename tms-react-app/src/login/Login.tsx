@@ -47,13 +47,12 @@ const Login: React.FC<{ onLoginSuccess: () => void }> = ({onLoginSuccess}) => {
                 userName,
                 password,
             });
-            console.log("API Response:", response.data);
-            localStorage.setItem("isLoggedIn", "true");
+            console.log("API Response:", response.data)
+            localStorage.setItem("isLoggedIn", "true")
             localStorage.setItem("userId", response.data.data.userId)
-            localStorage.setItem("authToken", response.data.data.accessToken); // Store token in localStorage
-            onLoginSuccess(); // Trigger success in App.tsx
+            localStorage.setItem("authToken", response.data.data.accessToken) // Store token in localStorage
+            onLoginSuccess() // Trigger success in App.tsx
             console.log(localStorage.getItem("authToken"))
-            ;
         } catch (err: any) {
             console.error("Error during API call:", err);
             setError(err.response?.data?.message || "Something went wrong");

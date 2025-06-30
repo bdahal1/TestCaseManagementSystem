@@ -56,7 +56,11 @@ interface TestCase {
     tagsSet: TagsSet[];
 }
 
-const TestCaseComponent: React.FC = () => {
+interface TestCaseComponentProps {
+    projId?: number | null
+}
+
+const TestCaseComponent: React.FC = ({projId}: TestCaseComponentProps) => {
     const [testCases, setTestCases] = useState<TestCase[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [tags, setTags] = useState<TagsSet[]>([]);
@@ -102,7 +106,7 @@ const TestCaseComponent: React.FC = () => {
     const fetchTestCases = async () => {
         setLoading(true);
         try {
-            const response = await axios.get(`${API_URL_TESTCASE}`, {
+            const response = await axios.get(`${API_URL_TESTCASE}?projectId=${projId}`, {
                 headers: {Authorization: `Bearer ` + localStorage.getItem("authToken")},
             });
             setTestCases(response.data.testCase);
@@ -291,14 +295,14 @@ const TestCaseComponent: React.FC = () => {
         fetchTestCases().then();
         fetchProjects().then();
         fetchTags().then();
-    }, []);
+    }, [projId]);
 
     if (loading) return <CircularProgress/>;
     if (error) return <div>{error}</div>;
 
     return (
         <Box sx={{padding: 2}}>
-            <h1>Test Case Manager</h1>
+            <h1>Test Case Manager for {testCases.length > 0 ? testCases[0].projects.projectName : "Project"}</h1>
             <Button variant="contained" color="primary" onClick={() => handleOpenDialog(null)} sx={{mb: 2}}>
                 Add Test Case
             </Button>
@@ -376,7 +380,7 @@ const TestCaseComponent: React.FC = () => {
                             value={selectedTags}
                             onChange={async (_, newValue) => {
                                 const formattedTags: TagsSet[] = newValue.map(item =>
-                                    typeof item === 'string' ? { id: null, tagName: item } as TagsSet : item
+                                    typeof item === 'string' ? {id: null, tagName: item} as TagsSet : item
                                 );
                                 const tagMap = new Map<string, TagsSet>();
                                 formattedTags.forEach(tag =>

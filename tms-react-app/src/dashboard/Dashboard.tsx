@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from "react";
 import {styled} from "@mui/material/styles";
 import {useNavigate} from "react-router-dom";
-import {Alert, useTheme} from "@mui/material";
+import {Alert, ButtonBase, Card, CardContent, Grid2, useTheme} from "@mui/material";
 import axios from "axios";
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
@@ -74,12 +74,19 @@ const DrawerHeader = styled("div")(({theme}) => ({
     justifyContent: "flex-end",
 }));
 
+interface Project {
+    id: number;
+    projectInitials: string;
+    projectName: string;
+}
 const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
     const navigate = useNavigate();
     const theme = useTheme();
     const [open, setOpen] = useState(false);
     const [showAlert, setShowAlert] = useState(false);
     const [view, setView] = useState("Dashboard");
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
 
     const handleDrawerOpen = () => {
         setOpen(true);
@@ -100,6 +107,20 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
     };
 
     useEffect(() => {
+        const fetchProjects = async () => {
+            try {
+                const userId = localStorage.getItem("userId");
+                const response = await axios.get(`http://localhost:8080/dhtcms/api/v1/users/${userId}/projects`,
+                    {
+                        headers: {Authorization: `Bearer ` + localStorage.getItem("authToken")},
+                    });
+                setProjects(response.data);
+            } catch (error) {
+                console.error("Error fetching projects:", error);
+            }
+        };
+
+        fetchProjects().then();
         const isLoggedIn = localStorage.getItem("isLoggedIn");
         if (isLoggedIn && isLoggedIn === "true") {
             setShowAlert(true);
@@ -111,6 +132,8 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
         localStorage.removeItem("isLoggedIn");
     }, [navigate]);
 
+    // @ts-ignore
+    // @ts-ignore
     return (
         <Box sx={{display: "flex"}}>
             <CssBaseline/>
@@ -128,6 +151,13 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
                     <Typography variant="h6" noWrap component="div">
                         {view}
                     </Typography>
+                    <Box sx={{ marginLeft: "auto" }}>
+                        <ListItem disablePadding>
+                            <ListItemButton onClick={handleLogout}>
+                                <ListItemText primary="Logout" />
+                            </ListItemButton>
+                        </ListItem>
+                    </Box>
                 </Toolbar>
             </AppBar>
             <Drawer
@@ -151,6 +181,15 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
                 </DrawerHeader>
                 <Divider/>
                 <List>
+                    <ListItem disablePadding>
+                        <ListItemButton
+                            onClick={() => {
+                                setView("Dashboard");
+                            }}
+                        >
+                            <ListItemText primary="Dashboard"/>
+                        </ListItemButton>
+                    </ListItem>
                     <ListItem disablePadding>
                         <ListItemButton
                             onClick={() => {
@@ -187,20 +226,6 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
                             <ListItemText primary="Project"/>
                         </ListItemButton>
                     </ListItem>
-                    <ListItem disablePadding>
-                        <ListItemButton
-                            onClick={() => {
-                                setView("TestCase");
-                            }}
-                        >
-                            <ListItemText primary="TestCase"/>
-                        </ListItemButton>
-                    </ListItem>
-                    <ListItem disablePadding>
-                        <ListItemButton onClick={handleLogout}>
-                            <ListItemText primary="Logout"/>
-                        </ListItemButton>
-                    </ListItem>
                 </List>
                 <Divider/>
             </Drawer>
@@ -215,7 +240,34 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
                 {view === "Roles" && <RoleComponent/>}
                 {view === "Department" && <DepartmentComponent/>}
                 {view === "Project" && <ProjectComponent/>}
-                {view === "TestCase" && <TestCaseComponent/>}
+                {view === "TestCase" && <TestCaseComponent projId={selectedProjectId}/>}
+                {view === "Dashboard" && (
+                    <Grid2 container spacing={12} sx={{ padding: 4 }}>
+                        {projects.map((project) => (
+                            <ButtonBase
+                                onClick={() => {
+                                    setSelectedProjectId(project.id); // Store the selected project ID
+                                    setView("TestCase");         // Trigger view change
+                                }}
+                                sx={{ width: "100%" }}
+                            >
+                                <Card
+                                    variant="outlined"
+                                    sx={{ width: "100%", textAlign: "left" }} // ensure full-width card
+                                >
+                                    <CardContent>
+                                        <Typography variant="h6" component="div">
+                                            {project.projectInitials}
+                                        </Typography>
+                                        <Typography color="text.secondary">
+                                            {project.projectName}
+                                        </Typography>
+                                    </CardContent>
+                                </Card>
+                            </ButtonBase>
+                        ))}
+                    </Grid2>
+                )}
             </Main>
         </Box>
     );

@@ -1,9 +1,11 @@
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import {BrowserRouter as Router, Routes, Route, Navigate} from "react-router-dom";
 import Login from "./login/Login";
 import Dashboard from "./dashboard/Dashboard";
+import axios from "axios";
 
 function App() {
+    const API_BASE_URL = "http://localhost:8080/dhtcms/api/v1";
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
         // Initialize based on token availability
         const token = localStorage.getItem("authToken");
@@ -18,6 +20,31 @@ function App() {
         setIsAuthenticated(false);
         localStorage.removeItem("authToken");
     };
+    useEffect(() => {
+        const checkToken = async () => {
+            const token = localStorage.getItem("authToken");
+            if (token) {
+                try {
+                    await axios.get(`${API_BASE_URL}/validate`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    setIsAuthenticated(true);
+                } catch (err) {
+                    localStorage.removeItem("authToken");
+                    localStorage.removeItem("isLoggedIn");
+                    localStorage.removeItem("userId");
+                    setIsAuthenticated(false);
+                    localStorage.removeItem("isLoggedIn");
+                }
+            } else {
+                setIsAuthenticated(false);
+                localStorage.removeItem("isLoggedIn");
+            }
+        };
+
+        checkToken();
+    }, []);
+
 
     return (
         <Router>

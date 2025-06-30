@@ -48,6 +48,7 @@ public class SecurityConfig {
                 .disable()
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(AUTH_WHITELIST).permitAll()
+                        .requestMatchers("/validate").authenticated()
                         .requestMatchers("/users/**").hasRole("QAManager")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
