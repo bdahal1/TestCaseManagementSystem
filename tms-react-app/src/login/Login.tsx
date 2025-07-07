@@ -1,60 +1,55 @@
-// src/Login.tsx
 import React, {useEffect, useState} from "react";
 import axios from "axios";
-import Box from '@mui/material/Box';
-import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
-import {Alert, CircularProgress} from "@mui/material";
-import {useNavigate} from "react-router-dom";
+import {
+    Box,
+    TextField,
+    Button,
+    Alert,
+    CircularProgress,
+    Card,
+    CardContent,
+    Typography,
+} from "@mui/material";
 
 const Login: React.FC<{ onLoginSuccess: () => void }> = ({onLoginSuccess}) => {
-    const [userName, setUserName] = useState<string>("");
-    const [password, setPassword] = useState<string>("");
-    const [error, setError] = useState<string>("");
+    const [userName, setUserName] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [showAlert, setShowAlert] = useState(false);
-    const navigate = useNavigate();
 
     useEffect(() => {
         const isLoggedIn = localStorage.getItem("isLoggedIn");
-        if (isLoggedIn && isLoggedIn === "false") {
-            setShowAlert(true);
-            const timeId = setTimeout(() => {
-                // After 3 seconds set the show value to false
-                setShowAlert(false);
-            }, 3000)
-            return () => {
-                clearTimeout(timeId)
-            }
-        }
         localStorage.removeItem("isLoggedIn");
-    }, [navigate]);
+        if (isLoggedIn === "false") {
+            setShowAlert(true);
+            const timer = setTimeout(() => setShowAlert(false), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, []);
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
-
-        // Basic validation
         if (!userName || !password) {
             setError("Both fields are required");
+            setLoading(false);
             return;
         }
 
-        setError(""); // Clear previous errors
-
+        setError("");
         try {
-            // API call to authenticate user
             const response = await axios.post("http://localhost:8080/dhtcms/api/v1/login", {
                 userName,
                 password,
             });
-            console.log("API Response:", response.data)
-            localStorage.setItem("isLoggedIn", "true")
-            localStorage.setItem("userId", response.data.data.userId)
-            localStorage.setItem("authToken", response.data.data.accessToken) // Store token in localStorage
-            onLoginSuccess() // Trigger success in App.tsx
-            console.log(localStorage.getItem("authToken"))
+            localStorage.setItem("isLoggedIn", "true");
+            localStorage.setItem("userId", response.data.data.userId);
+            localStorage.setItem("authToken", response.data.data.accessToken);
+            localStorage.setItem("roleList", JSON.stringify(response.data.data.rolesList));
+            localStorage.setItem("fullName", response.data.data.fullName);
+            onLoginSuccess();
         } catch (err: any) {
-            console.error("Error during API call:", err);
             setError(err.response?.data?.message || "Something went wrong");
         } finally {
             setLoading(false);
@@ -62,33 +57,98 @@ const Login: React.FC<{ onLoginSuccess: () => void }> = ({onLoginSuccess}) => {
     };
 
     return (
-        <Box component="form" sx={{
-            display: 'flex',
-            flexDirection: 'column', // Ensures children stack vertically
-            alignItems: 'center', // Horizontal centering
-            justifyContent: 'center', // Vertical centering
-            minHeight: '100vh', // Full viewport height
-            '& > :not(style)': {m: 1, width: '30ch'}, // Add spacing and width to child elements
-        }}
-             autoComplete="off"
-             onSubmit={handleSubmit}>
-            {error && <Alert variant="outlined" severity="error">
-                {error}
-            </Alert>}
-            {showAlert && (
-                <Alert severity="success" onClose={() => setShowAlert(false)}>
-                    Logout successful!
-                </Alert>
-            )}
-            <TextField id="userName" label="Enter your UserName" variant="standard" value={userName}
-                       onChange={(e) => setUserName(e.target.value)} required/>
-            <br/>
-            <TextField id="password" label="Enter your Password" type="password" variant="standard" value={password}
-                       onChange={(e) => setPassword(e.target.value)} required/>
-            <br/>
-            <Button type="submit" variant="contained" disabled={loading} sx={{position: 'relative',}}>
-                {loading ? (<CircularProgress size={24}/>) : ('Login')}
-            </Button>
+        <Box
+            sx={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                width: "100vw",
+                height: "100vh",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundImage: `url("/src/assets/images.png")`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+                overflow: "hidden",
+                m: 0,
+                p: 0,
+            }}
+        >
+            <Card
+                sx={{
+                    width: 400,
+                    p: 3,
+                    boxShadow: 6,
+                    borderRadius: 3,
+                    backdropFilter: "blur(8px)",
+                    backgroundColor: "rgba(255, 255, 255, 0.85)",
+                }}
+            >
+                <CardContent>
+                    <Typography variant="h5" textAlign="center" mb={2} fontWeight="bold" color="primary">
+                        Login
+                    </Typography>
+
+                    <form onSubmit={handleSubmit}>
+                        {showAlert && (
+                            <Alert severity="success" sx={{mb: 2}} onClose={() => setShowAlert(false)}>
+                                Logout successful!
+                            </Alert>
+                        )}
+                        {error && (
+                            <Alert severity="error" sx={{mb: 2}}>
+                                {error}
+                            </Alert>
+                        )}
+
+                        <TextField
+                            fullWidth
+                            label="Username"
+                            variant="outlined"
+                            margin="normal"
+                            value={userName}
+                            onChange={(e) => setUserName(e.target.value)}
+                            required
+                        />
+                        <TextField
+                            fullWidth
+                            type="password"
+                            label="Password"
+                            variant="outlined"
+                            margin="normal"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                        />
+
+                        <Button
+                            type="submit"
+                            fullWidth
+                            variant="contained"
+                            color="primary"
+                            sx={{mt: 2}}
+                            disabled={loading}
+                        >
+                            {loading ? <CircularProgress size={24}/> : "Login"}
+                        </Button>
+                    </form>
+                </CardContent>
+            </Card>
+            <Typography
+                variant="body2"
+                color="white"
+                sx={{
+                    position: "absolute",
+                    bottom: 16,
+                    width: "100%",
+                    textAlign: "center",
+                    fontSize: 13,
+                }}
+            >
+                © {new Date().getFullYear()} GN Tech Nepal Pvt. Ltd.
+            </Typography>
         </Box>
     );
 };

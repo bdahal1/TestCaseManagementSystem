@@ -61,6 +61,10 @@ interface TestCaseComponentProps {
 }
 
 const TestCaseComponent: React.FC = ({projId}: TestCaseComponentProps) => {
+    if (projId === null) {
+        return <div>Please select a project.</div>;
+    }
+
     const [testCases, setTestCases] = useState<TestCase[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [tags, setTags] = useState<TagsSet[]>([]);
@@ -121,7 +125,7 @@ const TestCaseComponent: React.FC = ({projId}: TestCaseComponentProps) => {
     // Fetch all projects
     const fetchProjects = async () => {
         try {
-            const response = await axios.get(API_URL_PROJECT, {
+            const response = await axios.get(`${API_URL_PROJECT}/id/${projId}`, {
                 headers: {Authorization: `Bearer ` + localStorage.getItem("authToken")},
             });
             setProjects(response.data.projects);
@@ -354,13 +358,21 @@ const TestCaseComponent: React.FC = ({projId}: TestCaseComponentProps) => {
                 </Table>
             </TableContainer>
 
-            <Dialog open={dialogOpen} onClose={handleCloseDialog} fullWidth>
-                <DialogTitle>{formMode === "create" ? "Add Test Case" : "Edit Test Case"}</DialogTitle>
-                <DialogContent>
-                    <FormControl fullWidth sx={{mb: 2}}>
+            <Dialog open={dialogOpen} onClose={handleCloseDialog} fullWidth maxWidth="md">
+                <DialogTitle sx={{bgcolor: "#1976d2", color: "white", py: 2}}>
+                    {formMode === "create" ? "Add Test Case" : "Edit Test Case"}
+                </DialogTitle>
+
+                <DialogContent dividers sx={{display: "flex", flexDirection: "column", gap: 2, p: 3}}>
+                    {/* Project Selection */}
+                    <FormControl fullWidth>
                         <InputLabel>Project</InputLabel>
-                        <Select required value={projectId} onChange={(e) => setProjectId(Number(e.target.value))}
-                                label="Project">
+                        <Select
+                            required
+                            value={projectId}
+                            onChange={(e) => setProjectId(Number(e.target.value))}
+                            label="Project"
+                        >
                             <MenuItem value={0} disabled>
                                 Select a project
                             </MenuItem>
@@ -370,71 +382,95 @@ const TestCaseComponent: React.FC = ({projId}: TestCaseComponentProps) => {
                                 </MenuItem>
                             ))}
                         </Select>
-                        <Autocomplete
-                            multiple
-                            freeSolo
-                            options={tags}
-                            getOptionLabel={(option) =>
-                                typeof option === 'string' ? option : option.tagName
-                            }
-                            value={selectedTags}
-                            onChange={async (_, newValue) => {
-                                const formattedTags: TagsSet[] = newValue.map(item =>
-                                    typeof item === 'string' ? {id: null, tagName: item} as TagsSet : item
-                                );
-                                const tagMap = new Map<string, TagsSet>();
-                                formattedTags.forEach(tag =>
-                                    tagMap.set(tag.tagName.toLowerCase(), tag)
-                                );
-                                const deduplicated = Array.from(tagMap.values());
-                                const resolved = await syncMissingTags(deduplicated);
-                                setSelectedTags(resolved);
-                            }}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    variant="outlined"
-                                    label="Tags"
-                                    placeholder="Select or add tags"
-                                />
-                            )}
-                        />
-
                     </FormControl>
 
-                    <TextField label="Test Name" value={testName} onChange={(e) => setTestName(e.target.value)} required
-                               fullWidth/>
-                    {steps.map((step, index) => (
-                        <Box key={index} sx={{display: "flex", alignItems: "center", gap: 1, mb: 2}}>
-                            <TextField
-                                label={`Step ${index + 1}`}
-                                value={step.testStepDesc}
-                                onChange={(e) => handleStepChange(e.target.value, index, "testStepDesc")}
-                                fullWidth
-                            />
-                            <TextField
-                                label={`Data ${index + 1}`}
-                                value={step.testStepData}
-                                onChange={(e) => handleStepChange(e.target.value, index, "testStepData")}
-                                fullWidth
-                            />
-                            <TextField
-                                label={`Action ${index + 1}`}
-                                value={step.testExpectedOutput}
-                                onChange={(e) => handleStepChange(e.target.value, index, "testExpectedOutput")}
-                                fullWidth
-                            />
-                            <IconButton onClick={() => removeStep(index)} color="error">
-                                <DeleteIcon/>
-                            </IconButton>
-                        </Box>
-                    ))}
+                    {/* Tags Autocomplete */}
+                    <Autocomplete
+                        multiple
+                        freeSolo
+                        options={tags}
+                        getOptionLabel={(option) => (typeof option === "string" ? option : option.tagName)}
+                        value={selectedTags}
+                        onChange={async (_, newValue) => {
+                            const formattedTags: TagsSet[] = newValue.map((item) =>
+                                typeof item === "string" ? ({id: null, tagName: item} as TagsSet) : item
+                            );
+                            const tagMap = new Map<string, TagsSet>();
+                            formattedTags.forEach((tag) => tagMap.set(tag.tagName.toLowerCase(), tag));
+                            const deduplicated = Array.from(tagMap.values());
+                            const resolved = await syncMissingTags(deduplicated);
+                            setSelectedTags(resolved);
+                        }}
+                        renderInput={(params) => (
+                            <TextField {...params} variant="outlined" label="Tags" placeholder="Select or add tags"/>
+                        )}
+                    />
 
-                    <Button onClick={addStep} variant="contained" color="primary">
-                        + Add Step
-                    </Button>
+                    {/* Test Name */}
+                    <TextField
+                        label="Test Name"
+                        value={testName}
+                        onChange={(e) => setTestName(e.target.value)}
+                        required
+                        fullWidth
+                    />
+
+                    {/* Steps Section */}
+                    <Box sx={{mt: 2}}>
+                        <Box
+                            sx={{
+                                fontWeight: "bold",
+                                mb: 1,
+                                borderBottom: "1px solid #ddd",
+                                pb: 0.5,
+                                fontSize: "1.1rem",
+                            }}
+                        >
+                            Test Steps
+                        </Box>
+
+                        {steps.map((step, index) => (
+                            <Box
+                                key={index}
+                                sx={{
+                                    display: "grid",
+                                    gridTemplateColumns: "1fr 1fr 1fr auto",
+                                    gap: 2,
+                                    alignItems: "center",
+                                    mb: 2,
+                                }}
+                            >
+                                <TextField
+                                    label={`Step ${index + 1}`}
+                                    value={step.testStepDesc}
+                                    onChange={(e) => handleStepChange(e.target.value, index, "testStepDesc")}
+                                    fullWidth
+                                />
+                                <TextField
+                                    label="Data"
+                                    value={step.testStepData}
+                                    onChange={(e) => handleStepChange(e.target.value, index, "testStepData")}
+                                    fullWidth
+                                />
+                                <TextField
+                                    label="Expected Output"
+                                    value={step.testExpectedOutput}
+                                    onChange={(e) => handleStepChange(e.target.value, index, "testExpectedOutput")}
+                                    fullWidth
+                                />
+                                <IconButton onClick={() => removeStep(index)} color="error">
+                                    <DeleteIcon/>
+                                </IconButton>
+                            </Box>
+                        ))}
+
+                        <Button onClick={addStep} variant="outlined" color="primary" sx={{mt: 1}}>
+                            + Add Step
+                        </Button>
+                    </Box>
                 </DialogContent>
-                <DialogActions>
+
+                <DialogActions sx={{px: 3, py: 2}}>
                     <Button variant="contained" color="primary" onClick={handleSubmit}>
                         {formMode === "create" ? "Create" : "Update"}
                     </Button>
@@ -443,6 +479,7 @@ const TestCaseComponent: React.FC = ({projId}: TestCaseComponentProps) => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
 
             <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={() => setSnackbarOpen(false)}>
                 <Alert onClose={() => setSnackbarOpen(false)}

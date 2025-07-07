@@ -10,12 +10,17 @@ import {
     Paper,
     TextField,
     Button,
-    IconButton, Snackbar, Alert,
+    IconButton,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Snackbar,
+    Alert,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 
-// Department type interface
 interface Department {
     depId: number;
     depName: string;
@@ -23,83 +28,30 @@ interface Department {
 
 const DepartmentComponent: React.FC = () => {
     const [departments, setDepartments] = useState<Department[]>([]);
-    const [newDepartmentName, setNewDepartmentName] = useState<string>('');
-    const [editDepartmentId, setEditDepartmentId] = useState<number | null>(null);
-    const [editDepartmentName, setEditDepartmentName] = useState<string>('');
-    const [alert, setAlert] = useState({
+    const [open, setOpen] = useState(false);
+    const [isEdit, setIsEdit] = useState(false);
+    const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
+    const [depName, setDepName] = useState('');
+    const [alert, setAlert] = useState<{
+        open: boolean;
+        message: string;
+        severity: 'success' | 'error' | 'warning' | 'info';
+    }>({
         open: false,
         message: '',
-        severity: 'success', // 'success', 'error', 'warning', 'info'
+        severity: 'success',
     });
-
 
     const API_URL = 'http://localhost:8080/dhtcms/api/v1/department';
 
-    // Fetch Departments from the API
     const fetchDepartments = async () => {
         try {
-            const response = await axios.get(API_URL,{ headers: {"Authorization" : `Bearer `+localStorage.getItem("authToken")} });
+            const response = await axios.get(API_URL, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
+            });
             setDepartments(response.data.departments);
         } catch (error) {
             console.error('Error fetching Departments:', error);
-        }
-    };
-
-    // Add a new Department
-    const addDepartment = async () => {
-        if (!newDepartmentName.trim()) {
-            setAlert({ open: true, message: 'Department name cannot be empty.', severity: 'error' });
-            return;
-        }
-        try {
-            const response = await axios.post(API_URL, { depName: newDepartmentName },{ headers: {"Authorization" : `Bearer `+localStorage.getItem("authToken")} });
-            const newDepartment: Department = response.data;
-
-            if (newDepartment && newDepartment.depId && newDepartment.depName) {
-                setDepartments([...departments, newDepartment]); // Add the new Department to the list
-                setNewDepartmentName('');
-            } else {
-                console.error('Invalid Department data received:', response.data);
-                setAlert({ open: true, message: 'Failed to add Department: Invalid data received from the server.', severity: 'error' });
-            }
-            setAlert({ open: true, message: 'Department added successfully!', severity: 'success' });
-        } catch (error) {
-            console.error('Error adding Department:', error);
-            setAlert({ open: true, message: 'Error adding Department.', severity: 'error' });
-        }
-    };
-
-    // Update an existing Department
-    const updateDepartment = async () => {
-        if (!editDepartmentName.trim()) {
-            setAlert({ open: true, message: 'Department name cannot be empty.', severity: 'error' });
-            return;
-        }
-        try {
-            await axios.put(`${API_URL}/${editDepartmentId}`, { depName: editDepartmentName },{ headers: {"Authorization" : `Bearer `+localStorage.getItem("authToken")} });
-            setDepartments(
-                departments.map((department) =>
-                    department.depId === editDepartmentId ? { ...department, depName: editDepartmentName } : department
-                )
-            );
-            setEditDepartmentId(null);
-            setEditDepartmentName('');
-            setAlert({ open: true, message: 'Department edited successfully!', severity: 'error' });
-        } catch (error) {
-            console.error('Error updating Department:', error);
-            setAlert({ open: true, message: 'Error Updating Department.', severity: 'error' });
-        }
-    };
-
-    // Delete a Department
-    const deleteDepartment = async (departmentId: number) => {
-        try {
-            await axios.delete(`${API_URL}/${departmentId}`,{ headers: {"Authorization" : `Bearer `+localStorage.getItem("authToken")} });
-            setDepartments(departments.filter((department) => department.depId !== departmentId));
-            setAlert({ open: true, message: 'Department deleted successfully!', severity: 'success' });
-        } catch (error) {
-            console.error('Error deleting Department:', error);
-            setAlert({ open: true, message: 'Error deleting Department.', severity: 'error' });
         }
     };
 
@@ -107,42 +59,82 @@ const DepartmentComponent: React.FC = () => {
         fetchDepartments().then();
     }, []);
 
+    const handleOpenAdd = () => {
+        setIsEdit(false);
+        setSelectedDepartment(null);
+        setDepName('');
+        setOpen(true);
+    };
+
+    const handleOpenEdit = (department: Department) => {
+        setIsEdit(true);
+        setSelectedDepartment(department);
+        setDepName(department.depName);
+        setOpen(true);
+    };
+
+    const handleClose = () => {
+        setOpen(false);
+        setDepName('');
+        setSelectedDepartment(null);
+    };
+
+    const handleSubmit = async () => {
+        if (!depName.trim()) {
+            setAlert({ open: true, message: 'Department name cannot be empty.', severity: 'error' });
+            return;
+        }
+        try {
+            if (isEdit && selectedDepartment) {
+                await axios.put(
+                    `${API_URL}/${selectedDepartment.depId}`,
+                    { depName },
+                    { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } }
+                );
+                setDepartments(
+                    departments.map((dep) =>
+                        dep.depId === selectedDepartment.depId ? { ...dep, depName } : dep
+                    )
+                );
+                setAlert({ open: true, message: 'Department updated successfully!', severity: 'success' });
+            } else {
+                const response = await axios.post(
+                    API_URL,
+                    { depName },
+                    { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } }
+                );
+                const newDepartment: Department = response.data;
+                setDepartments([...departments, newDepartment]);
+                setAlert({ open: true, message: 'Department added successfully!', severity: 'success' });
+            }
+            handleClose();
+        } catch (error) {
+            console.error('Error saving Department:', error);
+            setAlert({ open: true, message: 'Error saving Department.', severity: 'error' });
+        }
+    };
+
+    const deleteDepartment = async (depId: number) => {
+        try {
+            await axios.delete(`${API_URL}/${depId}`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
+            });
+            setDepartments(departments.filter((dep) => dep.depId !== depId));
+            setAlert({ open: true, message: 'Department deleted successfully!', severity: 'success' });
+        } catch (error) {
+            console.error('Error deleting Department:', error);
+            setAlert({ open: true, message: 'Error deleting Department.', severity: 'error' });
+        }
+    };
+
     return (
         <div>
             <h1>Departments Management</h1>
 
-            {/* Add Department Section */}
-            <div style={{ marginBottom: '20px' }}>
-                <TextField
-                    label="New Department Name"
-                    value={newDepartmentName}
-                    onChange={(e) => setNewDepartmentName(e.target.value)}
-                />
-                <Button variant="contained" color="primary" onClick={addDepartment} style={{ marginLeft: '10px' }}>
-                    Add Department
-                </Button>
-            </div>
+            <Button variant="contained" color="primary" onClick={handleOpenAdd} sx={{ mb: 2 }}>
+                Add Department
+            </Button>
 
-            {/* Edit Department Section */}
-            {editDepartmentId && (
-                <div style={{ marginBottom: '20px' }}>
-                    <TextField
-                        label="Edit Department Name"
-                        value={editDepartmentName}
-                        onChange={(e) => setEditDepartmentName(e.target.value)}
-                    />
-                    <Button
-                        variant="contained"
-                        color="secondary"
-                        onClick={updateDepartment}
-                        style={{ marginLeft: '10px' }}
-                    >
-                        Update Department
-                    </Button>
-                </div>
-            )}
-
-            {/* Departments Table */}
             <TableContainer component={Paper}>
                 <Table>
                     <TableHead>
@@ -153,24 +145,15 @@ const DepartmentComponent: React.FC = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {Array.isArray(departments) && departments.map((department) => (
+                        {departments.map((department) => (
                             <TableRow key={department.depId}>
                                 <TableCell>{department.depId}</TableCell>
                                 <TableCell>{department.depName}</TableCell>
                                 <TableCell>
-                                    <IconButton
-                                        color="primary"
-                                        onClick={() => {
-                                            setEditDepartmentId(department.depId);
-                                            setEditDepartmentName(department.depName);
-                                        }}
-                                    >
+                                    <IconButton color="primary" onClick={() => handleOpenEdit(department)}>
                                         <EditIcon />
                                     </IconButton>
-                                    <IconButton
-                                        color="secondary"
-                                        onClick={() => deleteDepartment(department.depId)}
-                                    >
+                                    <IconButton color="secondary" onClick={() => deleteDepartment(department.depId)}>
                                         <DeleteIcon />
                                     </IconButton>
                                 </TableCell>
@@ -179,6 +162,31 @@ const DepartmentComponent: React.FC = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
+
+            {/* Add/Edit Department Dialog */}
+            <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
+                <DialogTitle sx={{ bgcolor: '#1976d2', color: '#fff', py: 2 }}>
+                    {isEdit ? 'Edit Department' : 'Add Department'}
+                </DialogTitle>
+                <DialogContent dividers sx={{ p: 3 }}>
+                    <TextField
+                        label="Department Name"
+                        value={depName}
+                        onChange={(e) => setDepName(e.target.value)}
+                        fullWidth
+                        autoFocus
+                    />
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={handleClose} variant="outlined">
+                        Cancel
+                    </Button>
+                    <Button onClick={handleSubmit} variant="contained" color="primary">
+                        {isEdit ? 'Update' : 'Add'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
             {/* Alert Snackbar */}
             <Snackbar
                 open={alert.open}
@@ -186,7 +194,11 @@ const DepartmentComponent: React.FC = () => {
                 onClose={() => setAlert({ ...alert, open: false })}
                 anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
             >
-                <Alert onClose={() => setAlert({ ...alert, open: false })} variant="filled">
+                <Alert
+                    onClose={() => setAlert({ ...alert, open: false })}
+                    severity={alert.severity as 'success' | 'error' | 'warning' | 'info'}
+                    variant="filled"
+                >
                     {alert.message}
                 </Alert>
             </Snackbar>

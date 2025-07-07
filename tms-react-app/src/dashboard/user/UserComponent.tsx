@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import Box from "@mui/material/Box";
 
 // User type interface
 interface User {
@@ -75,12 +76,16 @@ const UserComponent: React.FC = () => {
     const [roles, setRoles] = useState<Role[]>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [projectSet, setProjectSet] = useState<Project[]>([]);
-    const [alert, setAlert] = useState({
+    const [alert, setAlert] = useState<{
+        open: boolean;
+        message: string;
+        severity: 'success' | 'error' | 'warning' | 'info';
+    }>({
         open: false,
         message: '',
-        severity: 'success', // 'success', 'error', 'warning', 'info'
+        severity: 'success',
     });
-
+    const loggedInUserId = Number(localStorage.getItem('userId'));
     const API_URL = 'http://localhost:8080/dhtcms/api/v1/users';
 
     // Fetch users from the API
@@ -215,7 +220,7 @@ const UserComponent: React.FC = () => {
             handleClose();
         } catch (error) {
             console.error('Error saving user:', error);
-            setAlert({open: true, message: 'Error saving user!', severity: 'Error'});
+            setAlert({open: true, message: 'Error saving user!', severity: 'error'});
         }
     };
 
@@ -260,7 +265,11 @@ const UserComponent: React.FC = () => {
                 onClose={() => setAlert({...alert, open: false})}
                 anchorOrigin={{vertical: 'top', horizontal: 'center'}}
             >
-                <Alert onClose={() => setAlert({...alert, open: false})} variant="filled">
+                <Alert
+                    onClose={() => setAlert({...alert, open: false})}
+                    severity={alert.severity as 'success' | 'error' | 'warning' | 'info'}
+                    variant="filled"
+                >
                     {alert.message}
                 </Alert>
             </Snackbar>
@@ -306,9 +315,11 @@ const UserComponent: React.FC = () => {
                                     <IconButton color="primary" onClick={() => handleOpen(user)}>
                                         <EditIcon/>
                                     </IconButton>
-                                    <IconButton color="secondary" onClick={() => handleDelete(user.id)}>
-                                        <DeleteIcon/>
-                                    </IconButton>
+                                    {user.id !== loggedInUserId && (
+                                        <IconButton color="secondary" onClick={() => handleDelete(user.id)}>
+                                            <DeleteIcon/>
+                                        </IconButton>
+                                    )}
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -318,15 +329,16 @@ const UserComponent: React.FC = () => {
 
             {/* Add/Edit Dialog */}
             <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-                <DialogTitle>{isEdit ? 'Edit User' : 'Add User'}</DialogTitle>
-                <DialogContent>
+                <DialogTitle sx={{bgcolor: '#1976d2', color: '#fff', py: 2}}>
+                    {isEdit ? 'Edit User' : 'Add User'}
+                </DialogTitle>
+                <DialogContent dividers sx={{p: 3, display: 'flex', flexDirection: 'column', gap: 2}}>
                     <TextField
                         name="firstName"
                         label="First Name"
                         value={formData.firstName}
                         onChange={handleChange}
                         fullWidth
-                        margin="dense"
                     />
                     <TextField
                         name="lastName"
@@ -334,7 +346,6 @@ const UserComponent: React.FC = () => {
                         value={formData.lastName}
                         onChange={handleChange}
                         fullWidth
-                        margin="dense"
                     />
                     <TextField
                         name="userName"
@@ -342,75 +353,70 @@ const UserComponent: React.FC = () => {
                         value={formData.userName}
                         onChange={handleChange}
                         fullWidth
-                        margin="dense"
                     />
-                    {isEdit ? formData.password : <TextField
-                        name="password"
-                        label="Password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        fullWidth
-                        margin="dense"
-                        type="password"
-                    />}
-                    <FormControl fullWidth margin="dense">
-                        <InputLabel>Role</InputLabel>
-                        <Select
-                            name="roleId"
-                            value={formData.roleId}
+                    {!isEdit && (
+                        <TextField
+                            name="password"
+                            label="Password"
+                            type="password"
+                            value={formData.password}
                             onChange={handleChange}
-                        >
-                            {roles.map((role: Role) => (
+                            fullWidth
+                        />
+                    )}
+
+                    <FormControl fullWidth>
+                        <InputLabel>Role</InputLabel>
+                        <Select name="roleId" value={formData.roleId} onChange={handleChange} label="Role">
+                            {roles.map((role) => (
                                 <MenuItem key={role.roleId} value={role.roleId}>
                                     {role.roleName}
                                 </MenuItem>
                             ))}
                         </Select>
                     </FormControl>
-                    <FormControl fullWidth margin="dense">
+
+                    <FormControl fullWidth>
                         <InputLabel>Department</InputLabel>
                         <Select
                             name="departmentId"
                             value={formData.departmentId}
                             onChange={handleChange}
+                            label="Department"
                         >
-                            {departments.map((department: Department) => (
-                                <MenuItem key={department.depId} value={department.depId}>
-                                    {department.depName}
+                            {departments.map((dep) => (
+                                <MenuItem key={dep.depId} value={dep.depId}>
+                                    {dep.depName}
                                 </MenuItem>
                             ))}
                         </Select>
                     </FormControl>
+
                     <div>
-                        <p><strong>Assign Projects:</strong></p>
-                        {projectSet.map((project) => (
-                            <div key={project.id}>
-                                <label>
+                        <strong style={{display: 'block', marginBottom: 8}}>Assign Projects:</strong>
+                        <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 1}}>
+                            {projectSet.map((project) => (
+                                <label key={project.id} style={{display: 'flex', alignItems: 'center', gap: 4}}>
                                     <input
                                         type="checkbox"
-                                        checked={
-                                            formData.projectsSet.some((p) => p.id === project.id) || false
-                                        }
+                                        checked={formData.projectsSet.some((p) => p.id === project.id)}
                                         onChange={(e) => {
-                                            setFormData((prevData) => {
-                                                let updatedProjectsSet = [...prevData.projectsSet];
-                                                if (e.target.checked) {
-                                                    updatedProjectsSet.push(project);
-                                                } else {
-                                                    updatedProjectsSet = updatedProjectsSet.filter(p => p.id !== project.id);
-                                                }
-                                                return {...prevData, projectsSet: updatedProjectsSet};
+                                            setFormData((prev) => {
+                                                const updated = e.target.checked
+                                                    ? [...prev.projectsSet, project]
+                                                    : prev.projectsSet.filter((p) => p.id !== project.id);
+                                                return {...prev, projectsSet: updated};
                                             });
                                         }}
                                     />
                                     {project.projectName}
                                 </label>
-                            </div>
-                        ))}
+                            ))}
+                        </Box>
                     </div>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleClose} color="secondary">
+                <DialogActions sx={{p: 2}}>
+                    <Button onClick={handleClose} variant="outlined">
                         Cancel
                     </Button>
                     <Button onClick={handleSubmit} variant="contained" color="primary">

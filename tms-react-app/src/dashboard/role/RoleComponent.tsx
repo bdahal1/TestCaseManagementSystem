@@ -10,12 +10,17 @@ import {
     Paper,
     TextField,
     Button,
-    IconButton, Snackbar, Alert,
+    IconButton,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Snackbar,
+    Alert,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 
-// Role type interface
 interface Role {
     roleId: number;
     roleName: string;
@@ -23,82 +28,99 @@ interface Role {
 
 const RoleComponent: React.FC = () => {
     const [roles, setRoles] = useState<Role[]>([]);
-    const [newRoleName, setNewRoleName] = useState<string>('');
-    const [editRoleId, setEditRoleId] = useState<number | null>(null);
-    const [editRoleName, setEditRoleName] = useState<string>('');
-    const [alert, setAlert] = useState({
+    const [open, setOpen] = useState(false);
+    const [isEdit, setIsEdit] = useState(false);
+    const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+    const [roleName, setRoleName] = useState('');
+    const [alert, setAlert] = useState<{
+        open: boolean;
+        message: string;
+        severity: 'success' | 'error' | 'warning' | 'info';
+    }>({
         open: false,
         message: '',
-        severity: 'success', // 'success', 'error', 'warning', 'info'
+        severity: 'success',
     });
-
 
     const API_URL = 'http://localhost:8080/dhtcms/api/v1/roles';
 
-    // Fetch roles from the API
     const fetchRoles = async () => {
         try {
-            const response = await axios.get(API_URL, {headers: {"Authorization": `Bearer ` + localStorage.getItem("authToken")}});
+            const response = await axios.get(API_URL, {
+                headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
+            });
             setRoles(response.data.roles);
         } catch (error) {
             console.error('Error fetching roles:', error);
         }
     };
 
-    // Add a new role
-    const addRole = async () => {
-        if (!newRoleName.trim()) {
+    useEffect(() => {
+        fetchRoles();
+    }, []);
+
+    const handleOpenAdd = () => {
+        setIsEdit(false);
+        setSelectedRole(null);
+        setRoleName('');
+        setOpen(true);
+    };
+
+    const handleOpenEdit = (role: Role) => {
+        setIsEdit(true);
+        setSelectedRole(role);
+        setRoleName(role.roleName);
+        setOpen(true);
+    };
+
+    const handleClose = () => {
+        setOpen(false);
+        setRoleName('');
+        setSelectedRole(null);
+    };
+
+    const handleSubmit = async () => {
+        if (!roleName.trim()) {
             setAlert({open: true, message: 'Role name cannot be empty.', severity: 'error'});
             return;
         }
         try {
-            const response = await axios.post(API_URL, {roleName: newRoleName}, {headers: {"Authorization": `Bearer ` + localStorage.getItem("authToken")}});
-            const newRole: Role = response.data;
-
-            if (newRole && newRole.roleId && newRole.roleName) {
-                setRoles([...roles, newRole]); // Add the new role to the list
-                setNewRoleName('');
+            if (isEdit && selectedRole) {
+                // Update role
+                await axios.put(
+                    `${API_URL}/${selectedRole.roleId}`,
+                    {roleName},
+                    {headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')}}
+                );
+                setRoles(
+                    roles.map((role) =>
+                        role.roleId === selectedRole.roleId ? {...role, roleName} : role
+                    )
+                );
+                setAlert({open: true, message: 'Role updated successfully!', severity: 'success'});
             } else {
-                console.error('Invalid role data received:', response.data);
-                setAlert({
-                    open: true,
-                    message: 'Failed to add role: Invalid data received from the server.',
-                    severity: 'error'
-                });
+                // Add new role
+                const response = await axios.post(
+                    API_URL,
+                    {roleName},
+                    {headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')}}
+                );
+                const newRole: Role = response.data;
+                setRoles([...roles, newRole]);
+                setAlert({open: true, message: 'Role added successfully!', severity: 'success'});
             }
-            setAlert({open: true, message: 'Role added successfully!', severity: 'success'});
+            handleClose();
         } catch (error) {
-            console.error('Error adding role:', error);
-            setAlert({open: true, message: 'Error adding role.', severity: 'error'});
+            console.error('Error saving role:', error);
+            setAlert({open: true, message: 'Error saving role.', severity: 'error'});
         }
     };
 
-    // Update an existing role
-    const updateRole = async () => {
-        if (!editRoleName.trim()) {
-            setAlert({open: true, message: 'Role name cannot be empty.', severity: 'error'});
-            return;
-        }
-        try {
-            await axios.put(`${API_URL}/${editRoleId}`, {roleName: editRoleName}, {headers: {"Authorization": `Bearer ` + localStorage.getItem("authToken")}});
-            setRoles(
-                roles.map((role) =>
-                    role.roleId === editRoleId ? {...role, roleName: editRoleName} : role
-                )
-            );
-            setEditRoleId(null);
-            setEditRoleName('');
-            setAlert({open: true, message: 'Role edited successfully!', severity: 'error'});
-        } catch (error) {
-            console.error('Error updating role:', error);
-            setAlert({open: true, message: 'Error Updating role.', severity: 'error'});
-        }
-    };
-
-    // Delete a role
     const deleteRole = async (roleId: number) => {
         try {
-            await axios.delete(`${API_URL}/${roleId}`, {headers: {"Authorization": `Bearer ` + localStorage.getItem("authToken")}});
+            await axios.delete(`${API_URL}/${roleId}`, {
+                headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
+            });
             setRoles(roles.filter((role) => role.roleId !== roleId));
             setAlert({open: true, message: 'Role deleted successfully!', severity: 'success'});
         } catch (error) {
@@ -107,46 +129,14 @@ const RoleComponent: React.FC = () => {
         }
     };
 
-    useEffect(() => {
-        fetchRoles().then();
-    }, []);
-
     return (
         <div>
             <h1>Roles Management</h1>
 
-            {/* Add Role Section */}
-            <div style={{marginBottom: '20px'}}>
-                <TextField
-                    label="New Role Name"
-                    value={newRoleName}
-                    onChange={(e) => setNewRoleName(e.target.value)}
-                />
-                <Button variant="contained" color="primary" onClick={addRole} style={{marginLeft: '10px'}}>
-                    Add Role
-                </Button>
-            </div>
+            <Button variant="contained" color="primary" onClick={handleOpenAdd} sx={{mb: 2}}>
+                Add Role
+            </Button>
 
-            {/* Edit Role Section */}
-            {editRoleId && (
-                <div style={{marginBottom: '20px'}}>
-                    <TextField
-                        label="Edit Role Name"
-                        value={editRoleName}
-                        onChange={(e) => setEditRoleName(e.target.value)}
-                    />
-                    <Button
-                        variant="contained"
-                        color="secondary"
-                        onClick={updateRole}
-                        style={{marginLeft: '10px'}}
-                    >
-                        Update Role
-                    </Button>
-                </div>
-            )}
-
-            {/* Roles Table */}
             <TableContainer component={Paper}>
                 <Table>
                     <TableHead>
@@ -157,24 +147,15 @@ const RoleComponent: React.FC = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {Array.isArray(roles) && roles.map((role, index) => (
+                        {roles.map((role, index) => (
                             <TableRow key={role.roleId}>
                                 <TableCell>{index + 1}</TableCell>
                                 <TableCell>{role.roleName}</TableCell>
                                 <TableCell>
-                                    <IconButton
-                                        color="primary"
-                                        onClick={() => {
-                                            setEditRoleId(role.roleId);
-                                            setEditRoleName(role.roleName);
-                                        }}
-                                    >
+                                    <IconButton color="primary" onClick={() => handleOpenEdit(role)}>
                                         <EditIcon/>
                                     </IconButton>
-                                    <IconButton
-                                        color="secondary"
-                                        onClick={() => deleteRole(role.roleId)}
-                                    >
+                                    <IconButton color="secondary" onClick={() => deleteRole(role.roleId)}>
                                         <DeleteIcon/>
                                     </IconButton>
                                 </TableCell>
@@ -183,6 +164,30 @@ const RoleComponent: React.FC = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
+
+            {/* Add/Edit Role Dialog */}
+            <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
+                <DialogTitle sx={{bgcolor: '#1976d2', color: '#fff', py: 2}}>
+                    {isEdit ? 'Edit Role' : 'Add Role'}
+                </DialogTitle>
+                <DialogContent dividers sx={{p: 3}}>
+                    <TextField
+                        label="Role Name"
+                        value={roleName}
+                        onChange={(e) => setRoleName(e.target.value)}
+                        fullWidth
+                    />
+                </DialogContent>
+                <DialogActions sx={{p: 2}}>
+                    <Button onClick={handleClose} variant="outlined">
+                        Cancel
+                    </Button>
+                    <Button onClick={handleSubmit} variant="contained" color="primary">
+                        {isEdit ? 'Update' : 'Add'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
             {/* Alert Snackbar */}
             <Snackbar
                 open={alert.open}
@@ -190,7 +195,11 @@ const RoleComponent: React.FC = () => {
                 onClose={() => setAlert({...alert, open: false})}
                 anchorOrigin={{vertical: 'top', horizontal: 'center'}}
             >
-                <Alert onClose={() => setAlert({...alert, open: false})} variant="filled">
+                <Alert
+                    onClose={() => setAlert({...alert, open: false})}
+                    severity={alert.severity as 'success' | 'error' | 'warning' | 'info'}
+                    variant="filled"
+                >
                     {alert.message}
                 </Alert>
             </Snackbar>
