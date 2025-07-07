@@ -9,6 +9,6 @@ This is spring boot project.
 5. Open mysql and create a database tcms
 6. Run the project. After successful running, all the tables will be created by spring boot applicaiton in mysql.
 7. Inside Dump folder there is a file. Open in Workbench and then run it only after you confirm that tables are created. 
-8. In User table there are 2 users. Uname: bdahal and Pass: bdahal for QA manager role and Uname: spaneru and pass: spaneru for QA Engineer role. 
+8. In User table there are 2 users. Uname: bdahal and Pass: bdahal for QA manager role and Uname: rkhatri and pass: rkhatri for QA Engineer role. 
 9. Open postman and start using apis. Look for base url in application.properties and Controller files for endpoints.
 Swagger comming soon
