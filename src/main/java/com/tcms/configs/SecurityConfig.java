@@ -30,7 +30,7 @@ public class SecurityConfig {
     private final JwtRequestFilter jwtRequestFilter;
 
     private static final String[] AUTH_WHITELIST = {
-            "/login", "/refreshToken","/logout"
+            "/login", "/refreshToken", "/logout"
     };
 
     public SecurityConfig(CustomUserDetailService customUserDetailService, JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint, JwtRequestFilter jwtRequestFilter) {
@@ -49,7 +49,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(AUTH_WHITELIST).permitAll()
                         .requestMatchers("/validate").authenticated()
-                        .requestMatchers("/users/**").hasRole("QAManager")
+                        .requestMatchers("/users", "/users/*", "/roles", "/roles/*", "/department", "/department/*", "/projects", "/projects/*").hasRole("QAManager")
+                        .requestMatchers("/users/**", "/roles/**", "/department/**", "/projects/**").authenticated()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults())

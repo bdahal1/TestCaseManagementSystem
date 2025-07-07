@@ -10,9 +10,9 @@ import com.tcms.authentication.service.CustomUserDetailService;
 import com.tcms.authentication.service.RefreshTokenService;
 import com.tcms.authentication.service.TokenRefreshException;
 import com.tcms.helper.pojo.CustomResponseMessage;
+import com.tcms.models.Roles;
 import com.tcms.models.Users;
 import com.tcms.repositories.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,12 +20,12 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 
 @RestController
@@ -64,7 +64,7 @@ public class JwtAuthenticationController {
             final String accessToken = jwtTokenUtil.generateToken(userDetails);
             final String refToken = refreshTokenService.createRefreshToken(userDetails).getToken();
             Users user = userRepository.findByUserName(authenticationRequest.getUserName());
-            TokenRefreshResponse responseBody = new TokenRefreshResponse(accessToken, refToken, user.getId());
+            TokenRefreshResponse responseBody = new TokenRefreshResponse(accessToken, refToken, user.getId(), user.getRoleSet().stream().map(Roles::getRoleName).collect(Collectors.toList()), user.getFirstName() + " " + user.getLastName());
             if (accessToken == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Record not found.\n");
             } else {
@@ -84,7 +84,7 @@ public class JwtAuthenticationController {
                 .map(user -> {
                     String token = jwtTokenUtil.generateToken(customUserDetailService.loadUserByUsername(user));
                     Users loggedInUser = userRepository.findByUserName(user);
-                    return ResponseEntity.ok(new JwtResponse(new TokenRefreshResponse(token, requestRefreshToken, loggedInUser.getId())));
+                    return ResponseEntity.ok(new JwtResponse(new TokenRefreshResponse(token, requestRefreshToken, loggedInUser.getId(), loggedInUser.getRoleSet().stream().map(Roles::getRoleName).collect(Collectors.toList()), loggedInUser.getFirstName() + " " + loggedInUser.getLastName())));
                 })
                 .orElseThrow(() -> new TokenRefreshException(requestRefreshToken,
                         "Refresh token is not in database!"));

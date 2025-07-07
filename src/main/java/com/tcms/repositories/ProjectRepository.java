@@ -15,6 +15,8 @@ public interface ProjectRepository extends PagingAndSortingRepository<Projects, 
 
     Projects findById(int id);
 
+    Page<Projects> findById(int id, Pageable pageable);
+
     Page<Projects> findByProjectNameContaining(String projectName, Pageable pageable);
 
     Page<Projects> findByProjectInitials(String projectInitials, Pageable pageable);

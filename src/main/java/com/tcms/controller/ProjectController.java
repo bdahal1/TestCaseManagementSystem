@@ -17,6 +17,7 @@ import java.util.Date;
 @CrossOrigin()
 @RequestMapping("/project")
 public class ProjectController {
+    private final String defaultSize = "1000";
 
     private final ProjectRepository projectRepository;
     private final ProjectService projectService;
@@ -27,7 +28,7 @@ public class ProjectController {
     }
 
     @GetMapping("")
-    public ResponseEntity<Object> getProjects(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+    public ResponseEntity<Object> getProjects(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size) {
         Pageable paging = PageRequest.of(page, size);
         Page<Projects> projectList = projectRepository.findAll(paging);
         if (projectList.isEmpty()) {
@@ -37,7 +38,7 @@ public class ProjectController {
     }
 
     @GetMapping(path = "/projName/{projectName}")
-    public ResponseEntity<Object> getProjectsByProjectName(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size, @PathVariable String projectName) {
+    public ResponseEntity<Object> getProjectsByProjectName(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @PathVariable String projectName) {
         Pageable paging = PageRequest.of(page, size);
         Page<Projects> projectList = projectRepository.findByProjectNameContaining(projectName, paging);
         if (projectList.isEmpty()) {
@@ -48,7 +49,7 @@ public class ProjectController {
     }
 
     @GetMapping(path = "/projInitials/{projectInitials}")
-    public ResponseEntity<Object> getProjectsByProjectInitials(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size, @PathVariable String projectInitials) {
+    public ResponseEntity<Object> getProjectsByProjectInitials(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @PathVariable String projectInitials) {
         Pageable paging = PageRequest.of(page, size);
         Page<Projects> projectList = projectRepository.findByProjectInitials(projectInitials, paging);
         if (projectList.isEmpty()) {
@@ -60,11 +61,11 @@ public class ProjectController {
 
     @GetMapping(path = "/id/{id}")
     public ResponseEntity<Object> getProjectById(@PathVariable int id) {
-        Projects projects = projectRepository.findById(id);
-        if (projects == null) {
+        Page<Projects> projects = projectRepository.findById(id, PageRequest.of(0, Integer.parseInt(defaultSize)));
+        if (projects.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Record not found.\n");
         } else {
-            return ResponseEntity.status(HttpStatus.OK).body(projects);
+            return ResponseEntity.status(HttpStatus.OK).body(projectService.getProjectListResponse(projects));
         }
     }
 

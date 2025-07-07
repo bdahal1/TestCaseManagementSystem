@@ -18,7 +18,7 @@ import java.util.Date;
 @RequestMapping("/department")
 public class DepartmentController {
 
-
+    private final String defaultSize = "1000";
     private final DepartmentRepository departmentRepository;
     private final DepartmentService departmentService;
 
@@ -28,7 +28,7 @@ public class DepartmentController {
     }
 
     @GetMapping("")
-    public ResponseEntity<Object> getDepartments(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+    public ResponseEntity<Object> getDepartments(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size) {
         Pageable paging = PageRequest.of(page, size);
         Page<Department> departmentList = departmentRepository.findAll(paging);
         if (departmentList.isEmpty()) {
@@ -38,7 +38,7 @@ public class DepartmentController {
     }
 
     @GetMapping(path = "/depName/{departmentName}")
-    public ResponseEntity<Object> getDepartmentByDepartmentName(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size, @PathVariable String departmentName) {
+    public ResponseEntity<Object> getDepartmentByDepartmentName(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @PathVariable String departmentName) {
         Pageable paging = PageRequest.of(page, size);
         Page<Department> departmentList = departmentRepository.findByDepNameIsContaining(departmentName, paging);
         if (departmentList.isEmpty()) {

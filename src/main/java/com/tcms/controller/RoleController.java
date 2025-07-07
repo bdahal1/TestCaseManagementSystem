@@ -17,6 +17,7 @@ import java.util.Date;
 @CrossOrigin()
 @RequestMapping("/roles")
 public class RoleController {
+    private final String defaultSize = "1000";
     private final RoleRepository roleRepository;
     private final RoleService roleService;
 
@@ -26,7 +27,7 @@ public class RoleController {
     }
 
     @GetMapping("")
-    public ResponseEntity<Object> getRoles(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+    public ResponseEntity<Object> getRoles(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size) {
         Pageable paging = PageRequest.of(page, size);
         Page<Roles> rolesList = roleRepository.findAll(paging);
         if (rolesList.isEmpty()) {
@@ -37,7 +38,7 @@ public class RoleController {
 
     @GetMapping(path = "/name/{roleName}")
     @SuppressWarnings("Duplicates")
-    public ResponseEntity<Object> getRoleByRoleName(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size, @PathVariable String roleName) {
+    public ResponseEntity<Object> getRoleByRoleName(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @PathVariable String roleName) {
         Pageable paging = PageRequest.of(page, size);
         Page<Roles> rolesList = roleRepository.findByRoleNameContaining(roleName, paging);
         if (rolesList.isEmpty()) {

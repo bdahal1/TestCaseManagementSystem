@@ -23,6 +23,7 @@ import java.util.Date;
 @CrossOrigin()
 @RequestMapping("/testCase")
 public class TestCaseController {
+    private final String defaultSize = "1000";
     private final TestCaseRepository testCaseRepository;
     private final TestCaseService testCaseService;
 
@@ -38,9 +39,9 @@ public class TestCaseController {
     }
 
     @GetMapping("")
-    public ResponseEntity<Object> getTestCase(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "1000") int size, @RequestParam String projectId) {
+    public ResponseEntity<Object> getTestCase(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @RequestParam String projectId) {
         Pageable paging = PageRequest.of(page, size);
-        Page<TestCase> testCaseList = testCaseRepository.findByProjectsIn(Collections.singleton(projectRepository.findById(Integer.parseInt(projectId))),paging);
+        Page<TestCase> testCaseList = testCaseRepository.findByProjectsIn(Collections.singleton(projectRepository.findById(Integer.parseInt(projectId))), paging);
         if (testCaseList.isEmpty()) {
             return ResponseEntity.status(HttpStatus.OK).body("Record not found.\n");
         }
@@ -49,7 +50,7 @@ public class TestCaseController {
 
     @GetMapping(path = "/name/{testCaseName}")
     @SuppressWarnings("Duplicates")
-    public ResponseEntity<Object> getTestCaseByTestCaseName(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "1000") int size, @PathVariable String testCaseName) {
+    public ResponseEntity<Object> getTestCaseByTestCaseName(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @PathVariable String testCaseName) {
         Pageable paging = PageRequest.of(page, size);
         Page<TestCase> testCasesList = testCaseRepository.findByTestNameContaining(testCaseName, paging);
         if (testCasesList.isEmpty()) {

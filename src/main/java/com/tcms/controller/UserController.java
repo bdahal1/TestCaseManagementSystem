@@ -26,17 +26,17 @@ import java.util.List;
 @CrossOrigin()
 @RequestMapping("/users")
 public class UserController {
-
+    private final String defaultSize = "1000";
     private final UserRepository userRepository;
     private final UserService userService;
 
-    public UserController(UserRepository userRepository, UserService userService, RoleRepository roleRepository, DepartmentRepository departmentRepository, ProjectRepository projectRepository, PasswordEncoder passwordEncoder) {
+    public UserController(UserRepository userRepository, UserService userService) {
         this.userRepository = userRepository;
         this.userService = userService;
     }
 
     @GetMapping("")
-    public ResponseEntity<Object> getUsers(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size, @RequestParam(required = false) Boolean status) {
+    public ResponseEntity<Object> getUsers(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @RequestParam(required = false) Boolean status) {
         Pageable paging = PageRequest.of(page, size);
         Page<Users> usersList;
         if (status == null) {
@@ -81,7 +81,7 @@ public class UserController {
     }
 
     @GetMapping(path = "/role/{roleIds}")
-    public ResponseEntity<Object> getUsersByRoleIds(@PathVariable String roleIds, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+    public ResponseEntity<Object> getUsersByRoleIds(@PathVariable String roleIds, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size) {
         Pageable paging = PageRequest.of(page, size);
         List<Integer> roles = new ArrayList<>();
         for (String id : roleIds.split(",")) {

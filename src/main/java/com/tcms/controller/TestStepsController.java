@@ -24,6 +24,7 @@ import java.util.List;
 @CrossOrigin()
 @RequestMapping("/testSteps")
 public class TestStepsController {
+    private final String defaultSize = "1000";
     private final TestStepsRepository testStepsRepository;
     private final TestStepService testStepService;
 
@@ -39,7 +40,7 @@ public class TestStepsController {
 
 
     @GetMapping("")
-    public ResponseEntity<Object> getTestStep(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+    public ResponseEntity<Object> getTestStep(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size) {
         Pageable paging = PageRequest.of(page, size);
         Page<TestSteps> testStepsList = testStepsRepository.findAll(paging);
         if (testStepsList.isEmpty()) {
@@ -59,7 +60,7 @@ public class TestStepsController {
     }
 
     @GetMapping(path = "/testCaseId/{id}")
-    public ResponseEntity<Object> getTestStepsByTestCaseId(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "100") int size, @PathVariable int id) {
+    public ResponseEntity<Object> getTestStepsByTestCaseId(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @PathVariable int id) {
         Pageable paging = PageRequest.of(page, size);
         TestCase testCase = testCaseRepository.findById(id);
         if (testCase == null) {
