@@ -58,7 +58,7 @@ const ProjectComponent: React.FC = () => {
     };
 
     useEffect(() => {
-        fetchProjects();
+        fetchProjects().then();
     }, []);
 
     const handleOpenAdd = () => {

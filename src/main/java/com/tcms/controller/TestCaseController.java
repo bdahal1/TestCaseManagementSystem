@@ -2,14 +2,15 @@ package com.tcms.controller;
 
 import com.tcms.dto.TestCaseInfoDTO;
 import com.tcms.helper.pojo.CustomResponseMessage;
-import com.tcms.models.Projects;
 import com.tcms.models.TestCase;
-import com.tcms.models.Users;
+import com.tcms.models.TestFolders;
 import com.tcms.repositories.ProjectRepository;
 import com.tcms.repositories.TestCaseRepository;
+import com.tcms.repositories.TestFolderRepository;
 import com.tcms.repositories.UserRepository;
 import com.tcms.services.TestCaseService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 
 @RestController()
 @CrossOrigin()
@@ -29,13 +31,15 @@ public class TestCaseController {
 
     private final UserRepository userRepository;
     private final ProjectRepository projectRepository;
+    private final TestFolderRepository testFolderRepository;
 
 
-    public TestCaseController(TestCaseRepository testCaseRepository, TestCaseService testCaseService, UserRepository userRepository, ProjectRepository projectRepository) {
+    public TestCaseController(TestCaseRepository testCaseRepository, TestCaseService testCaseService, UserRepository userRepository, ProjectRepository projectRepository, TestFolderRepository testFolderRepository) {
         this.testCaseRepository = testCaseRepository;
         this.testCaseService = testCaseService;
         this.userRepository = userRepository;
         this.projectRepository = projectRepository;
+        this.testFolderRepository = testFolderRepository;
     }
 
     @GetMapping("")
@@ -46,6 +50,29 @@ public class TestCaseController {
             return ResponseEntity.status(HttpStatus.OK).body("Record not found.\n");
         }
         return ResponseEntity.status(HttpStatus.OK).body(testCaseService.getTestCaseListResponse(testCaseList));
+    }
+
+    @GetMapping("/unassigned")
+    public ResponseEntity<Object> getTestCaseNotInAnyFolder(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @RequestParam String projectId) {
+        Pageable pageable = PageRequest.of(page, size);
+        List<TestCase> testCaseList = testCaseRepository.findByProjectsIn(Collections.singleton(projectRepository.findById(Integer.parseInt(projectId))));
+        if (testCaseList.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.OK).body("Record not found.\n");
+        }
+        List<TestFolders> testFoldersList = testFolderRepository.findByProjectsId(Integer.parseInt(projectId));
+        List<TestCase> testCaseListInFolders = testFoldersList.stream()
+                .flatMap(folder -> folder.getTestCaseSet().stream())
+                .distinct()
+                .toList();
+        List<TestCase> testCasesNotInFolders = testCaseList.stream()
+                .filter(tc -> !testCaseListInFolders.contains(tc))
+                .toList();
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), testCasesNotInFolders.size());
+
+        List<TestCase> content = (start <= end) ? testCasesNotInFolders.subList(start, end) : Collections.emptyList();
+
+        return ResponseEntity.status(HttpStatus.OK).body(testCaseService.getTestCaseListResponse(new PageImpl<>(content, pageable, testCasesNotInFolders.size())));
     }
 
     @GetMapping(path = "/name/{testCaseName}")

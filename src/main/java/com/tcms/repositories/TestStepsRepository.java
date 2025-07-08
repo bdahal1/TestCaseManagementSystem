@@ -1,6 +1,5 @@
 package com.tcms.repositories;
 
-
 import com.tcms.models.TestCase;
 import com.tcms.models.TestSteps;
 import org.springframework.data.domain.Page;
@@ -17,11 +16,13 @@ public interface TestStepsRepository extends PagingAndSortingRepository<TestStep
     Page<TestSteps> findAll(Pageable pageable);
 
     List<TestSteps> findTestStepsByTestCaseOrderByTestStepOrderAsc(TestCase testCase);
+
     Page<TestSteps> findAllByTestCase(TestCase testCase, Pageable pageable);
 
     TestSteps findById(int id);
 
     void deleteById(int tcId);
+
     TestSteps save(TestSteps testSteps);
 
     TestSteps findFirstByTestCaseOrderByTestStepOrderDesc(TestCase testCase);

@@ -1,6 +1,5 @@
 package com.tcms.repositories;
 
-
 import com.tcms.models.Department;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

@@ -19,7 +19,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -63,7 +62,7 @@ public class UserService {
 
     public ResponseEntity<Object> saveUser(UsersInfoDTO usersInfoDTO) {
         Set<Roles> roleSet = new HashSet<>();
-        Set<Projects> projectsSet=getListOfProjects(usersInfoDTO);
+        Set<Projects> projectsSet = getListOfProjects(usersInfoDTO);
         try {
             roleSet.add(roleRepository.findByRoleId(usersInfoDTO.getRoleId()));
             Users user = new Users();
@@ -87,8 +86,8 @@ public class UserService {
                 .stream()
                 .map(ProjectDTO::getId)
                 .toList();
-        if(!idList.isEmpty()){
-            for(Integer id:idList) {
+        if (!idList.isEmpty()) {
+            for (Integer id : idList) {
                 projectsSet.add(projectRepository.findById(id));
             }
         }
@@ -97,7 +96,7 @@ public class UserService {
 
     public ResponseEntity<Object> editUser(UsersInfoDTO usersInfoDTO, Integer userId) {
         try {
-            Set<Projects> projectsSet=getListOfProjects(usersInfoDTO);
+            Set<Projects> projectsSet = getListOfProjects(usersInfoDTO);
             Users user = userRepository.findById(userId);
             if (user == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User Not Found in database.\n");

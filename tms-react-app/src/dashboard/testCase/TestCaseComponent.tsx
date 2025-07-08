@@ -139,7 +139,8 @@ const TestCaseComponent: React.FC = ({projId}: TestCaseComponentProps) => {
             const response = await axios.get(API_URL_TAGS, {
                 headers: {Authorization: `Bearer ` + localStorage.getItem("authToken")},
             });
-            setTags(response.data.tags);
+            const tags = Array.isArray(response.data?.tags) ? response.data.tags : [];
+            setTags(tags);
         } catch (err) {
             setError("Failed to fetch tags.");
         }

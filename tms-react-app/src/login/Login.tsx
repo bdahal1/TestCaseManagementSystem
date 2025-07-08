@@ -67,7 +67,7 @@ const Login: React.FC<{ onLoginSuccess: () => void }> = ({onLoginSuccess}) => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundImage: `url("/src/assets/images.png")`,
+                backgroundImage: `url("/src/assets/images.jpg")`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
                 backgroundRepeat: "no-repeat",

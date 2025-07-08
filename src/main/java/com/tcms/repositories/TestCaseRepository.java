@@ -1,6 +1,5 @@
 package com.tcms.repositories;
 
-
 import com.tcms.models.Projects;
 import com.tcms.models.TestCase;
 import org.springframework.data.domain.Page;
@@ -18,6 +17,8 @@ public interface TestCaseRepository extends PagingAndSortingRepository<TestCase,
     Page<TestCase> findAll(Pageable pageable);
 
     Page<TestCase> findByProjectsIn(Set<Projects> projectsSet, Pageable pageable);
+
+    List<TestCase> findByProjectsIn(Set<Projects> projectsSet);
 
     Page<TestCase> findByTestNameContaining(String testCaseName, Pageable pageable);
 

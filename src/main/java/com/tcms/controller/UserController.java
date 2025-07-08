@@ -3,9 +3,6 @@ package com.tcms.controller;
 import com.tcms.dto.UsersInfoDTO;
 import com.tcms.helper.pojo.CustomResponseMessage;
 import com.tcms.models.Users;
-import com.tcms.repositories.DepartmentRepository;
-import com.tcms.repositories.ProjectRepository;
-import com.tcms.repositories.RoleRepository;
 import com.tcms.repositories.UserRepository;
 import com.tcms.services.UserService;
 import org.springframework.data.domain.Page;
@@ -13,7 +10,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
