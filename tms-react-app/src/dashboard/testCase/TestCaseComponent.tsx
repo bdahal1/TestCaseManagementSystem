@@ -57,10 +57,10 @@ interface TestCase {
 }
 
 interface TestCaseComponentProps {
-    projId?: number | null
+    projId?: number
 }
 
-const TestCaseComponent: React.FC = ({projId}: TestCaseComponentProps) => {
+const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
     if (projId === null) {
         return <div>Please select a project.</div>;
     }
