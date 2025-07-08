@@ -97,7 +97,7 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
     const [projects, setProjects] = useState<Project[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
     const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
-
+    const [selectedProjectName, setSelectedProjectName] = useState('');
     const fullName = localStorage.getItem("fullName") || "John Doe";
     const photoURL = localStorage.getItem("photoURL") || "https://i.pravatar.cc/100";
     const roleList: string[] = JSON.parse(localStorage.getItem("roleList") || "[]");
@@ -137,7 +137,7 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
             }
         };
 
-        fetchProjects();
+        fetchProjects().then();
 
         if (localStorage.getItem("isLoggedIn") === "true") {
             setShowAlert(true);
@@ -168,8 +168,9 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
                         alt="GN-Test Logo"
                         sx={{height: 40, width: 40, ml: 2, mr: 2, borderRadius: "50%"}}
                     />
+
                     <Typography variant="h6" noWrap sx={{fontWeight: "bold", color: "#fff"}}>
-                        {currentView}
+                        {selectedProjectName+" / "}{currentView}
                     </Typography>
                     <Box sx={{marginLeft: "auto", display: "flex", alignItems: "center"}}>
                         <Tooltip title="Open profile menu">
@@ -259,6 +260,7 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
                                 key={project.id}
                                 onClick={() => {
                                     setSelectedProjectId(project.id);
+                                    setSelectedProjectName(project.projectName);
                                     setCurrentView("Test Cases");
                                 }}
                                 sx={{

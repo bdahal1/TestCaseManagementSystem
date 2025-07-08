@@ -222,7 +222,6 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
     return (
         <Box display="flex">
             <Box sx={{width: 240, p: 2}}>
-                <Typography variant="h6">Test Folders</Typography>
                 <Button variant="contained" size="small" onClick={handleOpenAdd} sx={{mt: 1, mb: 2}}>
                     + Add Folder
                 </Button>
@@ -270,13 +269,13 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
                 </List>
             </Box>
             <Box sx={{flexGrow: 1, p: 3}}>
-                <Typography variant="h5" gutterBottom>
+                <Typography variant="h6" gutterBottom>
                     {selectedFolder ? `Test Cases in ${selectedFolder.folderName}` : 'Select a folder to view test cases'}
                 </Typography>
                 {selectedFolder && (
                     <>
                         <Button variant="outlined" sx={{mb: 2}} onClick={() => setOpenAddTestCaseDialog(true)}>
-                            Add Test Case
+                           + Add Test Case
                         </Button>
                         <Paper>
                             <Table>

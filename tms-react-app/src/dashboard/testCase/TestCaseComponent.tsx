@@ -307,9 +307,9 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
 
     return (
         <Box sx={{padding: 2}}>
-            <h1>Test Case Manager for {testCases.length > 0 ? testCases[0].projects.projectName : "Project"}</h1>
+            <h3>Test Case Manager for {testCases.length > 0 ? testCases[0].projects.projectName : "Project"}</h3>
             <Button variant="contained" color="primary" onClick={() => handleOpenDialog(null)} sx={{mb: 2}}>
-                Add Test Case
+               + Add Test Case
             </Button>
             <TableContainer component={Paper}>
                 <Table>

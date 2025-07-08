@@ -131,25 +131,22 @@ const RoleComponent: React.FC = () => {
 
     return (
         <div>
-            <h1>Roles Management</h1>
-
+            <br/>
             <Button variant="contained" color="primary" onClick={handleOpenAdd} sx={{mb: 2}}>
-                Add Role
+                + Add Role
             </Button>
 
             <TableContainer component={Paper}>
                 <Table>
                     <TableHead>
                         <TableRow>
-                            <TableCell>S.N.</TableCell>
                             <TableCell>Name</TableCell>
                             <TableCell>Actions</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {roles.map((role, index) => (
+                        {roles.map((role) => (
                             <TableRow key={role.roleId}>
-                                <TableCell>{index + 1}</TableCell>
                                 <TableCell>{role.roleName}</TableCell>
                                 <TableCell>
                                     <IconButton color="primary" onClick={() => handleOpenEdit(role)}>

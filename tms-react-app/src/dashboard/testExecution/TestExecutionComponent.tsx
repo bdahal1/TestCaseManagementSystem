@@ -222,7 +222,6 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
     return (
         <Box display="flex">
             <Box sx={{width: 240, p: 2}}>
-                <Typography variant="h6">Test Executions</Typography>
                 <Button variant="contained" size="small" onClick={handleOpenAdd} sx={{mt: 1, mb: 2}}>
                     + Add Execution
                 </Button>
@@ -270,7 +269,7 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                 </List>
             </Box>
             <Box sx={{flexGrow: 1, p: 3}}>
-                <Typography variant="h5" gutterBottom>
+                <Typography variant="h6" gutterBottom>
                     {selectedExecution ? `Test Cases in ${selectedExecution.executionName}` : 'Select a Execution to view test cases'}
                 </Typography>
                 {selectedExecution && (

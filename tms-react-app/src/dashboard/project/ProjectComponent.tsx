@@ -144,16 +144,14 @@ const ProjectComponent: React.FC = () => {
                 <Table>
                     <TableHead>
                         <TableRow>
-                            <TableCell>S.N.</TableCell>
                             <TableCell>Name</TableCell>
                             <TableCell>Initials</TableCell>
                             <TableCell>Actions</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {projects.map((project, index) => (
+                        {projects.map((project) => (
                             <TableRow key={project.id}>
-                                <TableCell>{index + 1}</TableCell>
                                 <TableCell>{project.projectName}</TableCell>
                                 <TableCell>{project.projectInitials}</TableCell>
                                 <TableCell>

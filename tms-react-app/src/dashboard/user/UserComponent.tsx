@@ -273,9 +273,9 @@ const UserComponent: React.FC = () => {
                     {alert.message}
                 </Alert>
             </Snackbar>
-            <h1>Users Management</h1>
-            <Button variant="contained" color="primary" onClick={() => handleOpen()}>
-                Add User
+            <br/>
+            <Button variant="contained" color="primary" onClick={() => handleOpen()} >
+                + Add User
             </Button>
 
             {/* Users Table */}
@@ -283,7 +283,6 @@ const UserComponent: React.FC = () => {
                 <Table>
                     <TableHead>
                         <TableRow>
-                            <TableCell>S.N.</TableCell>
                             <TableCell>First Name</TableCell>
                             <TableCell>Last Name</TableCell>
                             <TableCell>Username</TableCell>
@@ -295,9 +294,8 @@ const UserComponent: React.FC = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {users.map((user, index) => (
+                        {users.map((user) => (
                             <TableRow key={user.id}>
-                                <TableCell>{index + 1}</TableCell>
                                 <TableCell>{user.firstName}</TableCell>
                                 <TableCell>{user.lastName}</TableCell>
                                 <TableCell>{user.userName}</TableCell>

@@ -129,17 +129,15 @@ const DepartmentComponent: React.FC = () => {
 
     return (
         <div>
-            <h1>Departments Management</h1>
-
+            <br/>
             <Button variant="contained" color="primary" onClick={handleOpenAdd} sx={{ mb: 2 }}>
-                Add Department
+                + Add Department
             </Button>
 
             <TableContainer component={Paper}>
                 <Table>
                     <TableHead>
                         <TableRow>
-                            <TableCell>ID</TableCell>
                             <TableCell>Name</TableCell>
                             <TableCell>Actions</TableCell>
                         </TableRow>
@@ -147,7 +145,6 @@ const DepartmentComponent: React.FC = () => {
                     <TableBody>
                         {departments.map((department) => (
                             <TableRow key={department.depId}>
-                                <TableCell>{department.depId}</TableCell>
                                 <TableCell>{department.depName}</TableCell>
                                 <TableCell>
                                     <IconButton color="primary" onClick={() => handleOpenEdit(department)}>
