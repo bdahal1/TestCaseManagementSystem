@@ -26,9 +26,9 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
 
-interface TestFolder {
+interface TestExecution {
     id: number;
-    folderName: string;
+    executionName: string;
 }
 
 interface TestCase {
@@ -36,48 +36,48 @@ interface TestCase {
     testName: string;
 }
 
-interface TestFolderComponentProps {
+interface TestExecutionComponentProps {
     projId: number;
 }
 
-const API_URL_TEST_FOLDER = 'http://localhost:8080/dhtcms/api/v1/testFolders';
+const API_URL_TEST_EXECUTION = 'http://localhost:8080/dhtcms/api/v1/testExecutions';
 const API_URL_TESTCASE = 'http://localhost:8080/dhtcms/api/v1/testCase';
 
-const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
-    const [testFolders, setTestFolders] = useState<TestFolder[]>([]);
-    const [selectedFolder, setSelectedFolder] = useState<TestFolder | null>(null);
-    const [testCases, setTestCases] = useState<TestCase[]>([]);
+const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId}) => {
+    const [testExecutions, setTestExecutions] = useState<TestExecution[]>([]);
+    const [selectedExecution, setSelectedExecution] = useState<TestExecution | null>(null);
+    const [executionName, setExecutionName] = useState('');
     const [openDialog, setOpenDialog] = useState(false);
-    const [folderName, setFolderName] = useState('');
-    const [isEdit, setIsEdit] = useState(false);
+    const [testCases, setTestCases] = useState<TestCase[]>([]);
     const [alert, setAlert] = useState({
         open: false,
         message: '',
         severity: 'success' as 'success' | 'error' | 'warning' | 'info'
     });
+    const [isEdit, setIsEdit] = useState(false);
     const [openAddTestCaseDialog, setOpenAddTestCaseDialog] = useState(false);
     const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
     const [selectedTestCases, setSelectedTestCases] = useState<TestCase[]>([]);
     const [hoveredRow, setHoveredRow] = useState<number | null>(null);
     const [selectedForDeletion] = useState<number[]>([]);
 
-    const fetchTestFolders = async () => {
+    const fetchTestExecutions = async () => {
         try {
-            const response = await axios.get(`${API_URL_TEST_FOLDER}/project/${projId}`, {
+            const response = await axios.get(`${API_URL_TEST_EXECUTION}/project/${projId}`, {
                 headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}
             });
-            setTestFolders(response.data.testFolders || []);
-            if (response.data.testFolders?.length) {
-                setSelectedFolder(response.data.testFolders[0]);
+            setTestExecutions(response.data.testExecutions || []);
+            if (response.data.testExecutions?.length) {
+                setSelectedExecution(response.data.testExecutions[0]);
             }
         } catch (error) {
-            console.error('Error fetching test folders:', error);
+            console.error('Error fetching test Executions:', error);
         }
     };
 
-    const fetchAllFolderTestCases = async (folderId: number) => {
+    const fetchAllExecutionTestCases = async (executionId: number) => {
         try {
-            const response = await axios.get(`${API_URL_TEST_FOLDER}/id/${folderId}`, {
+            const response = await axios.get(`${API_URL_TEST_EXECUTION}/id/${executionId}`, {
                 headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}
             });
             setTestCases(response.data.testCases || []);
@@ -86,9 +86,9 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
         }
     };
 
-    const fetchAllUnassignedTestCases = async () => {
+    const fetchAllUnassignedTestCases = async (executionId: number) => {
         try {
-            const response = await axios.get(`${API_URL_TESTCASE}/unassignedFolder?projectId=${projId}`, {
+            const response = await axios.get(`${API_URL_TESTCASE}/unassignedExecution?projectId=${projId}&&executionId=${executionId}`, {
                 headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}
             });
             setAllTestCases(response.data.testCase);
@@ -99,18 +99,18 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
 
 
     const handleAddSelectedTestCases = async () => {
-        if (!selectedFolder || !selectedTestCases.length) return;
+        if (!selectedExecution || !selectedTestCases.length) return;
         try {
             await axios.post(
-                `${API_URL_TEST_FOLDER}/${selectedFolder.id}/addCases`,
+                `${API_URL_TEST_EXECUTION}/${selectedExecution.id}/addCases`,
                 {testCaseIds: selectedTestCases.map(tc => tc.id)},
                 {headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}}
             );
-            fetchAllFolderTestCases(selectedFolder.id).then();
-            fetchAllUnassignedTestCases().then();
+            fetchAllExecutionTestCases(selectedExecution.id).then();
+            fetchAllUnassignedTestCases(selectedExecution.id).then();
             setOpenAddTestCaseDialog(false);
             setSelectedTestCases([]);
-            setAlert({open: true, message: 'Test cases added to folder.', severity: 'success'});
+            setAlert({open: true, message: 'Test cases added to Execution.', severity: 'success'});
         } catch (error) {
             console.error('Error adding test cases:', error);
             setAlert({open: true, message: 'Failed to add test cases.', severity: 'error'});
@@ -118,15 +118,15 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
     };
 
     const handleRemoveTestsFromList = async (testCaseId: number) => {
-        if (!selectedFolder?.id) return;
+        if (!selectedExecution?.id) return;
         try {
             await axios.post(
-                `${API_URL_TEST_FOLDER}/${selectedFolder.id}/removeCases`,
+                `${API_URL_TEST_EXECUTION}/${selectedExecution.id}/removeCases`,
                 {testCaseIds: [testCaseId]},
                 {headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}}
             );
             setTestCases(prev => prev.filter(tc => tc.id !== testCaseId));
-            fetchAllUnassignedTestCases().then();
+            fetchAllUnassignedTestCases(selectedExecution.id).then();
             setAlert({open: true, message: 'Test case deleted.', severity: 'success'});
         } catch (error) {
             console.error('Error deleting test case:', error);
@@ -135,102 +135,102 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
     };
     useEffect(() => {
         if (projId) {
-            fetchTestFolders().then();
+            fetchTestExecutions().then();
         }
     }, [projId]);
 
     useEffect(() => {
-        if (selectedFolder) {
-            fetchAllUnassignedTestCases().then();
-            fetchAllFolderTestCases(selectedFolder.id).then();
+        if (selectedExecution) {
+            fetchAllUnassignedTestCases(selectedExecution.id).then();
+            fetchAllExecutionTestCases(selectedExecution.id).then();
         }
-    }, [selectedFolder]);
+    }, [selectedExecution]);
 
     const handleOpenAdd = () => {
         setIsEdit(false);
-        setFolderName('');
-        setSelectedFolder(null);
+        setExecutionName('');
+        setSelectedExecution(null);
         setOpenDialog(true);
     };
 
-    const handleOpenEdit = (folder: TestFolder) => {
+    const handleOpenEdit = (execution: TestExecution) => {
         setIsEdit(true);
-        setFolderName(folder.folderName);
-        setSelectedFolder(folder);
+        setExecutionName(execution.executionName);
+        setSelectedExecution(execution);
         setOpenDialog(true);
     };
 
     const handleClose = () => {
         setOpenDialog(false);
-        setFolderName('');
-        setSelectedFolder(null);
+        setExecutionName('');
+        setSelectedExecution(null);
     };
 
     const handleSubmit = async () => {
-        if (!folderName.trim()) {
-            setAlert({open: true, message: 'Folder name cannot be empty.', severity: 'error'});
+        if (!executionName.trim()) {
+            setAlert({open: true, message: 'Execution name cannot be empty.', severity: 'error'});
             return;
         }
 
         try {
-            if (isEdit && selectedFolder) {
+            if (isEdit && selectedExecution) {
                 const response = await axios.put(
-                    `${API_URL_TEST_FOLDER}/${selectedFolder.id}`,
-                    {folderName, projectId: projId},
+                    `${API_URL_TEST_EXECUTION}/${selectedExecution.id}`,
+                    {executionName, projectId: projId},
                     {headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}}
                 );
-                setTestFolders((prev) =>
-                    prev.map((f) => (f.id === selectedFolder.id ? response.data : f))
+                setTestExecutions((prev) =>
+                    prev.map((f) => (f.id === selectedExecution.id ? response.data : f))
                 );
-                setAlert({open: true, message: 'Test folder updated.', severity: 'success'});
+                setAlert({open: true, message: 'Test Execution updated.', severity: 'success'});
             } else {
                 const response = await axios.post(
-                    API_URL_TEST_FOLDER,
-                    {folderName, projectId: projId},
+                    API_URL_TEST_EXECUTION,
+                    {executionName, projectId: projId},
                     {headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}}
                 );
-                setTestFolders((prev) => [...prev, response.data]);
-                setAlert({open: true, message: 'Test folder created.', severity: 'success'});
+                setTestExecutions((prev) => [...prev, response.data]);
+                setAlert({open: true, message: 'Test Execution created.', severity: 'success'});
             }
             handleClose();
         } catch (error) {
-            console.error('Error saving folder:', error);
-            setAlert({open: true, message: 'Error saving folder.', severity: 'error'});
+            console.error('Error saving Execution:', error);
+            setAlert({open: true, message: 'Error saving Execution.', severity: 'error'});
         }
     };
 
-    const deleteTestFolder = async (folderId: number) => {
+    const deleteTestExecution = async (ExecutionId: number) => {
         try {
-            await axios.delete(`${API_URL_TEST_FOLDER}/${folderId}`, {
+            await axios.delete(`${API_URL_TEST_EXECUTION}/${ExecutionId}`, {
                 headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}
             });
-            const updatedFolders = testFolders.filter((f) => f.id !== folderId);
-            setTestFolders(updatedFolders);
-            if (selectedFolder?.id === folderId && updatedFolders.length) {
-                setSelectedFolder(updatedFolders[0]);
-            } else if (!updatedFolders.length) {
-                setSelectedFolder(null);
+            const updatedExecutions = testExecutions.filter((f) => f.id !== ExecutionId);
+            setTestExecutions(updatedExecutions);
+            if (selectedExecution?.id === ExecutionId && updatedExecutions.length) {
+                setSelectedExecution(updatedExecutions[0]);
+            } else if (!updatedExecutions.length) {
+                setSelectedExecution(null);
                 setTestCases([]);
             }
-            setAlert({open: true, message: 'Test folder deleted.', severity: 'success'});
+            setAlert({open: true, message: 'Test Execution deleted.', severity: 'success'});
         } catch (error) {
-            console.error('Error deleting folder:', error);
-            setAlert({open: true, message: 'Failed to delete folder.', severity: 'error'});
+            console.error('Error deleting Execution:', error);
+            setAlert({open: true, message: 'Failed to delete Execution.', severity: 'error'});
         }
     };
 
     return (
         <Box display="flex">
             <Box sx={{width: 240, p: 2}}>
-                <Typography variant="h6">Test Folders</Typography>
+                <Typography variant="h6">Test Executions</Typography>
                 <Button variant="contained" size="small" onClick={handleOpenAdd} sx={{mt: 1, mb: 2}}>
-                    + Add Folder
+                    + Add Execution
                 </Button>
                 <Divider/>
                 <List>
-                    {testFolders.map((folder) => (
+                    {testExecutions.map((execution) => (
                         <ListItem
-                            key={folder.id}
+                            key={execution.id}
                             disablePadding
                             sx={{
                                 '&:hover .action-icons': {opacity: 1},
@@ -238,11 +238,11 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
                             }}
                         >
                             <ListItemButton
-                                selected={selectedFolder?.id === folder.id}
-                                onClick={() => setSelectedFolder(folder)}
+                                selected={selectedExecution?.id === execution.id}
+                                onClick={() => setSelectedExecution(execution)}
                                 sx={{pr: 6}} // leave space for icons
                             >
-                                <ListItemText primary={folder.folderName}/>
+                                <ListItemText primary={execution.executionName}/>
                             </ListItemButton>
 
                             <Box
@@ -258,10 +258,10 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
                                     transition: 'opacity 0.2s',
                                 }}
                             >
-                                <IconButton size="small" onClick={() => handleOpenEdit(folder)}>
+                                <IconButton size="small" onClick={() => handleOpenEdit(execution)}>
                                     <EditIcon fontSize="small"/>
                                 </IconButton>
-                                <IconButton size="small" onClick={() => deleteTestFolder(folder.id)}>
+                                <IconButton size="small" onClick={() => deleteTestExecution(execution.id)}>
                                     <DeleteIcon fontSize="small"/>
                                 </IconButton>
                             </Box>
@@ -271,9 +271,9 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
             </Box>
             <Box sx={{flexGrow: 1, p: 3}}>
                 <Typography variant="h5" gutterBottom>
-                    {selectedFolder ? `Test Cases in ${selectedFolder.folderName}` : 'Select a folder to view test cases'}
+                    {selectedExecution ? `Test Cases in ${selectedExecution.executionName}` : 'Select a Execution to view test cases'}
                 </Typography>
-                {selectedFolder && (
+                {selectedExecution && (
                     <>
                         <Button variant="outlined" sx={{mb: 2}} onClick={() => setOpenAddTestCaseDialog(true)}>
                             Add Test Case
@@ -340,12 +340,12 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
             </Box>
 
             <Dialog open={openDialog} onClose={handleClose} fullWidth maxWidth="sm">
-                <DialogTitle>{isEdit ? 'Edit Test Folder' : 'Add Test Folder'}</DialogTitle>
+                <DialogTitle>{isEdit ? 'Edit Test Execution' : 'Add Test Execution'}</DialogTitle>
                 <DialogContent sx={{mt: 2}}>
                     <TextField
-                        label="Folder Name"
-                        value={folderName}
-                        onChange={(e) => setFolderName(e.target.value)}
+                        label="Execution Name"
+                        value={executionName}
+                        onChange={(e) => setExecutionName(e.target.value)}
                         fullWidth
                     />
                 </DialogContent>
@@ -357,10 +357,9 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
                 </DialogActions>
             </Dialog>
 
-            <Dialog open={openAddTestCaseDialog} onClose={() => setOpenAddTestCaseDialog(false)} fullWidth
-                    maxWidth="sm">
+            <Dialog open={openAddTestCaseDialog} onClose={() => setOpenAddTestCaseDialog(false)} fullWidth maxWidth="sm">
                 <DialogTitle>Select Test Cases to Add</DialogTitle>
-                <DialogContent sx={{mt: 2}}>
+                <DialogContent sx={{ mt: 2 }}>
                     <Autocomplete
                         multiple
                         options={allTestCases}
@@ -376,7 +375,18 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
                             />
                         )}
                     />
+
+                    {/* Add All Test Cases Button */}
+                    <Button
+                        sx={{ mt: 2 }}
+                        onClick={() => setSelectedTestCases(allTestCases)}
+                        variant="outlined"
+                        fullWidth
+                    >
+                        Add All Test Cases
+                    </Button>
                 </DialogContent>
+
                 <DialogActions>
                     <Button onClick={() => setOpenAddTestCaseDialog(false)}>Cancel</Button>
                     <Button onClick={handleAddSelectedTestCases} variant="contained">Add</Button>
@@ -401,4 +411,4 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
     );
 };
 
-export default TestFolderComponent;
+export default TestExecutionComponent;

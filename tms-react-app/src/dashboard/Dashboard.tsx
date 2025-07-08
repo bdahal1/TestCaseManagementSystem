@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { styled } from "@mui/material/styles";
+import React, {useEffect, useState} from "react";
+import {styled} from "@mui/material/styles";
 import {
     Alert,
     Avatar,
@@ -20,10 +20,10 @@ import {
     Tooltip,
     Typography,
 } from "@mui/material";
-import MuiAppBar, { AppBarProps as MuiAppBarProps } from "@mui/material/AppBar";
+import MuiAppBar, {AppBarProps as MuiAppBarProps} from "@mui/material/AppBar";
 import MenuIcon from "@mui/icons-material/Menu";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import { useNavigate } from "react-router-dom";
+import {useNavigate} from "react-router-dom";
 import axios from "axios";
 
 import UserComponent from "./user/UserComponent";
@@ -32,12 +32,13 @@ import DepartmentComponent from "./department/DepartmentComponent";
 import ProjectComponent from "./project/ProjectComponent";
 import TestCaseComponent from "./testCase/TestCaseComponent";
 import TestFolderComponent from "./testFolder/TestFolderComponent";
+import TestExecutionComponent from "./testExecution/TestExecutionComponent.tsx";
 
 const drawerWidth = 240;
 
 const Main = styled("main", {
     shouldForwardProp: (prop) => prop !== "open",
-})<{ open?: boolean }>(({ theme, open }) => ({
+})<{ open?: boolean }>(({theme, open}) => ({
     flexGrow: 1,
     padding: theme.spacing(3),
     transition: theme.transitions.create("margin", {
@@ -56,7 +57,7 @@ const Main = styled("main", {
 
 const AppBar = styled(MuiAppBar, {
     shouldForwardProp: (prop) => prop !== "open",
-})<MuiAppBarProps & { open?: boolean }>(({ theme, open }) => ({
+})<MuiAppBarProps & { open?: boolean }>(({theme, open}) => ({
     transition: theme.transitions.create(["margin", "width"], {
         easing: theme.transitions.easing.sharp,
         duration: theme.transitions.duration.leavingScreen,
@@ -71,7 +72,7 @@ const AppBar = styled(MuiAppBar, {
     }),
 }));
 
-const DrawerHeader = styled("div")(({ theme }) => ({
+const DrawerHeader = styled("div")(({theme}) => ({
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -85,9 +86,10 @@ interface Project {
     projectInitials: string;
     projectName: string;
 }
-const API_BASE_URL="http://localhost:8080/dhtcms/api/v1";
 
-const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
+const API_BASE_URL = "http://localhost:8080/dhtcms/api/v1";
+
+const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
     const [showAlert, setShowAlert] = useState(false);
@@ -105,7 +107,7 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
     const handleLogout = async () => {
         try {
-            await axios.post(`${API_BASE_URL}/logout`, {}, { withCredentials: true });
+            await axios.post(`${API_BASE_URL}/logout`, {}, {withCredentials: true});
             localStorage.setItem("isLoggedIn", "false");
             onLogout();
         } catch (err) {
@@ -125,9 +127,9 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             try {
                 const userId = localStorage.getItem("userId");
                 const token = localStorage.getItem("authToken");
-                const { data } = await axios.get(
+                const {data} = await axios.get(
                     `${API_BASE_URL}/users/${userId}/projects`,
-                    { headers: { Authorization: `Bearer ${token}` } }
+                    {headers: {Authorization: `Bearer ${token}`}}
                 );
                 setProjects(data);
             } catch (error) {
@@ -149,34 +151,34 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     const menuItems = [
         "Dashboard",
         ...(isQAManager ? ["Users", "Roles", "Department", "Project"] : []),
-        ...(selectedProjectId !== null ? ["TestCase", "Test Folders"] : []),
+        ...(selectedProjectId !== null ? ["Test Cases", "Test Folders", "Test Executions"] : []),
     ];
 
     return (
-        <Box sx={{ display: "flex" }}>
-            <CssBaseline />
-            <AppBar position="fixed" open={open} sx={{ background: "#1976d2", boxShadow: 3 }}>
+        <Box sx={{display: "flex"}}>
+            <CssBaseline/>
+            <AppBar position="fixed" open={open} sx={{background: "#1976d2", boxShadow: 3}}>
                 <Toolbar>
                     <IconButton color="inherit" onClick={handleDrawerToggle} edge="start">
-                        <MenuIcon />
+                        <MenuIcon/>
                     </IconButton>
                     <Box
                         component="img"
                         src="src/assets/images.jpg"
                         alt="GN-Test Logo"
-                        sx={{ height: 40, width: 40, ml: 2, mr: 2, borderRadius: "50%" }}
+                        sx={{height: 40, width: 40, ml: 2, mr: 2, borderRadius: "50%"}}
                     />
-                    <Typography variant="h6" noWrap sx={{ fontWeight: "bold", color: "#fff" }}>
+                    <Typography variant="h6" noWrap sx={{fontWeight: "bold", color: "#fff"}}>
                         {currentView}
                     </Typography>
-                    <Box sx={{ marginLeft: "auto", display: "flex", alignItems: "center" }}>
+                    <Box sx={{marginLeft: "auto", display: "flex", alignItems: "center"}}>
                         <Tooltip title="Open profile menu">
                             <Box
                                 onClick={handleOpenUserMenu}
-                                sx={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 1, color: "#fff" }}
+                                sx={{cursor: "pointer", display: "flex", alignItems: "center", gap: 1, color: "#fff"}}
                             >
-                                <Avatar alt={fullName} src={photoURL} />
-                                <Typography sx={{ fontWeight: "medium" }}>{fullName}</Typography>
+                                <Avatar alt={fullName} src={photoURL}/>
+                                <Typography sx={{fontWeight: "medium"}}>{fullName}</Typography>
                             </Box>
                         </Tooltip>
                         <Menu anchorEl={anchorElUser} open={Boolean(anchorElUser)} onClose={handleCloseUserMenu}>
@@ -195,7 +197,7 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 sx={{
                     width: drawerWidth,
                     flexShrink: 0,
-                    "& .MuiDrawer-paper": { width: drawerWidth, boxSizing: "border-box" },
+                    "& .MuiDrawer-paper": {width: drawerWidth, boxSizing: "border-box"},
                 }}
             >
                 <DrawerHeader>
@@ -203,57 +205,61 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                         component="img"
                         src="src/assets/images.jpg"
                         alt="GN-Test Logo"
-                        sx={{ height: 40, width: 40, ml: 2, mr: 2, borderRadius: "50%" }}
+                        sx={{height: 40, width: 40, ml: 2, mr: 2, borderRadius: "50%"}}
                     />
                     <Typography variant="subtitle1" fontWeight="bold">
                         GN-Test
                     </Typography>
-                    <IconButton onClick={handleDrawerToggle} sx={{ color: "white" }}>
-                        <ChevronLeftIcon />
+                    <IconButton onClick={handleDrawerToggle} sx={{color: "white"}}>
+                        <ChevronLeftIcon/>
                     </IconButton>
                 </DrawerHeader>
                 <List>
                     {menuItems.map((item) => (
                         <ListItem key={item} disablePadding>
                             <ListItemButton onClick={() => setCurrentView(item)}>
-                                <ListItemText primary={item} />
+                                <ListItemText primary={item}/>
                             </ListItemButton>
                         </ListItem>
                     ))}
                 </List>
-                <Divider />
+                <Divider/>
             </Drawer>
 
-            <Main open={open} sx={{ backgroundColor: "#f9fbfc", minHeight: "100vh" }}>
-                <DrawerHeader />
+            <Main open={open} sx={{backgroundColor: "#f9fbfc", minHeight: "100vh"}}>
+                <DrawerHeader/>
                 <Snackbar
                     open={showAlert}
                     autoHideDuration={3000}
                     onClose={() => setShowAlert(false)}
-                    anchorOrigin={{ vertical: "top", horizontal: "right" }}
+                    anchorOrigin={{vertical: "top", horizontal: "right"}}
                 >
-                    <Alert onClose={() => setShowAlert(false)} severity="success" variant="filled" sx={{ width: "100%" }}>
+                    <Alert onClose={() => setShowAlert(false)} severity="success" variant="filled" sx={{width: "100%"}}>
                         Login successful!
                     </Alert>
                 </Snackbar>
 
-                {currentView === "Users" && isQAManager && <UserComponent />}
-                {currentView === "Roles" && isQAManager && <RoleComponent />}
-                {currentView === "Department" && isQAManager && <DepartmentComponent />}
-                {currentView === "Project" && isQAManager && <ProjectComponent />}
+                {currentView === "Users" && isQAManager && <UserComponent/>}
+                {currentView === "Roles" && isQAManager && <RoleComponent/>}
+                {currentView === "Department" && isQAManager && <DepartmentComponent/>}
+                {currentView === "Project" && isQAManager && <ProjectComponent/>}
                 {currentView === "Test Folders" && selectedProjectId && (
-                    <TestFolderComponent projId={selectedProjectId} />
+                    <TestFolderComponent projId={selectedProjectId}/>
                 )}
-                {currentView === "TestCase" && selectedProjectId && <TestCaseComponent projId={selectedProjectId} />}
+                {currentView === "Test Executions" && selectedProjectId && (
+                    <TestExecutionComponent projId={selectedProjectId}/>
+                )}
+                {currentView === "Test Cases" && selectedProjectId && <TestCaseComponent projId={selectedProjectId}/>}
 
                 {currentView === "Dashboard" && (
-                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, justifyContent: "center", mt: 8, px: 2, pb: 4}}>
+                    <Box
+                        sx={{display: "flex", flexWrap: "wrap", gap: 2, justifyContent: "center", mt: 8, px: 2, pb: 4}}>
                         {projects.map((project) => (
                             <Card
                                 key={project.id}
                                 onClick={() => {
                                     setSelectedProjectId(project.id);
-                                    setCurrentView("TestCase");
+                                    setCurrentView("Test Cases");
                                 }}
                                 sx={{
                                     width: 260,

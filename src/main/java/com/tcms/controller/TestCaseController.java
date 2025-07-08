@@ -3,11 +3,9 @@ package com.tcms.controller;
 import com.tcms.dto.TestCaseInfoDTO;
 import com.tcms.helper.pojo.CustomResponseMessage;
 import com.tcms.models.TestCase;
+import com.tcms.models.TestExecutions;
 import com.tcms.models.TestFolders;
-import com.tcms.repositories.ProjectRepository;
-import com.tcms.repositories.TestCaseRepository;
-import com.tcms.repositories.TestFolderRepository;
-import com.tcms.repositories.UserRepository;
+import com.tcms.repositories.*;
 import com.tcms.services.TestCaseService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -29,17 +27,17 @@ public class TestCaseController {
     private final TestCaseRepository testCaseRepository;
     private final TestCaseService testCaseService;
 
-    private final UserRepository userRepository;
     private final ProjectRepository projectRepository;
     private final TestFolderRepository testFolderRepository;
+    private final TestExecutionRepository testExecutionRepository;
 
 
-    public TestCaseController(TestCaseRepository testCaseRepository, TestCaseService testCaseService, UserRepository userRepository, ProjectRepository projectRepository, TestFolderRepository testFolderRepository) {
+    public TestCaseController(TestCaseRepository testCaseRepository, TestCaseService testCaseService, ProjectRepository projectRepository, TestFolderRepository testFolderRepository, TestExecutionRepository testExecutionRepository) {
         this.testCaseRepository = testCaseRepository;
         this.testCaseService = testCaseService;
-        this.userRepository = userRepository;
         this.projectRepository = projectRepository;
         this.testFolderRepository = testFolderRepository;
+        this.testExecutionRepository = testExecutionRepository;
     }
 
     @GetMapping("")
@@ -52,7 +50,7 @@ public class TestCaseController {
         return ResponseEntity.status(HttpStatus.OK).body(testCaseService.getTestCaseListResponse(testCaseList));
     }
 
-    @GetMapping("/unassigned")
+    @GetMapping("/unassignedFolder")
     public ResponseEntity<Object> getTestCaseNotInAnyFolder(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @RequestParam String projectId) {
         Pageable pageable = PageRequest.of(page, size);
         List<TestCase> testCaseList = testCaseRepository.findByProjectsIn(Collections.singleton(projectRepository.findById(Integer.parseInt(projectId))));
@@ -69,10 +67,29 @@ public class TestCaseController {
                 .toList();
         int start = (int) pageable.getOffset();
         int end = Math.min(start + pageable.getPageSize(), testCasesNotInFolders.size());
-
         List<TestCase> content = (start <= end) ? testCasesNotInFolders.subList(start, end) : Collections.emptyList();
 
         return ResponseEntity.status(HttpStatus.OK).body(testCaseService.getTestCaseListResponse(new PageImpl<>(content, pageable, testCasesNotInFolders.size())));
+    }
+
+
+    @GetMapping("/unassignedExecution")
+    public ResponseEntity<Object> getTestCaseNotInAnyExecution(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @RequestParam String projectId, @RequestParam String executionId) {
+        Pageable pageable = PageRequest.of(page, size);
+        List<TestCase> testCaseList = testCaseRepository.findByProjectsIn(Collections.singleton(projectRepository.findById(Integer.parseInt(projectId))));
+        if (testCaseList.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.OK).body("Record not found.\n");
+        }
+        TestExecutions testExecutions = testExecutionRepository.findById(Integer.parseInt(executionId));
+        List<TestCase> testCasesNotInExecution = testCaseList.stream()
+                .filter(tc -> !testExecutions.getTestCaseSet().stream().toList().contains(tc))
+                .toList();
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), testCasesNotInExecution.size());
+
+        List<TestCase> content = (start <= end) ? testCasesNotInExecution.subList(start, end) : Collections.emptyList();
+
+        return ResponseEntity.status(HttpStatus.OK).body(testCaseService.getTestCaseListResponse(new PageImpl<>(content, pageable, testCasesNotInExecution.size())));
     }
 
     @GetMapping(path = "/name/{testCaseName}")
