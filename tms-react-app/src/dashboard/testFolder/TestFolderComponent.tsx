@@ -75,7 +75,7 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
         }
     };
 
-    const fetchTestCases = async (folderId: number) => {
+    const fetchAllFolderTestCases = async (folderId: number) => {
         try {
             const response = await axios.get(`${API_URL_TEST_FOLDER}/id/${folderId}`, {
                 headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}
@@ -106,7 +106,7 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
                 {testCaseIds: selectedTestCases.map(tc => tc.id)},
                 {headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}}
             );
-            fetchTestCases(selectedFolder.id).then();
+            fetchAllFolderTestCases(selectedFolder.id).then();
             fetchAllUnassignedTestCases().then();
             setOpenAddTestCaseDialog(false);
             setSelectedTestCases([]);
@@ -141,7 +141,8 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
 
     useEffect(() => {
         if (selectedFolder) {
-            fetchTestCases(selectedFolder.id).then();
+            fetchAllUnassignedTestCases().then();
+            fetchAllFolderTestCases(selectedFolder.id).then();
         }
     }, [selectedFolder]);
 
