@@ -29,7 +29,7 @@ public class TestExecutions {
     @JoinColumn(name = "project_id", nullable = false)
     private Projects projects;
 
-    @ManyToMany(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.PERSIST}, fetch = FetchType.LAZY)
-    @JoinTable(name = "test_case_executions", joinColumns = {@JoinColumn(name = "test_execution_id", referencedColumnName = "execution_id")}, inverseJoinColumns = {@JoinColumn(name = "case_id", referencedColumnName = "tc_id")})
-    private Set<TestCase> testCaseSet;
+    @OneToMany(mappedBy = "testExecutions", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnoreProperties({"testCase", "testExecutions"})
+    private Set<TestCaseExecutions> testCaseExecutions;
 }

@@ -1,11 +1,11 @@
 package com.tcms.controller;
 
+import com.tcms.dto.TestCaseWithResultDTO;
 import com.tcms.dto.TestExecutionDTO;
 import com.tcms.dto.TestExecutionResponseDTO;
+import com.tcms.dto.TestResultRequestDTO;
 import com.tcms.helper.pojo.CustomResponseMessage;
-import com.tcms.models.Projects;
-import com.tcms.models.TestCase;
-import com.tcms.models.TestExecutions;
+import com.tcms.models.*;
 import com.tcms.repositories.ProjectRepository;
 import com.tcms.repositories.TestCaseRepository;
 import com.tcms.repositories.TestExecutionRepository;
@@ -18,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController()
 @CrossOrigin()
@@ -34,6 +35,15 @@ public class TestExecutionsController {
         this.testExecutionRepository = testExecutionRepository;
         this.projectRepository = projectRepository;
         this.testCaseRepository = testCaseRepository;
+    }
+
+    @PostMapping("/results")
+    public ResponseEntity<Object> addResult(@RequestBody TestResultRequestDTO request) {
+        if (request==null) {
+            return ResponseEntity.status(HttpStatus.OK).body("Record not found.\n");
+        }
+        testExecutionService.addResultToTestCase(request);
+        return ResponseEntity.ok("Result added successfully.");
     }
 
     @GetMapping("/project/{projectId}")
@@ -67,7 +77,20 @@ public class TestExecutionsController {
             TestExecutionResponseDTO testExecutionResponseDTO = new TestExecutionResponseDTO();
             testExecutionResponseDTO.setId(testExecutions.getId());
             testExecutionResponseDTO.setExecutionName(testExecutions.getExecutionName());
-            testExecutionResponseDTO.setTestCases(testExecutions.getTestCaseSet());
+            Set<TestCaseWithResultDTO> testCaseDTOs = testExecutions.getTestCaseExecutions().stream()
+                    .map(tce -> {
+                        TestCase tc = tce.getTestCase();
+                        TestExecutionResults result = tce.getResult();
+
+                        return new TestCaseWithResultDTO(
+                                tc.getId(),
+                                tc.getTestName(),
+                                result != null ? result.getResultStatus() : null,
+                                result != null ? result.getResultComment() : null
+                        );
+                    })
+                    .collect(Collectors.toSet());
+            testExecutionResponseDTO.setTestCases(testCaseDTOs);
             return ResponseEntity.status(HttpStatus.OK).body(testExecutionResponseDTO);
         }
     }
@@ -110,7 +133,17 @@ public class TestExecutionsController {
                 testCaseSet.add(testCase);
             }
             TestExecutions testExecutions = testExecutionRepository.findById(Integer.parseInt(executionId));
-            testExecutions.getTestCaseSet().addAll(testCaseSet);
+            Set<TestCaseExecutions> executionLinks = testCaseSet.stream()
+                    .map(testCase -> {
+                        TestCaseExecutions tce = new TestCaseExecutions();
+                        tce.setTestExecutions(testExecutions); // link to the execution
+                        tce.setTestCase(testCase);            // link to the test case
+                        tce.setResult(null);                  // no result yet
+                        return tce;
+                    })
+                    .collect(Collectors.toSet());
+
+            testExecutions.setTestCaseExecutions(executionLinks);
             testExecutionService.saveTestExecution(testExecutions);
             return ResponseEntity.status(HttpStatus.OK).body(testExecutions);
         } catch (Exception e) {
@@ -135,7 +168,11 @@ public class TestExecutionsController {
                 testCaseSet.add(testCase);
             }
             TestExecutions testExecutions = testExecutionRepository.findById(Integer.parseInt(executionId));
-            testExecutions.getTestCaseSet().removeAll(testCaseSet);
+            Set<TestCaseExecutions> updatedExecutions = testExecutions.getTestCaseExecutions().stream()
+                    .filter(tce -> testCaseSet.stream()
+                            .noneMatch(tc -> tc.getId().equals(tce.getTestCase().getId())))
+                    .collect(Collectors.toSet());
+            testExecutions.setTestCaseExecutions(updatedExecutions);
             testExecutionService.saveTestExecution(testExecutions);
             return ResponseEntity.status(HttpStatus.OK).body(testExecutions);
         } catch (Exception e) {

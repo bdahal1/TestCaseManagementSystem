@@ -20,21 +20,14 @@ import {
     TableBody,
     TableCell,
     TableRow,
-    Autocomplete, ListItemButton
+    Autocomplete,
+    ListItemButton
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
-
-interface TestExecution {
-    id: number;
-    executionName: string;
-}
-
-interface TestCase {
-    id: number;
-    testName: string;
-}
+import AccordionTestResultComponent from './AccordianTestResultComponent.tsx';
+import {TestCase, TestExecution} from '../../types/TestCase';
 
 interface TestExecutionComponentProps {
     projId: number;
@@ -56,20 +49,35 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
     });
     const [isEdit, setIsEdit] = useState(false);
     const [openAddTestCaseDialog, setOpenAddTestCaseDialog] = useState(false);
+    const [openExecuteTestsDialog, setOpenExecuteTestsDialog] = useState(false);
     const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
     const [selectedTestCases, setSelectedTestCases] = useState<TestCase[]>([]);
     const [hoveredRow, setHoveredRow] = useState<number | null>(null);
     const [selectedForDeletion] = useState<number[]>([]);
+
+    const getRowColor = (status?: string | null) => {
+        switch (status) {
+            case 'PASS':
+                return '#e8f5e9';
+            case 'FAIL':
+                return '#ffebee';
+            case 'BLOCKED':
+                return '#f5f5f5';
+            case 'SKIPPED':
+                return '#fff3e0';
+            default:
+                return 'white';
+        }
+    };
 
     const fetchTestExecutions = async () => {
         try {
             const response = await axios.get(`${API_URL_TEST_EXECUTION}/project/${projId}`, {
                 headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}
             });
-            setTestExecutions(response.data.testExecutions || []);
-            if (response.data.testExecutions?.length) {
-                setSelectedExecution(response.data.testExecutions[0]);
-            }
+            const executions = response.data.testExecutions || [];
+            setTestExecutions(executions);
+            if (executions.length) setSelectedExecution(executions[0]);
         } catch (error) {
             console.error('Error fetching test Executions:', error);
         }
@@ -80,7 +88,8 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
             const response = await axios.get(`${API_URL_TEST_EXECUTION}/id/${executionId}`, {
                 headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}
             });
-            setTestCases(response.data.testCases || []);
+            const sortedCases = (response.data.testCases || []).sort((a: TestCase, b: TestCase) => a.testName.localeCompare(b.testName));
+            setTestCases(sortedCases);
         } catch (error) {
             console.error('Error fetching test cases:', error);
         }
@@ -93,21 +102,20 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
             });
             setAllTestCases(response.data.testCase);
         } catch (err) {
-            console.error("Failed to fetch test cases.");
+            console.error('Failed to fetch test cases.');
         }
     };
-
 
     const handleAddSelectedTestCases = async () => {
         if (!selectedExecution || !selectedTestCases.length) return;
         try {
-            await axios.post(
-                `${API_URL_TEST_EXECUTION}/${selectedExecution.id}/addCases`,
+            await axios.post(`${API_URL_TEST_EXECUTION}/${selectedExecution.id}/addCases`,
                 {testCaseIds: selectedTestCases.map(tc => tc.id)},
-                {headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}}
-            );
-            fetchAllExecutionTestCases(selectedExecution.id).then();
-            fetchAllUnassignedTestCases(selectedExecution.id).then();
+                {headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}});
+            await Promise.all([
+                fetchAllExecutionTestCases(selectedExecution.id),
+                fetchAllUnassignedTestCases(selectedExecution.id)
+            ]);
             setOpenAddTestCaseDialog(false);
             setSelectedTestCases([]);
             setAlert({open: true, message: 'Test cases added to Execution.', severity: 'success'});
@@ -120,23 +128,20 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
     const handleRemoveTestsFromList = async (testCaseId: number) => {
         if (!selectedExecution?.id) return;
         try {
-            await axios.post(
-                `${API_URL_TEST_EXECUTION}/${selectedExecution.id}/removeCases`,
+            await axios.post(`${API_URL_TEST_EXECUTION}/${selectedExecution.id}/removeCases`,
                 {testCaseIds: [testCaseId]},
-                {headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}}
-            );
+                {headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}});
             setTestCases(prev => prev.filter(tc => tc.id !== testCaseId));
-            fetchAllUnassignedTestCases(selectedExecution.id).then();
+            await fetchAllUnassignedTestCases(selectedExecution.id);
             setAlert({open: true, message: 'Test case deleted.', severity: 'success'});
         } catch (error) {
             console.error('Error deleting test case:', error);
             setAlert({open: true, message: 'Failed to delete test case.', severity: 'error'});
         }
     };
+
     useEffect(() => {
-        if (projId) {
-            fetchTestExecutions().then();
-        }
+        if (projId) fetchTestExecutions().then();
     }, [projId]);
 
     useEffect(() => {
@@ -146,6 +151,11 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
         }
     }, [selectedExecution]);
 
+    const handleDialogClose = () => {
+        setOpenDialog(false);
+        setExecutionName('');
+        setSelectedExecution(null);
+    };
     const handleOpenAdd = () => {
         setIsEdit(false);
         setExecutionName('');
@@ -159,7 +169,6 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
         setSelectedExecution(execution);
         setOpenDialog(true);
     };
-
     const handleClose = () => {
         setOpenDialog(false);
         setExecutionName('');
@@ -171,42 +180,35 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
             setAlert({open: true, message: 'Execution name cannot be empty.', severity: 'error'});
             return;
         }
-
         try {
             if (isEdit && selectedExecution) {
-                const response = await axios.put(
-                    `${API_URL_TEST_EXECUTION}/${selectedExecution.id}`,
+                const response = await axios.put(`${API_URL_TEST_EXECUTION}/${selectedExecution.id}`,
                     {executionName, projectId: projId},
-                    {headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}}
-                );
-                setTestExecutions((prev) =>
-                    prev.map((f) => (f.id === selectedExecution.id ? response.data : f))
-                );
+                    {headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}});
+                setTestExecutions(prev => prev.map(f => f.id === selectedExecution.id ? response.data : f));
                 setAlert({open: true, message: 'Test Execution updated.', severity: 'success'});
             } else {
-                const response = await axios.post(
-                    API_URL_TEST_EXECUTION,
+                const response = await axios.post(API_URL_TEST_EXECUTION,
                     {executionName, projectId: projId},
-                    {headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}}
-                );
-                setTestExecutions((prev) => [...prev, response.data]);
+                    {headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}});
+                setTestExecutions(prev => [...prev, response.data]);
                 setAlert({open: true, message: 'Test Execution created.', severity: 'success'});
             }
-            handleClose();
+            handleDialogClose();
         } catch (error) {
             console.error('Error saving Execution:', error);
             setAlert({open: true, message: 'Error saving Execution.', severity: 'error'});
         }
     };
 
-    const deleteTestExecution = async (ExecutionId: number) => {
+    const deleteTestExecution = async (executionId: number) => {
         try {
-            await axios.delete(`${API_URL_TEST_EXECUTION}/${ExecutionId}`, {
+            await axios.delete(`${API_URL_TEST_EXECUTION}/${executionId}`, {
                 headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}
             });
-            const updatedExecutions = testExecutions.filter((f) => f.id !== ExecutionId);
+            const updatedExecutions = testExecutions.filter(f => f.id !== executionId);
             setTestExecutions(updatedExecutions);
-            if (selectedExecution?.id === ExecutionId && updatedExecutions.length) {
+            if (selectedExecution?.id === executionId && updatedExecutions.length) {
                 setSelectedExecution(updatedExecutions[0]);
             } else if (!updatedExecutions.length) {
                 setSelectedExecution(null);
@@ -274,9 +276,23 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                 </Typography>
                 {selectedExecution && (
                     <>
-                        <Button variant="outlined" sx={{mb: 2}} onClick={() => setOpenAddTestCaseDialog(true)}>
-                            Add Test Case
-                        </Button>
+                        <Box display="flex" gap={2} mb={2}>
+                            <Button variant="outlined" onClick={() => setOpenAddTestCaseDialog(true)}>
+                                Add Test Case
+                            </Button>
+                            <Button
+                                variant="contained"
+                                color="secondary"
+                                onClick={async () => {
+                                    if (selectedExecution?.id) {
+                                        await fetchAllExecutionTestCases(selectedExecution.id); // 🔄 Re-fetch before showing dialog
+                                        setOpenExecuteTestsDialog(true);
+                                    }
+                                }}
+                            >
+                                Execute Tests
+                            </Button>
+                        </Box>
                         <Paper>
                             <Table>
                                 <TableBody>
@@ -288,6 +304,7 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                                             selected={selectedForDeletion.includes(tc.id)}
                                             sx={{
                                                 cursor: 'pointer',
+                                                backgroundColor: getRowColor(tc.resultStatus),
                                                 '&:hover': {
                                                     backgroundColor: 'rgba(0, 0, 0, 0.04)', // subtle gray hover effect
                                                 },
@@ -356,9 +373,10 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                 </DialogActions>
             </Dialog>
 
-            <Dialog open={openAddTestCaseDialog} onClose={() => setOpenAddTestCaseDialog(false)} fullWidth maxWidth="sm">
+            <Dialog open={openAddTestCaseDialog} onClose={() => setOpenAddTestCaseDialog(false)} fullWidth
+                    maxWidth="sm">
                 <DialogTitle>Select Test Cases to Add</DialogTitle>
-                <DialogContent sx={{ mt: 2 }}>
+                <DialogContent sx={{mt: 2}}>
                     <Autocomplete
                         multiple
                         options={allTestCases}
@@ -377,7 +395,7 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
 
                     {/* Add All Test Cases Button */}
                     <Button
-                        sx={{ mt: 2 }}
+                        sx={{mt: 2}}
                         onClick={() => setSelectedTestCases(allTestCases)}
                         variant="outlined"
                         fullWidth
@@ -391,6 +409,35 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                     <Button onClick={handleAddSelectedTestCases} variant="contained">Add</Button>
                 </DialogActions>
             </Dialog>
+            <Dialog
+                open={openExecuteTestsDialog}
+                onClose={() => setOpenExecuteTestsDialog(false)}
+                fullWidth
+                maxWidth="md"
+            >
+                <DialogTitle>Execute Tests</DialogTitle>
+                <DialogContent dividers>
+                    {openExecuteTestsDialog && testCases.map((tc) => (
+                        <AccordionTestResultComponent
+                            key={tc.id}
+                            testCase={tc}
+                            executionId={selectedExecution?.id}
+                            token={localStorage.getItem('authToken')}
+                            onResultUpdate={(resultStatus, resultComment) => {
+                                setTestCases(prev =>
+                                    prev.map(t =>
+                                        t.id === tc.id ? {...t, resultStatus, resultComment} : t
+                                    )
+                                );
+                            }}
+                        />
+                    ))}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenExecuteTestsDialog(false)}>Close</Button>
+                </DialogActions>
+            </Dialog>
+
 
             <Snackbar
                 open={alert.open}

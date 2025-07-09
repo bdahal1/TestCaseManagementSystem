@@ -11,5 +11,5 @@ import java.util.Set;
 public class TestExecutionResponseDTO {
     private String executionName;
     private int id;
-    private Set<TestCase> testCases;
+    private Set<TestCaseWithResultDTO> testCases;
 }

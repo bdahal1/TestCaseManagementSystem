@@ -4,6 +4,7 @@ import com.tcms.dto.TestCaseInfoDTO;
 import com.tcms.helper.pojo.CustomResponseMessage;
 import com.tcms.models.TestCase;
 import com.tcms.models.TestExecutions;
+import com.tcms.models.TestCaseExecutions;
 import com.tcms.models.TestFolders;
 import com.tcms.repositories.*;
 import com.tcms.services.TestCaseService;
@@ -82,7 +83,11 @@ public class TestCaseController {
         }
         TestExecutions testExecutions = testExecutionRepository.findById(Integer.parseInt(executionId));
         List<TestCase> testCasesNotInExecution = testCaseList.stream()
-                .filter(tc -> !testExecutions.getTestCaseSet().stream().toList().contains(tc))
+                .filter(tc ->
+                        testExecutions.getTestCaseExecutions().stream()
+                                .map(TestCaseExecutions::getTestCase)
+                                .noneMatch(executedCase -> executedCase.getId().equals(tc.getId()))
+                )
                 .toList();
         int start = (int) pageable.getOffset();
         int end = Math.min(start + pageable.getPageSize(), testCasesNotInExecution.size());

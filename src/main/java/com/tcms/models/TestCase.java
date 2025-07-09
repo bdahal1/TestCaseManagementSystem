@@ -1,5 +1,6 @@
 package com.tcms.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -54,4 +55,9 @@ public class TestCase {
     @JoinTable(name = "test_case_tags", joinColumns = {@JoinColumn(name = "case_id", referencedColumnName = "tc_id")}, inverseJoinColumns = {@JoinColumn(name = "tag_case_id", referencedColumnName = "tag_id")})
     @JsonIgnoreProperties("testCaseSet")
     private Set<Tags> tagsSet;
+
+    @OneToMany(mappedBy = "testCase", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+//    @JsonIgnoreProperties({"testCase","testExecutions"})
+    private Set<TestCaseExecutions> testCaseExecutions;
 }

@@ -1,13 +1,11 @@
 package com.tcms.dto;
 
 import com.tcms.models.TestCase;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
 import java.util.Set;
 
-@Getter
-@Setter
+@Data
 public class TestFolderResponseDTO {
     private String folderName;
     private int id;

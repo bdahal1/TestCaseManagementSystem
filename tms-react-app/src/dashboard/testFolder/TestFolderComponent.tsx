@@ -80,7 +80,8 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
             const response = await axios.get(`${API_URL_TEST_FOLDER}/id/${folderId}`, {
                 headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}
             });
-            setTestCases(response.data.testCases || []);
+            const sortedCases = (response.data.testCases || []).sort((a: TestCase, b: TestCase) => a.testName.localeCompare(b.testName));
+            setTestCases(sortedCases);
         } catch (error) {
             console.error('Error fetching test cases:', error);
         }
