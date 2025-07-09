@@ -76,7 +76,7 @@ public class UserService {
             saveUserOperation(user);
             return ResponseEntity.status(HttpStatus.OK).body(removePasswordForGivenUser(user));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }
     }
 
@@ -112,7 +112,7 @@ public class UserService {
             saveUserOperation(user);
             return ResponseEntity.status(HttpStatus.OK).body(removePasswordForGivenUser(user));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }
     }
 

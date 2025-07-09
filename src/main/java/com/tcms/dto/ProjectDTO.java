@@ -1,10 +1,8 @@
 package com.tcms.dto;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
-@Getter
-@Setter
+@Data
 public class ProjectDTO {
     private int id;
     private String projectName;

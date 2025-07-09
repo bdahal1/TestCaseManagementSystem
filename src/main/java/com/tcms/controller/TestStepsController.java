@@ -7,7 +7,6 @@ import com.tcms.models.TestCase;
 import com.tcms.models.TestSteps;
 import com.tcms.repositories.TestCaseRepository;
 import com.tcms.repositories.TestStepsRepository;
-import com.tcms.repositories.UserRepository;
 import com.tcms.services.TestStepService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,15 +28,12 @@ public class TestStepsController {
     private final TestStepService testStepService;
 
     private final TestCaseRepository testCaseRepository;
-    private final UserRepository userRepository;
 
-    public TestStepsController(TestStepsRepository testStepsRepository, TestStepService testStepService, TestCaseRepository testCaseRepository, UserRepository userRepository) {
+    public TestStepsController(TestStepsRepository testStepsRepository, TestStepService testStepService, TestCaseRepository testCaseRepository) {
         this.testStepsRepository = testStepsRepository;
         this.testStepService = testStepService;
         this.testCaseRepository = testCaseRepository;
-        this.userRepository = userRepository;
     }
-
 
     @GetMapping("")
     public ResponseEntity<Object> getTestStep(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size) {
@@ -90,7 +86,7 @@ public class TestStepsController {
             testStepService.deleteAllTestSteps(existingList);
             return ResponseEntity.status(HttpStatus.OK).body(testStepsList);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }
     }
 
@@ -110,7 +106,7 @@ public class TestStepsController {
             }
             return ResponseEntity.status(HttpStatus.OK).body(testSteps);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }
     }
 
@@ -124,11 +120,11 @@ public class TestStepsController {
         try {
             List<TestSteps> testStepsList = testStepService.orderTestSteps(testCase);
             if (testStepsList == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("TestSteps Not Found for given testcaseid.\n");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("TestSteps Not Found for given TestCaseId.\n");
             }
             return ResponseEntity.status(HttpStatus.OK).body(testStepsList);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }
     }
 
@@ -149,7 +145,7 @@ public class TestStepsController {
             this.orderTestSteps(testStepsList.get(0).getTestCase().getId());
             return ResponseEntity.status(HttpStatus.OK).body(testStepsRepository.findTestStepsByTestCaseOrderByTestStepOrderAsc(testStepsList.get(0).getTestCase()));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }
     }
 

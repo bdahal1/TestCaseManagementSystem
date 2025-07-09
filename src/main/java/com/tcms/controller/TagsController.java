@@ -65,10 +65,9 @@ public class TagsController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Tag Info Not Found inside body.\n");
         }
         try {
-            tagService.saveTags(tag);
-            return ResponseEntity.status(HttpStatus.OK).body(tag);
+            return ResponseEntity.status(HttpStatus.OK).body(tagService.saveTags(tag));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }
     }
 
@@ -87,7 +86,7 @@ public class TagsController {
             tagService.saveTags(tag);
             return ResponseEntity.status(HttpStatus.OK).body(tag);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }
     }
 

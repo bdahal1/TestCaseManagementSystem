@@ -68,7 +68,7 @@ public class DepartmentController {
             departmentRepository.save(department);
             return ResponseEntity.status(HttpStatus.OK).body(department);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }
     }
 
@@ -87,7 +87,7 @@ public class DepartmentController {
             departmentRepository.save(departments);
             return ResponseEntity.status(HttpStatus.OK).body(departments);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }
     }
 

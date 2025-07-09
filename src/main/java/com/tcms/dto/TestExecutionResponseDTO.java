@@ -1,6 +1,5 @@
 package com.tcms.dto;
 
-import com.tcms.models.TestCase;
 import lombok.Getter;
 import lombok.Setter;
 

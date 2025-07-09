@@ -21,14 +21,15 @@ public class TestExecutionResults {
     @Column(name = "result_id", nullable = false)
     private Integer id;
 
-    @Column(name = "result_status", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Column(name = "result_status", nullable = false)
     private TestResult resultStatus;
 
     @Column(name = "result_comment", nullable = false)
     private String resultComment;
 
-    @OneToOne(mappedBy = "result", fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tce_id", nullable = false, unique = true)
     @JsonIgnore
-    private TestCaseExecutions testCaseExecutions;
+    private TestCaseExecutions testCaseExecution;
 }

@@ -79,7 +79,7 @@ public class ProjectController {
             projectRepository.save(projects);
             return ResponseEntity.status(HttpStatus.OK).body(projects);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }
     }
 
@@ -94,11 +94,11 @@ public class ProjectController {
             if (project == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Project Not Found in database.\n");
             }
-            project.setProjectName(projects.getProjectName() == null ? projects.getProjectName() : project.getProjectName());
+            project.setProjectName(projects.getProjectName() == null ? null : project.getProjectName());
             projectRepository.save(project);
             return ResponseEntity.status(HttpStatus.OK).body(project);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }
     }
 

@@ -43,8 +43,8 @@ public class TestExecutionService {
         TestExecutionResults result = new TestExecutionResults();
         result.setResultStatus(request.getResultStatus());
         result.setResultComment(request.getResultComment());
-
+        result.setTestCaseExecution(tce);
         tce.setResult(result);
-        return testCaseExecutionRepository.save(tce); // Cascade will save the result too
+        return testCaseExecutionRepository.save(tce);
     }
 }

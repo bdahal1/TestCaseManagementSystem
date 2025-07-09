@@ -66,6 +66,10 @@ public class TestCaseController {
         List<TestCase> testCasesNotInFolders = testCaseList.stream()
                 .filter(tc -> !testCaseListInFolders.contains(tc))
                 .toList();
+        return getObjectResponseEntity(pageable, testCasesNotInFolders);
+    }
+
+    private ResponseEntity<Object> getObjectResponseEntity(Pageable pageable, List<TestCase> testCasesNotInFolders) {
         int start = (int) pageable.getOffset();
         int end = Math.min(start + pageable.getPageSize(), testCasesNotInFolders.size());
         List<TestCase> content = (start <= end) ? testCasesNotInFolders.subList(start, end) : Collections.emptyList();
@@ -89,12 +93,7 @@ public class TestCaseController {
                                 .noneMatch(executedCase -> executedCase.getId().equals(tc.getId()))
                 )
                 .toList();
-        int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageable.getPageSize(), testCasesNotInExecution.size());
-
-        List<TestCase> content = (start <= end) ? testCasesNotInExecution.subList(start, end) : Collections.emptyList();
-
-        return ResponseEntity.status(HttpStatus.OK).body(testCaseService.getTestCaseListResponse(new PageImpl<>(content, pageable, testCasesNotInExecution.size())));
+        return getObjectResponseEntity(pageable, testCasesNotInExecution);
     }
 
     @GetMapping(path = "/name/{testCaseName}")
@@ -131,7 +130,7 @@ public class TestCaseController {
             }
             return testCaseService.saveTestCase(testCaseInfoDTO);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }
     }
 
@@ -144,7 +143,7 @@ public class TestCaseController {
         try {
             return testCaseService.editTestCase(testCaseInfoDTO, testCaseId);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }
     }
 

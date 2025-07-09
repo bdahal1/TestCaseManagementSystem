@@ -89,7 +89,7 @@ public class TestFoldersController {
             testFolderService.saveTestFolder(testFolders);
             return ResponseEntity.status(HttpStatus.OK).body(testFolders);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }
     }
 
@@ -102,6 +102,7 @@ public class TestFoldersController {
         }
         try {
             Set<TestCase> testCaseSet = new HashSet<>();
+            assert testCaseIds != null;
             for (Integer i : testCaseIds) {
                 TestCase testCase = testCaseRepository.findById(i);
                 if (testCase == null) {
@@ -114,7 +115,7 @@ public class TestFoldersController {
             testFolderService.saveTestFolder(testFolders);
             return ResponseEntity.status(HttpStatus.OK).body(testFolders);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }
     }
 
@@ -127,6 +128,7 @@ public class TestFoldersController {
         }
         try {
             Set<TestCase> testCaseSet = new HashSet<>();
+            assert testCaseIds != null;
             for (Integer i : testCaseIds) {
                 TestCase testCase = testCaseRepository.findById(i);
                 if (testCase == null) {
@@ -139,7 +141,7 @@ public class TestFoldersController {
             testFolderService.saveTestFolder(testFolders);
             return ResponseEntity.status(HttpStatus.OK).body(testFolders);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }
     }
 
@@ -158,7 +160,7 @@ public class TestFoldersController {
             testFolderService.saveTestFolder(testFolders);
             return ResponseEntity.status(HttpStatus.OK).body(testFolders);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getCause().getLocalizedMessage()));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }
     }
 

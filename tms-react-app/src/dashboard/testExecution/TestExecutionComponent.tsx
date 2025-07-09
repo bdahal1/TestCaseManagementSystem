@@ -276,22 +276,37 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                 </Typography>
                 {selectedExecution && (
                     <>
-                        <Box display="flex" gap={2} mb={2}>
+                        <Box display="flex" mb={2} justifyContent="space-between" alignItems="center">
                             <Button variant="outlined" onClick={() => setOpenAddTestCaseDialog(true)}>
                                 Add Test Case
                             </Button>
                             <Button
                                 variant="contained"
-                                color="secondary"
+                                color="success"
                                 onClick={async () => {
                                     if (selectedExecution?.id) {
-                                        await fetchAllExecutionTestCases(selectedExecution.id); // 🔄 Re-fetch before showing dialog
+                                        await fetchAllExecutionTestCases(selectedExecution.id);
                                         setOpenExecuteTestsDialog(true);
                                     }
                                 }}
                             >
                                 Execute Tests
                             </Button>
+                        </Box>
+                        {/* Stats Section */}
+                        <Box
+                            display="flex"
+                            gap={3}
+                            flexWrap="wrap"
+                            mb={3}
+                            sx={{ backgroundColor: '#f5f5f5', p: 2, borderRadius: 1 }}
+                        >
+                            <Typography><strong>Total:</strong> {testCases.length}</Typography>
+                            <Typography color="success.main"><strong>Passed:</strong> {testCases.filter(tc => tc.resultStatus === 'PASS').length}</Typography>
+                            <Typography color="error.main"><strong>Failed:</strong> {testCases.filter(tc => tc.resultStatus === 'FAIL').length}</Typography>
+                            <Typography color="warning.main"><strong>Skipped:</strong> {testCases.filter(tc => tc.resultStatus === 'SKIPPED').length}</Typography>
+                            <Typography color="text.secondary"><strong>Blocked:</strong> {testCases.filter(tc => tc.resultStatus === 'BLOCKED').length}</Typography>
+                            <Typography color="text.secondary"><strong>Not Run:</strong> {testCases.filter(tc => tc.resultStatus === 'NOT_RUN' || !tc.resultStatus).length}</Typography>
                         </Box>
                         <Paper>
                             <Table>

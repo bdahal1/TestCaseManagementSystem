@@ -50,7 +50,7 @@ public class SecurityConfig {
                         .requestMatchers(AUTH_WHITELIST).permitAll()
                         .requestMatchers("/validate").authenticated()
                         .requestMatchers("/users", "/users/*", "/roles", "/roles/*", "/department", "/department/*", "/projects", "/projects/*").hasRole("QAManager")
-                        .requestMatchers("/users/**", "/roles/**", "/department/**", "/projects/**").authenticated()
+                        .requestMatchers("/users/**", "/roles/**", "/department/**", "/projects/**","/testExecutions/**","/testFolders/**").authenticated()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults())

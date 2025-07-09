@@ -7,16 +7,18 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.HashSet;
 import java.util.Set;
 
 @Entity
 @Getter
 @Setter
-@Table(name = "test_executions", uniqueConstraints = {@UniqueConstraint(columnNames = {"execution_name", "project_id"})})
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "testCaseSet"})
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "test_executions", uniqueConstraints = @UniqueConstraint(columnNames = {"execution_name", "project_id"}))
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class TestExecutions {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "execution_id", nullable = false)
@@ -29,7 +31,7 @@ public class TestExecutions {
     @JoinColumn(name = "project_id", nullable = false)
     private Projects projects;
 
-    @OneToMany(mappedBy = "testExecutions", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnoreProperties({"testCase", "testExecutions"})
-    private Set<TestCaseExecutions> testCaseExecutions;
+    @OneToMany(mappedBy = "testExecutions", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({"testExecutions", "testCase", "result"})
+    private Set<TestCaseExecutions> testCaseExecutions = new HashSet<>();
 }
