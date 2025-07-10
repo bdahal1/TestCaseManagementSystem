@@ -113,7 +113,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
             const response = await axios.get(`${API_URL_TESTCASE}?projectId=${projId}`, {
                 headers: {Authorization: `Bearer ` + localStorage.getItem("authToken")},
             });
-            setTestCases(response.data.testCase);
+            setTestCases(response.data.testCase ?? []);
             setError(null);
         } catch (err) {
             setError("Failed to fetch test cases.");
@@ -309,7 +309,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
         <Box sx={{padding: 2}}>
             <h3>Test Case Manager for {testCases.length > 0 ? testCases[0].projects.projectName : "Project"}</h3>
             <Button variant="contained" color="primary" onClick={() => handleOpenDialog(null)} sx={{mb: 2}}>
-               + Add Test Case
+                + Add Test Case
             </Button>
             <TableContainer component={Paper}>
                 <Table>
