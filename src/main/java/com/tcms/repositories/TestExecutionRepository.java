@@ -1,5 +1,6 @@
 package com.tcms.repositories;
 
+import com.tcms.enums.ExecutionStatus;
 import com.tcms.models.TestExecutions;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,5 +21,5 @@ public interface TestExecutionRepository extends PagingAndSortingRepository<Test
 
     TestExecutions save(TestExecutions testExecutions);
 
-    Page<TestExecutions> findByProjectsId(int projectId, Pageable pageable);
+    Page<TestExecutions> findByProjectsIdAndExecutionStatus(int projectId, ExecutionStatus executionStatus, Pageable pageable);
 }

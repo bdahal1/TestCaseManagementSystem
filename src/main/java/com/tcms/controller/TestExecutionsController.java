@@ -1,6 +1,7 @@
 package com.tcms.controller;
 
 import com.tcms.dto.*;
+import com.tcms.enums.ExecutionStatus;
 import com.tcms.helper.pojo.CustomResponseMessage;
 import com.tcms.models.*;
 import com.tcms.repositories.ProjectRepository;
@@ -50,7 +51,7 @@ public class TestExecutionsController {
     @GetMapping("/project/{projectId}")
     public ResponseEntity<Object> getTestExecutions(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @PathVariable String projectId) {
         Pageable paging = PageRequest.of(page, size);
-        Page<TestExecutions> testExecutionsPage = testExecutionRepository.findByProjectsId(Integer.parseInt(projectId), paging);
+        Page<TestExecutions> testExecutionsPage = testExecutionRepository.findByProjectsIdAndExecutionStatus(Integer.parseInt(projectId), ExecutionStatus.IN_PROGRESS, paging);
         if (testExecutionsPage.isEmpty()) {
             return ResponseEntity.status(HttpStatus.OK).body("Record not found.\n");
         }
@@ -112,6 +113,7 @@ public class TestExecutionsController {
         try {
             TestExecutions testExecutions = new TestExecutions();
             testExecutions.setExecutionName(testExecutionDTO.getExecutionName());
+            testExecutions.setExecutionStatus(testExecutionDTO.getExecutionStatus()==null?ExecutionStatus.IN_PROGRESS:testExecutionDTO.getExecutionStatus());
             testExecutions.setProjects(projects);
             return ResponseEntity.status(HttpStatus.OK).body(testExecutionService.saveTestExecution(testExecutions));
         } catch (Exception e) {

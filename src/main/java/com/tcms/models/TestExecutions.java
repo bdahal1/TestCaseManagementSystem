@@ -2,6 +2,7 @@ package com.tcms.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.tcms.enums.ExecutionStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -27,6 +28,10 @@ public class TestExecutions {
 
     @Column(name = "execution_name", nullable = false)
     private String executionName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "execution_status", nullable = false)
+    private ExecutionStatus executionStatus=ExecutionStatus.IN_PROGRESS;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", nullable = false)
