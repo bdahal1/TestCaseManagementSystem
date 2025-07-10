@@ -8,7 +8,8 @@ import lombok.Setter;
 public class TestStepInfoDTO {
     String testStepDesc;
     String testExpectedOutput;
-    String testRemarks;
+    String testStepData;
+    Integer stepOrder;
     Integer testCaseId;
     Integer userId;
     Integer stepId;

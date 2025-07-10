@@ -1,5 +1,6 @@
 package com.tcms.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -29,9 +30,10 @@ public class TestExecutions {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", nullable = false)
+    @JsonIgnore
     private Projects projects;
 
     @OneToMany(mappedBy = "testExecutions", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JsonIgnoreProperties({"testExecutions", "testCase", "result"})
+    @JsonIgnore
     private Set<TestCaseExecutions> testCaseExecutions = new HashSet<>();
 }

@@ -1,9 +1,6 @@
 package com.tcms.controller;
 
-import com.tcms.dto.TestCaseWithResultDTO;
-import com.tcms.dto.TestExecutionDTO;
-import com.tcms.dto.TestExecutionResponseDTO;
-import com.tcms.dto.TestResultRequestDTO;
+import com.tcms.dto.*;
 import com.tcms.helper.pojo.CustomResponseMessage;
 import com.tcms.models.*;
 import com.tcms.repositories.ProjectRepository;
@@ -84,14 +81,17 @@ public class TestExecutionsController {
             Set<TestCaseWithResultDTO> testCaseDTOs = testExecutions.getTestCaseExecutions().stream()
                     .map(tce -> {
                         TestCase tc = tce.getTestCase();
-                        TestExecutionResults result = tce.getResult();
+                        Set<TestStepInfoDTO> testStepInfoDTOSet = new HashSet<>();
+                        for(TestSteps testSteps:tc.getTestStepsSet()){
+                            TestStepInfoDTO testStepInfoDTO = new TestStepInfoDTO();
+                            testStepInfoDTO.setTestStepData(testSteps.getTestStepData());
+                            testStepInfoDTO.setTestStepDesc(testSteps.getTestStepDesc());
+                            testStepInfoDTO.setStepOrder(testSteps.getTestStepOrder());
+                            testStepInfoDTO.setTestExpectedOutput(testSteps.getTestExpectedOutput());
+                            testStepInfoDTOSet.add(testStepInfoDTO);
+                        }
 
-                        return new TestCaseWithResultDTO(
-                                tc.getId(),
-                                tc.getTestName(),
-                                result != null ? result.getResultStatus() : null,
-                                result != null ? result.getResultComment() : null
-                        );
+                        return new TestCaseWithResultDTO(tc.getId(), tc.getTestName(),testStepInfoDTOSet, tce.getResultStatus(), tce.getResultComment());
                     })
                     .collect(Collectors.toSet());
             testExecutionResponseDTO.setTestCases(testCaseDTOs);
@@ -153,7 +153,8 @@ public class TestExecutionsController {
                     TestCaseExecutions tce = new TestCaseExecutions();
                     tce.setTestExecutions(testExecutions);
                     tce.setTestCase(testCase);
-                    tce.setResult(null);
+                    tce.setResultComment(null);
+                    tce.setResultStatus(null);
                     currentLinks.add(tce);
                 }
             }
@@ -197,7 +198,8 @@ public class TestExecutionsController {
                 existingLinks.remove(link);
                 link.setTestExecutions(null);
                 link.setTestCase(null);
-                link.setResult(null);
+                link.setResultComment(null);
+                link.setResultStatus(null);
             }
             testExecutionService.saveTestExecution(testExecutions);
             return ResponseEntity.ok(testExecutions);

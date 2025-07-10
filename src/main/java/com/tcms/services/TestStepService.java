@@ -52,7 +52,7 @@ public class TestStepService {
         String fullName = user.getFirstName() + " " + user.getLastName();
         TestSteps testSteps = new TestSteps();
         testSteps.setTestCase(testCaseRepository.findById(testStepInfoDTO.getTestCaseId()));
-        testSteps.setTestStepData(testStepInfoDTO.getTestRemarks());
+        testSteps.setTestStepData(testStepInfoDTO.getTestStepData());
         testSteps.setTestStepDesc(testStepInfoDTO.getTestStepDesc());
         testSteps.setTestExpectedOutput(testStepInfoDTO.getTestExpectedOutput());
         TestSteps newOrder = testStepsRepository.findFirstByTestCaseOrderByTestStepOrderDesc(testCaseRepository.findById(testStepInfoDTO.getTestCaseId()));
@@ -74,7 +74,7 @@ public class TestStepService {
             return null;
         }
         testSteps.setTestCase(testSteps.getTestCase());
-        testSteps.setTestStepData(testStepInfoDTO.getTestRemarks() == null ? testSteps.getTestRemarks() : testStepInfoDTO.getTestRemarks());
+        testSteps.setTestStepData(testStepInfoDTO.getTestStepData() == null ? testSteps.getTestRemarks() : testStepInfoDTO.getTestStepData());
         testSteps.setTestStepDesc(testStepInfoDTO.getTestStepDesc() == null ? testSteps.getTestStepDesc() : testStepInfoDTO.getTestStepDesc());
         testSteps.setTestExpectedOutput(testStepInfoDTO.getTestExpectedOutput() == null ? testSteps.getTestExpectedOutput() : testStepInfoDTO.getTestExpectedOutput());
         testSteps.setTestStepOrder(testSteps.getTestStepOrder());

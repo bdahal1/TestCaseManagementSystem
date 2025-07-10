@@ -253,7 +253,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
             const testStepsPayload = steps.map((step, index) => ({
                 testStepDesc: step.testStepDesc,
                 testExpectedOutput: step.testExpectedOutput,
-                testRemarks: step.testStepData,
+                testStepData: step.testStepData,
                 testStepOrder: index + 1,
                 testCaseId: currentTestCaseId,
                 userId: localStorage.getItem("userId"),

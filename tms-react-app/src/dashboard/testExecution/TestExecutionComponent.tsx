@@ -21,13 +21,15 @@ import {
     TableCell,
     TableRow,
     Autocomplete,
-    ListItemButton
+    ListItemButton, Collapse, TableHead
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
-import AccordionTestResultComponent from './AccordianTestResultComponent.tsx';
-import {TestCase, TestExecution} from '../../types/TestCase';
+import {ResultStatus, TestCase, TestExecution} from '../../types/TestCase';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import { alpha } from '@mui/material/styles';
 
 interface TestExecutionComponentProps {
     projId: number;
@@ -49,11 +51,13 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
     });
     const [isEdit, setIsEdit] = useState(false);
     const [openAddTestCaseDialog, setOpenAddTestCaseDialog] = useState(false);
-    const [openExecuteTestsDialog, setOpenExecuteTestsDialog] = useState(false);
     const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
     const [selectedTestCases, setSelectedTestCases] = useState<TestCase[]>([]);
     const [hoveredRow, setHoveredRow] = useState<number | null>(null);
-    const [selectedForDeletion] = useState<number[]>([]);
+    const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
+    const toggleExpand = (id: number) => {
+        setExpandedRowId(prev => (prev === id ? null : id));
+    };
 
     const getRowColor = (status?: string | null) => {
         switch (status) {
@@ -66,7 +70,7 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
             case 'SKIPPED':
                 return '#fff3e0';
             default:
-                return 'white';
+                return '#ffffff';
         }
     };
 
@@ -137,6 +141,38 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
         } catch (error) {
             console.error('Error deleting test case:', error);
             setAlert({open: true, message: 'Failed to delete test case.', severity: 'error'});
+        }
+    };
+    const handleSaveResult = async (
+        testCaseId: number,
+        resultStatus: ResultStatus | null | undefined,
+        resultComment: string
+    ) => {
+        try {
+            await axios.post(
+                `${API_URL_TEST_EXECUTION}/results`,
+                {
+                    executionId: selectedExecution?.id,
+                    testCaseId,
+                    resultStatus,
+                    resultComment
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                }
+            );
+
+            setTestCases(prev =>
+                prev.map(tc =>
+                    tc.id === testCaseId ? {...tc, resultStatus, resultComment} : tc
+                )
+            );
+            setAlert({open: true, message: 'Result saved', severity: 'success'});
+        } catch (error) {
+            console.error('Failed to save result:', error);
+            setAlert({open: true, message: 'Failed to save result', severity: 'error'});
         }
     };
 
@@ -280,18 +316,6 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                             <Button variant="outlined" onClick={() => setOpenAddTestCaseDialog(true)}>
                                 Add Test Case
                             </Button>
-                            <Button
-                                variant="contained"
-                                color="success"
-                                onClick={async () => {
-                                    if (selectedExecution?.id) {
-                                        await fetchAllExecutionTestCases(selectedExecution.id);
-                                        setOpenExecuteTestsDialog(true);
-                                    }
-                                }}
-                            >
-                                Execute Tests
-                            </Button>
                         </Box>
                         {/* Stats Section */}
                         <Box
@@ -299,49 +323,49 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                             gap={3}
                             flexWrap="wrap"
                             mb={3}
-                            sx={{ backgroundColor: '#f5f5f5', p: 2, borderRadius: 1 }}
+                            sx={{backgroundColor: '#f5f5f5', p: 2, borderRadius: 1}}
                         >
                             <Typography><strong>Total:</strong> {testCases.length}</Typography>
-                            <Typography color="success.main"><strong>Passed:</strong> {testCases.filter(tc => tc.resultStatus === 'PASS').length}</Typography>
-                            <Typography color="error.main"><strong>Failed:</strong> {testCases.filter(tc => tc.resultStatus === 'FAIL').length}</Typography>
-                            <Typography color="warning.main"><strong>Skipped:</strong> {testCases.filter(tc => tc.resultStatus === 'SKIPPED').length}</Typography>
-                            <Typography color="text.secondary"><strong>Blocked:</strong> {testCases.filter(tc => tc.resultStatus === 'BLOCKED').length}</Typography>
-                            <Typography color="text.secondary"><strong>Not Run:</strong> {testCases.filter(tc => tc.resultStatus === 'NOT_RUN' || !tc.resultStatus).length}</Typography>
+                            <Typography
+                                color="success.main"><strong>Passed:</strong> {testCases.filter(tc => tc.resultStatus === 'PASS').length}
+                            </Typography>
+                            <Typography
+                                color="error.main"><strong>Failed:</strong> {testCases.filter(tc => tc.resultStatus === 'FAIL').length}
+                            </Typography>
+                            <Typography
+                                color="warning.main"><strong>Skipped:</strong> {testCases.filter(tc => tc.resultStatus === 'SKIPPED').length}
+                            </Typography>
+                            <Typography
+                                color="text.secondary"><strong>Blocked:</strong> {testCases.filter(tc => tc.resultStatus === 'BLOCKED').length}
+                            </Typography>
+                            <Typography color="text.secondary"><strong>Not
+                                Run:</strong> {testCases.filter(tc => tc.resultStatus === 'NOT_RUN' || !tc.resultStatus).length}
+                            </Typography>
                         </Box>
                         <Paper>
                             <Table>
                                 <TableBody>
                                     {testCases.map((tc) => (
-                                        <TableRow
-                                            key={tc.id}
-                                            onMouseEnter={() => setHoveredRow(tc.id)}
-                                            onMouseLeave={() => setHoveredRow(null)}
-                                            selected={selectedForDeletion.includes(tc.id)}
-                                            sx={{
-                                                cursor: 'pointer',
-                                                backgroundColor: getRowColor(tc.resultStatus),
-                                                '&:hover': {
-                                                    backgroundColor: 'rgba(0, 0, 0, 0.04)', // subtle gray hover effect
-                                                },
-                                            }}
-                                        >
-                                            <TableCell>{tc.testName}</TableCell>
-                                            <TableCell
-                                                align="right"
+                                        <React.Fragment key={tc.id}>
+                                            <TableRow
+                                                onMouseEnter={() => setHoveredRow(tc.id)}
+                                                onMouseLeave={() => setHoveredRow(null)}
                                                 sx={{
-                                                    width: '40px',
-                                                    padding: '4px 8px', // keep it compact
+                                                    cursor: 'pointer',
+                                                    backgroundColor: getRowColor(tc.resultStatus),
+                                                    '&:hover': {
+                                                        backgroundColor: alpha(getRowColor(tc.resultStatus), 0.8),
+                                                    },
                                                 }}
                                             >
-                                                <Box
-                                                    sx={{
-                                                        height: '24px',
-                                                        width: '24px',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                    }}
-                                                >
+                                                <TableCell onClick={() => toggleExpand(tc.id)}>
+                                                    {tc.testName}
+                                                </TableCell>
+                                                <TableCell align="right">
+                                                    <IconButton onClick={() => toggleExpand(tc.id)} size="small">
+                                                        {expandedRowId === tc.id ? <ExpandLessIcon/> :
+                                                            <ExpandMoreIcon/>}
+                                                    </IconButton>
                                                     <IconButton
                                                         size="small"
                                                         onClick={() => {
@@ -352,20 +376,82 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                                                         sx={{
                                                             opacity: hoveredRow === tc.id ? 1 : 0,
                                                             transition: 'opacity 0.2s ease-in-out',
-                                                            padding: 0, // remove default IconButton padding
-                                                            height: '24px',
-                                                            width: '24px',
                                                         }}
                                                     >
                                                         <DeleteIcon fontSize="small" color="error"/>
                                                     </IconButton>
-                                                </Box>
-                                            </TableCell>
-                                        </TableRow>
+                                                </TableCell>
+                                            </TableRow>
+                                            <TableRow>
+                                                <TableCell colSpan={2} sx={{paddingBottom: 0, paddingTop: 0}}>
+                                                    <Collapse in={expandedRowId === tc.id} timeout="auto" unmountOnExit>
+                                                        <Box margin={2}>
+                                                            {/* Test Steps Table */}
+                                                            {tc.testSteps?.length > 0 && (
+                                                                <Paper variant="outlined" sx={{ mb: 2 }}>
+                                                                    <Box p={2}>
+                                                                        <Typography variant="subtitle1" gutterBottom>
+                                                                            Test Steps
+                                                                        </Typography>
+                                                                        <Table size="small">
+                                                                            <TableHead>
+                                                                                <TableRow>
+                                                                                    <TableCell><strong>#</strong></TableCell>
+                                                                                    <TableCell><strong>Description</strong></TableCell>
+                                                                                    <TableCell><strong>Data</strong></TableCell>
+                                                                                    <TableCell><strong>Expected Output</strong></TableCell>
+                                                                                </TableRow>
+                                                                            </TableHead>
+                                                                            <TableBody>
+                                                                                {tc.testSteps
+                                                                                    .sort((a, b) => a.stepOrder - b.stepOrder)
+                                                                                    .map((step, idx) => (
+                                                                                        <TableRow key={idx}>
+                                                                                            <TableCell>{step.stepOrder}</TableCell>
+                                                                                            <TableCell>{step.testStepDesc}</TableCell>
+                                                                                            <TableCell>{step.testStepData}</TableCell>
+                                                                                            <TableCell>{step.testExpectedOutput}</TableCell>
+                                                                                        </TableRow>
+                                                                                    ))}
+                                                                            </TableBody>
+                                                                        </Table>
+                                                                    </Box>
+                                                                </Paper>
+                                                            )}
+
+                                                            {/* Status Selector */}
+                                                            <Autocomplete<ResultStatus, false, false, false>
+                                                                value={tc.resultStatus ?? 'NOT_RUN'}
+                                                                onChange={(_, newStatus: ResultStatus | null) => {
+                                                                    const updatedStatus: ResultStatus = newStatus ?? 'NOT_RUN';
+                                                                    handleSaveResult(tc.id, updatedStatus, tc.resultComment ?? '');
+                                                                }}
+                                                                options={['PASS', 'FAIL', 'SKIPPED', 'BLOCKED', 'NOT_RUN']}
+                                                                renderInput={(params) => <TextField {...params} label="Status" fullWidth />}
+                                                                sx={{ mb: 2, width: '300px' }}
+                                                            />
+
+                                                            {/* Comment Box */}
+                                                            <TextField
+                                                                label="Comment"
+                                                                defaultValue={tc.resultComment ?? ''}
+                                                                fullWidth
+                                                                multiline
+                                                                rows={3}
+                                                                onBlur={(e) => {
+                                                                    handleSaveResult(tc.id, tc.resultStatus ?? 'NOT_RUN', e.target.value);
+                                                                }}
+                                                            />
+                                                        </Box>
+                                                    </Collapse>
+                                                </TableCell>
+                                            </TableRow>
+                                        </React.Fragment>
                                     ))}
                                 </TableBody>
                             </Table>
                         </Paper>
+
                     </>
                 )}
             </Box>
@@ -422,34 +508,6 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                 <DialogActions>
                     <Button onClick={() => setOpenAddTestCaseDialog(false)}>Cancel</Button>
                     <Button onClick={handleAddSelectedTestCases} variant="contained">Add</Button>
-                </DialogActions>
-            </Dialog>
-            <Dialog
-                open={openExecuteTestsDialog}
-                onClose={() => setOpenExecuteTestsDialog(false)}
-                fullWidth
-                maxWidth="md"
-            >
-                <DialogTitle>Execute Tests</DialogTitle>
-                <DialogContent dividers>
-                    {openExecuteTestsDialog && testCases.map((tc) => (
-                        <AccordionTestResultComponent
-                            key={tc.id}
-                            testCase={tc}
-                            executionId={selectedExecution?.id}
-                            token={localStorage.getItem('authToken')}
-                            onResultUpdate={(resultStatus, resultComment) => {
-                                setTestCases(prev =>
-                                    prev.map(t =>
-                                        t.id === tc.id ? {...t, resultStatus, resultComment} : t
-                                    )
-                                );
-                            }}
-                        />
-                    ))}
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setOpenExecuteTestsDialog(false)}>Close</Button>
                 </DialogActions>
             </Dialog>
 

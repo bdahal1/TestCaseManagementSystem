@@ -170,7 +170,7 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
                     />
 
                     <Typography variant="h6" noWrap sx={{fontWeight: "bold", color: "#fff"}}>
-                        {selectedProjectName+" / "}{currentView}
+                        {selectedProjectName?selectedProjectName+" / ":""}{currentView}
                     </Typography>
                     <Box sx={{marginLeft: "auto", display: "flex", alignItems: "center"}}>
                         <Tooltip title="Open profile menu">

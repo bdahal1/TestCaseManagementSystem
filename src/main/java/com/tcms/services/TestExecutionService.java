@@ -2,7 +2,6 @@ package com.tcms.services;
 
 import com.tcms.dto.TestResultRequestDTO;
 import com.tcms.models.TestCaseExecutions;
-import com.tcms.models.TestExecutionResults;
 import com.tcms.models.TestExecutions;
 import com.tcms.repositories.TestCaseExecutionRepository;
 import com.tcms.repositories.TestExecutionRepository;
@@ -39,12 +38,8 @@ public class TestExecutionService {
         TestCaseExecutions tce = testCaseExecutionRepository.findByTestExecutionsIdAndTestCaseId(
                 request.getExecutionId(), request.getTestCaseId()
         ).orElseThrow(() -> new RuntimeException("Test case execution not found"));
-
-        TestExecutionResults result = new TestExecutionResults();
-        result.setResultStatus(request.getResultStatus());
-        result.setResultComment(request.getResultComment());
-        result.setTestCaseExecution(tce);
-        tce.setResult(result);
+        tce.setResultComment(request.getResultComment());
+        tce.setResultStatus(request.getResultStatus());
         return testCaseExecutionRepository.save(tce);
     }
 }

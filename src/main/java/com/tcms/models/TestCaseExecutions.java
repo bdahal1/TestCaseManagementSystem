@@ -1,6 +1,7 @@
 package com.tcms.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.tcms.enums.TestResult;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -29,6 +30,10 @@ public class TestCaseExecutions {
     @JoinColumn(name = "case_id", nullable = false)
     private TestCase testCase;
 
-    @OneToOne(mappedBy = "testCaseExecution", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private TestExecutionResults result;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "result_status")
+    private TestResult resultStatus;
+
+    @Column(name = "result_comment")
+    private String resultComment;
 }

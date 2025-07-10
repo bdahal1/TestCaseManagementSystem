@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.Set;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -13,6 +15,7 @@ import lombok.Setter;
 public class TestCaseWithResultDTO {
     private int id;
     private String testName;
+    private Set<TestStepInfoDTO> testSteps;
     private TestResult resultStatus;    // enum
     private String resultComment;       // optional
 }
