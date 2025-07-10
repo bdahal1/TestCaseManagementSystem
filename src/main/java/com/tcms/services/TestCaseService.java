@@ -2,6 +2,7 @@ package com.tcms.services;
 
 import com.tcms.dto.TestCaseInfoDTO;
 import com.tcms.helper.util.Util;
+import com.tcms.models.Projects;
 import com.tcms.models.Tags;
 import com.tcms.models.TestCase;
 import com.tcms.models.Users;
@@ -61,18 +62,10 @@ public class TestCaseService {
             }
             testCase.setTagsSet(tagsList);
         }
-        if (testCaseInfoDTO.getProjectId() == 0) {
-            testCase.setProjects(null);
-        } else {
-            testCase.setProjects(projectRepository.findById(testCaseInfoDTO.getProjectId()));
-        }
-        testCase.setTestProjectId("");
-        testCaseRepository.save(testCase);
-        if (testCaseInfoDTO.getProjectId() == 0) {
-            testCase.setTestProjectId("");
-        } else {
-            testCase.setTestProjectId(projectRepository.findById(testCaseInfoDTO.getProjectId()).getProjectInitials() + "-" + testCase.getId());
-        }
+        Projects project = projectRepository.findById(testCaseInfoDTO.getProjectId());
+        testCase.setProjects(project);
+        testCase.setTestProjectId(project.getProjectInitials()+ "-" +(project.getIssueCounter() + 1));
+        project.setIssueCounter(project.getIssueCounter() + 1);
         testCaseRepository.save(testCase);
         return ResponseEntity.status(HttpStatus.OK).body(testCase);
     }
@@ -98,8 +91,6 @@ public class TestCaseService {
             }
             testCaseEdit.setTagsSet(tagsList);
         }
-        testCaseEdit.setProjects(testCaseInfoDTO.getProjectId() == null ? testCaseEdit.getProjects() : projectRepository.findById(testCaseInfoDTO.getProjectId()));
-        testCaseEdit.setTestProjectId(testCaseInfoDTO.getProjectId() == null ? testCaseEdit.getProjects().getProjectInitials() : projectRepository.findById(testCaseInfoDTO.getProjectId()).getProjectInitials() + "-" + testCaseEdit.getId());
         testCaseRepository.save(testCaseEdit);
         return ResponseEntity.status(HttpStatus.OK).body(testCaseEdit);
     }

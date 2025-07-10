@@ -76,6 +76,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [selectedTestCase, setSelectedTestCase] = useState<TestCase | null>(null);
     const [formMode, setFormMode] = useState("create");
+    const [, setProjectError] = useState(false);
 
     // Form state
     const [testName, setTestName] = useState<string>("");
@@ -214,8 +215,15 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
+        const isProjectValid = projectId > 0;
+        setProjectError(!isProjectValid);
         if (!testName.trim()) {
             setSnackbarMessage("Test Name is required.");
+            setSnackbarOpen(true);
+            return;
+        }
+        if(!isProjectValid){
+            setSnackbarMessage("Project is required.")
             setSnackbarOpen(true);
             return;
         }
@@ -371,7 +379,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                         <Select
                             required
                             value={projectId}
-                            onChange={(e) => setProjectId(Number(e.target.value))}
+                            onChange={(e) => {setProjectId(Number(e.target.value)); setProjectError(false);}}
                             label="Project"
                         >
                             <MenuItem value={0} disabled>

@@ -34,7 +34,7 @@ public class TestCase {
     private String testCreatedBy;
 
     @Column(name = "tc_created_date", nullable = false)
-    private java.sql.Timestamp testCreatedDate;
+    private Timestamp testCreatedDate;
 
     @Column(name = "tc_modified_by", nullable = false)
     private String testModifiedBy;

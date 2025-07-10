@@ -28,6 +28,9 @@ public class Projects {
     @Column(name = "pro_initials", nullable = false, unique = true)
     private String projectInitials;
 
+    @Column(name = "issue_counter", nullable = false)
+    private Integer issueCounter=0;
+
     @ManyToMany(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.PERSIST}, fetch = FetchType.LAZY)
     @JoinTable(name = "users_projects", joinColumns = {@JoinColumn(name = "pro_id", referencedColumnName = "pro_id")}, inverseJoinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "u_id")})
     private Set<Users> usersSet;
