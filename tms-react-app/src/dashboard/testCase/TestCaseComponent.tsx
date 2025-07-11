@@ -32,7 +32,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 const API_URL_TESTCASE = "http://localhost:8080/dhtcms/api/v1/testCase";
 const API_URL_PROJECT = "http://localhost:8080/dhtcms/api/v1/project";
 const API_URL_TAGS = "http://localhost:8080/dhtcms/api/v1/tags";
-const API_URL_TESTSTEPS = "http://localhost:8080/dhtcms/api/v1/testSteps";
+const API_URL_TEST_STEPS = "http://localhost:8080/dhtcms/api/v1/testSteps";
 
 interface Project {
     id: number;
@@ -76,7 +76,6 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [selectedTestCase, setSelectedTestCase] = useState<TestCase | null>(null);
     const [formMode, setFormMode] = useState("create");
-    const [, setProjectError] = useState(false);
 
     // Form state
     const [testName, setTestName] = useState<string>("");
@@ -112,77 +111,67 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
         setLoading(true);
         try {
             const response = await axios.get(`${API_URL_TESTCASE}?projectId=${projId}`, {
-                headers: {Authorization: `Bearer ` + localStorage.getItem("authToken")},
+                headers: {Authorization: `Bearer ${localStorage.getItem("authToken")}`},
             });
             setTestCases(response.data.testCase ?? []);
             setError(null);
-        } catch (err) {
+        } catch {
             setError("Failed to fetch test cases.");
         } finally {
             setLoading(false);
         }
     };
 
-    // Fetch all projects
     const fetchProjects = async () => {
         try {
             const response = await axios.get(`${API_URL_PROJECT}/id/${projId}`, {
-                headers: {Authorization: `Bearer ` + localStorage.getItem("authToken")},
+                headers: {Authorization: `Bearer ${localStorage.getItem("authToken")}`},
             });
             setProjects(response.data.projects);
-        } catch (err) {
+        } catch {
             setError("Failed to fetch projects.");
         }
     };
-    // Fetch all Tags
+
     const fetchTags = async () => {
         try {
             const response = await axios.get(API_URL_TAGS, {
-                headers: {Authorization: `Bearer ` + localStorage.getItem("authToken")},
+                headers: {Authorization: `Bearer ${localStorage.getItem("authToken")}`},
             });
-            const tags = Array.isArray(response.data?.tags) ? response.data.tags : [];
-            setTags(tags);
-        } catch (err) {
+            setTags(Array.isArray(response.data?.tags) ? response.data.tags : []);
+        } catch {
             setError("Failed to fetch tags.");
         }
     };
+
     const syncMissingTags = async (incomingTags: TagsSet[]): Promise<TagsSet[]> => {
         const existingTagNames = new Set(tags.map(tag => tag.tagName.toLowerCase()));
-
         const createdTags: TagsSet[] = [];
 
         for (const tag of incomingTags) {
             if (!existingTagNames.has(tag.tagName.toLowerCase())) {
                 try {
-                    const res = await axios.post("http://localhost:8080/dhtcms/api/v1/tags", {tagName: tag.tagName}, {
-                        headers: {Authorization: `Bearer ` + localStorage.getItem("authToken")},
+                    const res = await axios.post(API_URL_TAGS, {tagName: tag.tagName}, {
+                        headers: {Authorization: `Bearer ${localStorage.getItem("authToken")}`},
                     });
                     createdTags.push(res.data);
-                } catch (err) {
-                    console.error(`Error creating tag "${tag.tagName}"`, err);
+                } catch {
                 }
             }
         }
 
-        // Combine and deduplicate
         const updatedTagList = [...tags, ...createdTags];
         const tagMap = new Map<string, TagsSet>();
-        updatedTagList.forEach(tag =>
-            tagMap.set(tag.tagName.toLowerCase(), tag)
-        );
-
+        updatedTagList.forEach(tag => tagMap.set(tag.tagName.toLowerCase(), tag));
         const deduplicatedTagList = Array.from(tagMap.values());
 
-        // Update state with full tag list
         setTags(deduplicatedTagList);
 
-        // Return resolved versions of incoming tags with IDs filled in
         return incomingTags.map(tag => {
             const found = deduplicatedTagList.find(t => t.tagName.toLowerCase() === tag.tagName.toLowerCase());
             return found || tag;
         });
     };
-
 
     const handleOpenDialog = async (testCase: TestCase | null) => {
         if (testCase) {
@@ -193,17 +182,24 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
             setProjectId(testCase.projects.id);
             setSelectedTags(testCase.tagsSet);
             try {
-                const response = await axios.get(`${API_URL_TESTSTEPS}/testCaseId/${testCase.id}`, {
-                    headers: {Authorization: `Bearer ` + localStorage.getItem("authToken")},
+                const response = await axios.get(`${API_URL_TEST_STEPS}/testCaseId/${testCase.id}`, {
+                    headers: {Authorization: `Bearer ${localStorage.getItem("authToken")}`},
                 });
                 setSteps(response.data.testSteps);
-            } catch (err) {
+            } catch {
                 setError("Failed to fetch steps.");
             }
         } else {
             setFormMode("create");
             setSteps([]);
             resetForm();
+            setSteps([]);
+            resetForm();
+            if (projects.length === 1) {
+                setProjectId(projects[0].id);
+            } else {
+                setProjectId(0);
+            }
         }
         setDialogOpen(true);
     };
@@ -215,68 +211,61 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
-        const isProjectValid = projectId > 0;
-        setProjectError(!isProjectValid);
+
         if (!testName.trim()) {
             setSnackbarMessage("Test Name is required.");
             setSnackbarOpen(true);
             return;
         }
-        if(!isProjectValid){
-            setSnackbarMessage("Project is required.")
+
+        if (!projectId) {
+            setSnackbarMessage("Project is required.");
             setSnackbarOpen(true);
             return;
         }
+
         const testPayload = {
             testName,
             projectId,
             userId: localStorage.getItem("userId"),
-            selectedTags: selectedTags.map(tag => tag.id)
+            selectedTags: selectedTags.map(tag => tag.id),
         };
+
         let currentTestCaseId = testCaseId;
+
         try {
             if (formMode === "edit" && selectedTestCase) {
                 await axios.put(`${API_URL_TESTCASE}/${selectedTestCase.id}`, testPayload, {
-                    headers: {Authorization: `Bearer ` + localStorage.getItem("authToken")},
+                    headers: {Authorization: `Bearer ${localStorage.getItem("authToken")}`},
                 });
                 currentTestCaseId = selectedTestCase.id;
                 setSnackbarMessage("Test case updated successfully!");
             } else {
                 const response = await axios.post(API_URL_TESTCASE, testPayload, {
-                    headers: {Authorization: `Bearer ` + localStorage.getItem("authToken")},
+                    headers: {Authorization: `Bearer ${localStorage.getItem("authToken")}`},
                 });
                 currentTestCaseId = response.data.id;
                 setSnackbarMessage("Test case created successfully!");
             }
 
-            fetchTestCases().then(); // Refresh the list
-        } catch (err) {
-            setSnackbarMessage("Failed to save test case.");
-        } finally {
-            setSnackbarOpen(true);
-            handleCloseDialog();
-        }
-        try {
-            // Prepare and send steps payload
-            const testStepsPayload = steps.map((step, index) => ({
-                testStepDesc: step.testStepDesc,
-                testExpectedOutput: step.testExpectedOutput,
-                testStepData: step.testStepData,
-                testStepOrder: index + 1,
-                testCaseId: currentTestCaseId,
-                userId: localStorage.getItem("userId"),
-                stepId: step.id
-            }));
-
-            if (testStepsPayload.length !== 0) {
-                await axios.post(`${API_URL_TESTSTEPS}`, testStepsPayload, {
-                    headers: {Authorization: `Bearer ` + localStorage.getItem("authToken")},
+            if (steps.length) {
+                const testStepsPayload = steps.map((step, index) => ({
+                    testStepDesc: step.testStepDesc,
+                    testExpectedOutput: step.testExpectedOutput,
+                    testStepData: step.testStepData,
+                    testStepOrder: index + 1,
+                    testCaseId: currentTestCaseId,
+                    userId: localStorage.getItem("userId"),
+                    stepId: step.id,
+                }));
+                await axios.post(API_URL_TEST_STEPS, testStepsPayload, {
+                    headers: {Authorization: `Bearer ${localStorage.getItem("authToken")}`},
                 });
             }
 
-            fetchTestCases().then(); // Refresh the list
-        } catch (err) {
-            setSnackbarMessage("Failed to save Test steps.");
+            fetchTestCases().then();
+        } catch {
+            setSnackbarMessage("Failed to save test case or steps.");
         } finally {
             setSnackbarOpen(true);
             handleCloseDialog();
@@ -286,11 +275,11 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
     const deleteTestCase = async (id: number) => {
         try {
             await axios.delete(`${API_URL_TESTCASE}/${id}`, {
-                headers: {Authorization: `Bearer ` + localStorage.getItem("authToken")},
+                headers: {Authorization: `Bearer ${localStorage.getItem("authToken")}`},
             });
-            setTestCases(testCases.filter((testCase) => testCase.id !== id));
+            setTestCases(testCases.filter(tc => tc.id !== id));
             setSnackbarMessage("Test case deleted successfully!");
-        } catch (err) {
+        } catch {
             setSnackbarMessage("Failed to delete test case.");
         } finally {
             setSnackbarOpen(true);
@@ -299,7 +288,6 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
 
     const resetForm = () => {
         setTestName("");
-        setProjectId(0);
         setSelectedTestCase(null);
         setSelectedTags([]);
     };
@@ -310,13 +298,19 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
         fetchTags().then();
     }, [projId]);
 
+    useEffect(() => {
+        if (projects.length === 1) {
+            setProjectId(projects[0].id);
+        }
+    }, [projects]);
+
     if (loading) return <CircularProgress/>;
     if (error) return <div>{error}</div>;
 
     return (
         <Box sx={{padding: 2}}>
-            <h3>Test Case Manager for {testCases.length > 0 ? testCases[0].projects.projectName : "Project"}</h3>
-            <Button variant="contained" color="primary" onClick={() => handleOpenDialog(null)} sx={{mb: 2}}>
+            <h3>Test Case Manager for {testCases[0]?.projects.projectName || "Project"}</h3>
+            <Button variant="contained" onClick={() => handleOpenDialog(null)} sx={{mb: 2}}>
                 + Add Test Case
             </Button>
             <TableContainer component={Paper}>
@@ -332,34 +326,20 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {testCases.map((testCase) => (
-                            <TableRow key={testCase.id}>
+                        {testCases.map((tc) => (
+                            <TableRow key={tc.id}>
                                 <TableCell>
-                                    <Link component="button" onClick={() => handleOpenDialog(testCase)}>
-                                        {testCase.testProjectId}
+                                    <Link component="button" onClick={() => handleOpenDialog(tc)}>
+                                        {tc.testProjectId}
                                     </Link>
                                 </TableCell>
+                                <TableCell>{tc.testName}</TableCell>
+                                <TableCell>{tc.projects.projectName}</TableCell>
+                                <TableCell>{tc.tagsSet.map(t => t.tagName).join(", ")}</TableCell>
+                                <TableCell>{tc.testCreatedBy}</TableCell>
                                 <TableCell>
-                                    <Link component="button" onClick={() => handleOpenDialog(testCase)}>
-                                        {testCase.testName}
-                                    </Link>
-                                </TableCell>
-                                <TableCell>{testCase.projects.projectName}</TableCell>
-                                <TableCell>
-                                    {testCase.tagsSet.map((tag, index) => (
-                                        <span key={tag.id}>
-                                        {tag.tagName}{index < testCase.tagsSet.length - 1 ? ', ' : ''}
-                                    </span>
-                                    ))}
-                                </TableCell>
-                                <TableCell>{testCase.testCreatedBy}</TableCell>
-                                <TableCell>
-                                    <IconButton color="primary" onClick={() => handleOpenDialog(testCase)}>
-                                        <EditIcon/>
-                                    </IconButton>
-                                    <IconButton color="secondary" onClick={() => deleteTestCase(testCase.id)}>
-                                        <DeleteIcon/>
-                                    </IconButton>
+                                    <IconButton onClick={() => handleOpenDialog(tc)}><EditIcon/></IconButton>
+                                    <IconButton onClick={() => deleteTestCase(tc.id)}><DeleteIcon/></IconButton>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -368,32 +348,36 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
             </TableContainer>
 
             <Dialog open={dialogOpen} onClose={handleCloseDialog} fullWidth maxWidth="md">
-                <DialogTitle sx={{bgcolor: "#1976d2", color: "white", py: 2}}>
-                    {formMode === "create" ? "Add Test Case" : "Edit Test Case"}
-                </DialogTitle>
-
+                <DialogTitle>{formMode === "create" ? "Add" : "Edit"} Test Case</DialogTitle>
                 <DialogContent dividers sx={{display: "flex", flexDirection: "column", gap: 2, p: 3}}>
                     {/* Project Selection */}
-                    <FormControl fullWidth>
-                        <InputLabel>Project</InputLabel>
-                        <Select
-                            required
-                            value={projectId}
-                            onChange={(e) => {setProjectId(Number(e.target.value)); setProjectError(false);}}
-                            label="Project"
-                        >
-                            <MenuItem value={0} disabled>
-                                Select a project
-                            </MenuItem>
-                            {projects.map((project) => (
-                                <MenuItem key={project.id} value={project.id}>
-                                    {project.projectName}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
+                    {projects.length > 1 ? (
+                        <FormControl fullWidth>
+                            <InputLabel>Project</InputLabel>
+                            <Select
+                                required
+                                value={projectId}
+                                onChange={(e) => setProjectId(Number(e.target.value))}
+                                label="Project"  variant="outlined"
+                            >
+                                <MenuItem value={0} disabled>Select a project</MenuItem>
+                                {projects.map((project) => (
+                                    <MenuItem key={project.id} value={project.id}>{project.projectName}</MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    ) : (
+                        <>
+                            <input type="hidden" value={projectId}/>
+                            <TextField
+                                label="Project"
+                                value={projects[0]?.projectName || ""}
+                                fullWidth
+                                slotProps={{input: {readOnly: true}}}
+                            />
+                        </>
+                    )}
 
-                    {/* Tags Autocomplete */}
                     <Autocomplete
                         multiple
                         freeSolo
@@ -402,20 +386,14 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                         value={selectedTags}
                         onChange={async (_, newValue) => {
                             const formattedTags: TagsSet[] = newValue.map((item) =>
-                                typeof item === "string" ? ({id: null, tagName: item} as TagsSet) : item
+                                typeof item === "string" ? {id: null, tagName: item} : item
                             );
-                            const tagMap = new Map<string, TagsSet>();
-                            formattedTags.forEach((tag) => tagMap.set(tag.tagName.toLowerCase(), tag));
-                            const deduplicated = Array.from(tagMap.values());
-                            const resolved = await syncMissingTags(deduplicated);
+                            const resolved = await syncMissingTags(formattedTags);
                             setSelectedTags(resolved);
                         }}
-                        renderInput={(params) => (
-                            <TextField {...params} variant="outlined" label="Tags" placeholder="Select or add tags"/>
-                        )}
+                        renderInput={(params) => <TextField {...params} label="Tags"/>}
                     />
 
-                    {/* Test Name */}
                     <TextField
                         label="Test Name"
                         value={testName}
@@ -424,31 +402,11 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                         fullWidth
                     />
 
-                    {/* Steps Section */}
                     <Box sx={{mt: 2}}>
-                        <Box
-                            sx={{
-                                fontWeight: "bold",
-                                mb: 1,
-                                borderBottom: "1px solid #ddd",
-                                pb: 0.5,
-                                fontSize: "1.1rem",
-                            }}
-                        >
-                            Test Steps
-                        </Box>
-
+                        <Box sx={{fontWeight: "bold", mb: 1}}>Test Steps</Box>
                         {steps.map((step, index) => (
-                            <Box
-                                key={index}
-                                sx={{
-                                    display: "grid",
-                                    gridTemplateColumns: "1fr 1fr 1fr auto",
-                                    gap: 2,
-                                    alignItems: "center",
-                                    mb: 2,
-                                }}
-                            >
+                            <Box key={index}
+                                 sx={{display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 2, mb: 2}}>
                                 <TextField
                                     label={`Step ${index + 1}`}
                                     value={step.testStepDesc}
@@ -472,23 +430,16 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                                 </IconButton>
                             </Box>
                         ))}
-
-                        <Button onClick={addStep} variant="outlined" color="primary" sx={{mt: 1}}>
-                            + Add Step
-                        </Button>
+                        <Button onClick={addStep}>+ Add Step</Button>
                     </Box>
                 </DialogContent>
-
-                <DialogActions sx={{px: 3, py: 2}}>
-                    <Button variant="contained" color="primary" onClick={handleSubmit}>
+                <DialogActions>
+                    <Button variant="contained" onClick={handleSubmit}>
                         {formMode === "create" ? "Create" : "Update"}
                     </Button>
-                    <Button variant="outlined" onClick={handleCloseDialog}>
-                        Cancel
-                    </Button>
+                    <Button variant="outlined" onClick={handleCloseDialog}>Cancel</Button>
                 </DialogActions>
             </Dialog>
-
 
             <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={() => setSnackbarOpen(false)}>
                 <Alert onClose={() => setSnackbarOpen(false)}

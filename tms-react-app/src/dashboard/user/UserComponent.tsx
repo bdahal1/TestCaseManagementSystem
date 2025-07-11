@@ -49,6 +49,7 @@ interface Project {
     projectName: string;
 }
 
+const API_URL_BASE = "http://localhost:8080/dhtcms/api/v1";
 const UserComponent: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [open, setOpen] = useState(false);
@@ -86,12 +87,11 @@ const UserComponent: React.FC = () => {
         severity: 'success',
     });
     const loggedInUserId = Number(localStorage.getItem('userId'));
-    const API_URL = 'http://localhost:8080/dhtcms/api/v1/users';
 
     // Fetch users from the API
     const fetchUsers = async () => {
         try {
-            const response = await axios.get(API_URL, {
+            const response = await axios.get(`${API_URL_BASE}/users`, {
                 headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
             });
             setUsers(response.data.users);
@@ -102,25 +102,28 @@ const UserComponent: React.FC = () => {
 
     const fetchRolesAndDepartments = async () => {
         try {
-            const [rolesResponse, departmentsResponse] = await Promise.all([
-                axios.get('http://localhost:8080/dhtcms/api/v1/roles', {
-                    headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
-                }),
-                axios.get('http://localhost:8080/dhtcms/api/v1/department', {
-                    headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
-                }),
-            ]);
+            const rolesResponse = await axios.get(`${API_URL_BASE}/roles`, {
+                headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
+            });
             setRoles(rolesResponse.data.roles);
+        } catch (error) {
+            console.error("Failed to fetch roles:", error);
+        }
+
+        try {
+            const departmentsResponse = await axios.get(`${API_URL_BASE}/department`, {
+                headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
+            });
             setDepartments(departmentsResponse.data.departments);
         } catch (error) {
-            console.error('Error fetching roles or departments:', error);
+            console.error("Failed to fetch departments:", error);
         }
     };
 
     // Fetch projects from the API
     const fetchProjects = async () => {
         try {
-            const response = await axios.get('http://localhost:8080/dhtcms/api/v1/project', {
+            const response = await axios.get(`${API_URL_BASE}/project`, {
                 headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
             });
             const data = response.data.projects;  // Assuming response.data is the array you want to transform
@@ -144,7 +147,7 @@ const UserComponent: React.FC = () => {
 
     // Handle form input change
     const handleChange = (
-        e: React.ChangeEvent<{ name?: string; value: unknown }> | SelectChangeEvent<string>
+        e: React.ChangeEvent<{ name?: string; value: unknown }> | SelectChangeEvent
     ) => {
         const {name, value} = e.target;
         if (name) {
@@ -199,7 +202,7 @@ const UserComponent: React.FC = () => {
             };
             if (isEdit && selectedUser) {
                 await axios.put(
-                    `${API_URL}/${selectedUser.id}`,
+                    `${API_URL_BASE}/users/${selectedUser.id}`,
                     payload,
                     {
                         headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
@@ -208,7 +211,7 @@ const UserComponent: React.FC = () => {
                 setAlert({open: true, message: 'User Updated Successfully!', severity: 'success'});
             } else {
                 await axios.post(
-                    API_URL,
+                    `${API_URL_BASE}/users`,
                     payload,
                     {
                         headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
@@ -228,7 +231,7 @@ const UserComponent: React.FC = () => {
     const handleDelete = async (id: number) => {
         if (window.confirm('Are you sure you want to delete this user?')) {
             try {
-                await axios.delete(`${API_URL}/${id}`, {
+                await axios.delete(`${API_URL_BASE}/users/${id}`, {
                     headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
                 });
                 fetchUsers().then();
@@ -244,7 +247,7 @@ const UserComponent: React.FC = () => {
     const toggleActiveStatus = async (user: User) => {
         try {
             await axios.put(
-                `${API_URL}/${user.id}`,
+                `${API_URL_BASE}/users/${user.id}`,
                 {...user, isActive: !user.isActive},
                 {
                     headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
@@ -274,7 +277,7 @@ const UserComponent: React.FC = () => {
                 </Alert>
             </Snackbar>
             <br/>
-            <Button variant="contained" color="primary" onClick={() => handleOpen()} >
+            <Button variant="contained" color="primary" onClick={() => handleOpen()}>
                 + Add User
             </Button>
 
@@ -327,7 +330,7 @@ const UserComponent: React.FC = () => {
 
             {/* Add/Edit Dialog */}
             <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-                <DialogTitle sx={{bgcolor: '#1976d2', color: '#fff', py: 2}}>
+                <DialogTitle sx={{backgroundColor: '#1976d2', color: '#fff', py: 2}}>
                     {isEdit ? 'Edit User' : 'Add User'}
                 </DialogTitle>
                 <DialogContent dividers sx={{p: 3, display: 'flex', flexDirection: 'column', gap: 2}}>
@@ -365,7 +368,7 @@ const UserComponent: React.FC = () => {
 
                     <FormControl fullWidth>
                         <InputLabel>Role</InputLabel>
-                        <Select name="roleId" value={formData.roleId} onChange={handleChange} label="Role">
+                        <Select name="roleId" value={formData.roleId} onChange={handleChange} label="Role" variant="outlined">
                             {roles.map((role) => (
                                 <MenuItem key={role.roleId} value={role.roleId}>
                                     {role.roleName}
@@ -381,6 +384,7 @@ const UserComponent: React.FC = () => {
                             value={formData.departmentId}
                             onChange={handleChange}
                             label="Department"
+                            variant="outlined"
                         >
                             {departments.map((dep) => (
                                 <MenuItem key={dep.depId} value={dep.depId}>
