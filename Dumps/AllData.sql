@@ -427,7 +427,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'Bibek',_binary '','Dahal','$2a$12$wb3w7gVD6VfVWIfTx8BKQOlEAEHLIvAoMG6OipBr0oRbcf08AnJsK','bdahal'),(2,'Ramesh',_binary '','Khatri','$2a$10$sl2AMdU/xI90eXpThI8r9e.UGdnZgXLqgim6bnGlKGg4fXOj2Lp8e','rkhatri'),(3,'Swastik',_binary '','Pandey','$2a$10$SrqLwNSLIVnQr/I0KYrpQurWcC8.u1ePCq70ISNgYYrVYF0rz4MLC','spandey'),(5,'Binaya',_binary '','Dahal','$2a$10$dDoJU7wJ0LJaBdKAoZWdT.GTIQs3Lu0nSGjzPmhcAKCaE4QwIlapy','bidahal');
+INSERT INTO `users` VALUES (1,'Bibek',_binary '','Dahal','$2a$12$wb3w7gVD6VfVWIfTx8BKQOlEAEHLIvAoMG6OipBr0oRbcf08AnJsK','bdahal'),(5,'Binaya',_binary '','Dahal','$2a$10$dDoJU7wJ0LJaBdKAoZWdT.GTIQs3Lu0nSGjzPmhcAKCaE4QwIlapy','bidahal'),(2,'Ramesh',_binary '','Khatri','$2a$10$sl2AMdU/xI90eXpThI8r9e.UGdnZgXLqgim6bnGlKGg4fXOj2Lp8e','rkhatri'),(3,'Swastik',_binary '','Pandey','$2a$10$SrqLwNSLIVnQr/I0KYrpQurWcC8.u1ePCq70ISNgYYrVYF0rz4MLC','spandey');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 

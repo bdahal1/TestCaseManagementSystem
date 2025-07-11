@@ -30,15 +30,23 @@ public class CustomUserDetailService implements UserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        Users user = userRepository.findByUserName(username);
-        if (user.getRoleSet().isEmpty()) {
-            return new org.springframework.security.core.userdetails.User(user.getUserName(), user.getPassword(), new HashSet<>());
+        try {
+            Users user = userRepository.findByUserName(username);
+            if (user == null) {
+                throw new UsernameNotFoundException("User not found with username: " + username);
+            }
+            if (user.getRoleSet() == null || user.getRoleSet().isEmpty()) {
+                return new org.springframework.security.core.userdetails.User(user.getUserName(), user.getPassword(), new HashSet<>());
+            }
+            Set<GrantedAuthority> grantedAuthorities = user.getRoleSet().stream()
+                    .map(userRoles -> {
+                        var role = roleRepository.findByRoleId(userRoles.getRoleId());
+                        return new SimpleGrantedAuthority(role != null ? role.getRoleName() : "ROLE_USER");
+                    })
+                    .collect(Collectors.toSet());
+            return new org.springframework.security.core.userdetails.User(user.getUserName(), user.getPassword(), grantedAuthorities);
+        } catch (Exception ex) {
+            throw new UsernameNotFoundException("Failed to load user: " + username, ex);
         }
-        Set<GrantedAuthority> grantedAuthorities = user.getRoleSet().stream()
-                .map(userRoles ->
-                        new SimpleGrantedAuthority(roleRepository.findByRoleId(userRoles.getRoleId()).getRoleName())
-                )
-                .collect(Collectors.toSet());
-        return new org.springframework.security.core.userdetails.User(user.getUserName(), user.getPassword(), grantedAuthorities);
     }
 }
