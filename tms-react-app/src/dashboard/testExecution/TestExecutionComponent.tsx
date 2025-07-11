@@ -260,7 +260,7 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
     return (
         <Box display="flex">
             <Box sx={{width: 240, p: 2}}>
-                <Button variant="contained" size="small" onClick={handleOpenAdd} sx={{mt: 1, mb: 2}}>
+                <Button variant="outlined" size="small" onClick={handleOpenAdd} sx={{mt: 1, mb: 2}}>
                     + Add Execution
                 </Button>
                 <Divider/>
@@ -307,14 +307,14 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                 </List>
             </Box>
             <Box sx={{flexGrow: 1, p: 3}}>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="subtitle1" gutterBottom>
                     {selectedExecution ? `Test Cases in ${selectedExecution.executionName}` : 'Select a Execution to view test cases'}
                 </Typography>
                 {selectedExecution && (
                     <>
                         <Box display="flex" mb={2} justifyContent="space-between" alignItems="center">
-                            <Button variant="outlined" onClick={() => setOpenAddTestCaseDialog(true)}>
-                                Add Test Case
+                            <Button variant="outlined" sx={{mb: 2}} onClick={() => setOpenAddTestCaseDialog(true)}>
+                                + Add Test Case
                             </Button>
                         </Box>
                         {/* Stats Section */}
@@ -458,7 +458,7 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
 
             <Dialog open={openDialog} onClose={handleClose} fullWidth maxWidth="sm">
                 <DialogTitle>{isEdit ? 'Edit Test Execution' : 'Add Test Execution'}</DialogTitle>
-                <DialogContent sx={{mt: 2}}>
+                <DialogContent dividers sx={{p: 3, display: 'flex', flexDirection: 'column', gap: 2}}>
                     <TextField
                         label="Execution Name"
                         value={executionName}
@@ -477,7 +477,7 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
             <Dialog open={openAddTestCaseDialog} onClose={() => setOpenAddTestCaseDialog(false)} fullWidth
                     maxWidth="sm">
                 <DialogTitle>Select Test Cases to Add</DialogTitle>
-                <DialogContent sx={{mt: 2}}>
+                <DialogContent dividers sx={{p: 3, display: 'flex', flexDirection: 'column', gap: 2}}>
                     <Autocomplete
                         multiple
                         options={allTestCases}

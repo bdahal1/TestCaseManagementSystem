@@ -23,7 +23,7 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
-    Autocomplete
+    Autocomplete, Typography
 } from "@mui/material";
 import {Box} from "@mui/system";
 import EditIcon from "@mui/icons-material/Edit";
@@ -309,8 +309,8 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
 
     return (
         <Box sx={{padding: 2}}>
-            <h3>Test Case Manager for {testCases[0]?.projects.projectName || "Project"}</h3>
-            <Button variant="contained" onClick={() => handleOpenDialog(null)} sx={{mb: 2}}>
+            <br/>
+            <Button variant="outlined" onClick={() => handleOpenDialog(null)} sx={{mb: 2}}>
                 + Add Test Case
             </Button>
             <TableContainer component={Paper}>
@@ -328,18 +328,19 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                     <TableBody>
                         {testCases.map((tc) => (
                             <TableRow key={tc.id}>
-                                <TableCell>
-                                    <Link component="button" onClick={() => handleOpenDialog(tc)}>
-                                        {tc.testProjectId}
-                                    </Link>
+                                <TableCell><Link component="button"
+                                                 onClick={() => handleOpenDialog(tc)}>{tc.testProjectId}</Link>
                                 </TableCell>
-                                <TableCell>{tc.testName}</TableCell>
+                                <TableCell><Link component="button"
+                                                 onClick={() => handleOpenDialog(tc)}>{tc.testName}</Link></TableCell>
                                 <TableCell>{tc.projects.projectName}</TableCell>
                                 <TableCell>{tc.tagsSet.map(t => t.tagName).join(", ")}</TableCell>
                                 <TableCell>{tc.testCreatedBy}</TableCell>
                                 <TableCell>
-                                    <IconButton onClick={() => handleOpenDialog(tc)}><EditIcon/></IconButton>
-                                    <IconButton onClick={() => deleteTestCase(tc.id)}><DeleteIcon/></IconButton>
+                                    <IconButton color="primary"
+                                                onClick={() => handleOpenDialog(tc)}><EditIcon/></IconButton>
+                                    <IconButton color="secondary"
+                                                onClick={() => deleteTestCase(tc.id)}><DeleteIcon/></IconButton>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -358,7 +359,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                                 required
                                 value={projectId}
                                 onChange={(e) => setProjectId(Number(e.target.value))}
-                                label="Project"  variant="outlined"
+                                label="Project" variant="outlined"
                             >
                                 <MenuItem value={0} disabled>Select a project</MenuItem>
                                 {projects.map((project) => (
@@ -377,7 +378,13 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                             />
                         </>
                     )}
-
+                    <TextField
+                        label="Test Case Title"
+                        value={testName}
+                        onChange={(e) => setTestName(e.target.value)}
+                        required
+                        fullWidth
+                    />
                     <Autocomplete
                         multiple
                         freeSolo
@@ -392,14 +399,6 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                             setSelectedTags(resolved);
                         }}
                         renderInput={(params) => <TextField {...params} label="Tags"/>}
-                    />
-
-                    <TextField
-                        label="Test Name"
-                        value={testName}
-                        onChange={(e) => setTestName(e.target.value)}
-                        required
-                        fullWidth
                     />
 
                     <Box sx={{mt: 2}}>

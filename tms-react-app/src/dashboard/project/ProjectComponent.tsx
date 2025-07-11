@@ -134,10 +134,9 @@ const ProjectComponent: React.FC = () => {
 
     return (
         <div>
-            <h1>Projects Management</h1>
-
-            <Button variant="contained" color="primary" onClick={handleOpenAdd} sx={{mb: 2}}>
-                Add Project
+            <br/>
+            <Button variant="outlined" color="primary" onClick={handleOpenAdd} sx={{mb: 2}}>
+                + Add Project
             </Button>
 
             <TableContainer component={Paper}>
@@ -170,9 +169,7 @@ const ProjectComponent: React.FC = () => {
 
             {/* Add/Edit Project Dialog */}
             <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-                <DialogTitle sx={{bgcolor: '#1976d2', color: '#fff', py: 2}}>
-                    {isEdit ? 'Edit Project' : 'Add Project'}
-                </DialogTitle>
+                <DialogTitle>{isEdit ? 'Edit Project' : 'Add Project'}</DialogTitle>
                 <DialogContent dividers sx={{p: 3, display: 'flex', flexDirection: 'column', gap: 2}}>
                     <TextField
                         label="Project Name"

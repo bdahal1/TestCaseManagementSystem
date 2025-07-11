@@ -223,7 +223,7 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
     return (
         <Box display="flex">
             <Box sx={{width: 240, p: 2}}>
-                <Button variant="contained" size="small" onClick={handleOpenAdd} sx={{mt: 1, mb: 2}}>
+                <Button variant="outlined" size="small" onClick={handleOpenAdd} sx={{mt: 1, mb: 2}}>
                     + Add Folder
                 </Button>
                 <Divider/>
@@ -270,7 +270,7 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
                 </List>
             </Box>
             <Box sx={{flexGrow: 1, p: 3}}>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="subtitle1" gutterBottom>
                     {selectedFolder ? `Test Cases in ${selectedFolder.folderName}` : 'Select a folder to view test cases'}
                 </Typography>
                 {selectedFolder && (
@@ -341,7 +341,7 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
 
             <Dialog open={openDialog} onClose={handleClose} fullWidth maxWidth="sm">
                 <DialogTitle>{isEdit ? 'Edit Test Folder' : 'Add Test Folder'}</DialogTitle>
-                <DialogContent sx={{mt: 2}}>
+                <DialogContent dividers sx={{p: 3, display: 'flex', flexDirection: 'column', gap: 2}}>
                     <TextField
                         label="Folder Name"
                         value={folderName}
@@ -360,7 +360,7 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
             <Dialog open={openAddTestCaseDialog} onClose={() => setOpenAddTestCaseDialog(false)} fullWidth
                     maxWidth="sm">
                 <DialogTitle>Select Test Cases to Add</DialogTitle>
-                <DialogContent sx={{mt: 2}}>
+                <DialogContent dividers sx={{p: 3, display: 'flex', flexDirection: 'column', gap: 2}}>
                     <Autocomplete
                         multiple
                         options={allTestCases}

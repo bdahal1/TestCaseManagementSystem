@@ -11,7 +11,7 @@ import {
     IconButton,
     List,
     ListItem,
-    ListItemButton,
+    ListItemButton, ListItemIcon,
     ListItemText,
     Menu,
     MenuItem,
@@ -25,6 +25,9 @@ import MenuIcon from "@mui/icons-material/Menu";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import {useNavigate} from "react-router-dom";
 import axios from "axios";
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import FolderIcon from '@mui/icons-material/Folder';
+import PlayCircleFilledIcon from '@mui/icons-material/PlayCircleFilled';
 
 import UserComponent from "./user/UserComponent";
 import RoleComponent from "./role/RoleComponent";
@@ -149,9 +152,8 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
     }, [navigate]);
 
     const menuItems = [
-        "Dashboard",
-        ...(isQAManager ? ["Users", "Roles", "Department", "Project"] : []),
-        ...(selectedProjectId !== null ? ["Test Cases", "Test Folders", "Test Executions"] : []),
+        { label: "Dashboard", icon: <DashboardIcon /> },
+        ...(selectedProjectId !== null ? [{ label: "Test Cases", icon: <FolderIcon /> },{ label: "Test Folders", icon: <FolderIcon /> }, { label: "Test Executions", icon: <PlayCircleFilledIcon /> }] : []),
     ];
 
     return (
@@ -183,8 +185,31 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
                             </Box>
                         </Tooltip>
                         <Menu anchorEl={anchorElUser} open={Boolean(anchorElUser)} onClose={handleCloseUserMenu}>
+                            {isQAManager && (
+                                <>
+                                    <MenuItem disabled>
+                                        <Typography variant="subtitle1" fontWeight="bold">Admin Settings</Typography>
+                                    </MenuItem>
+
+                                    <MenuItem onClick={() => { setCurrentView("Users"); handleCloseUserMenu(); }}>
+                                        Users
+                                    </MenuItem>
+                                    <MenuItem onClick={() => { setCurrentView("Roles"); handleCloseUserMenu(); }}>
+                                        Roles
+                                    </MenuItem>
+                                    <MenuItem onClick={() => { setCurrentView("Department"); handleCloseUserMenu(); }}>
+                                        Department
+                                    </MenuItem>
+                                    <MenuItem onClick={() => { setCurrentView("Project"); handleCloseUserMenu(); }}>
+                                        Project
+                                    </MenuItem>
+
+                                    <Divider />
+                                </>
+                            )}
+
                             <MenuItem onClick={handleLogoutClick}>
-                                <Typography textAlign="center">Logout</Typography>
+                                Logout
                             </MenuItem>
                         </Menu>
                     </Box>
@@ -216,10 +241,11 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
                     </IconButton>
                 </DrawerHeader>
                 <List>
-                    {menuItems.map((item) => (
-                        <ListItem key={item} disablePadding>
-                            <ListItemButton onClick={() => setCurrentView(item)}>
-                                <ListItemText primary={item}/>
+                    {menuItems.map(({ label, icon }) => (
+                        <ListItem key={label} disablePadding>
+                            <ListItemButton selected={currentView === label} onClick={() => setCurrentView(label)}>
+                                <ListItemIcon>{icon}</ListItemIcon>
+                                <ListItemText primary={label}/>
                             </ListItemButton>
                         </ListItem>
                     ))}

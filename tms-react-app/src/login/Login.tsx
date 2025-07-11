@@ -26,6 +26,7 @@ const Login: React.FC<{ onLoginSuccess: () => void }> = ({onLoginSuccess}) => {
             const timer = setTimeout(() => setShowAlert(false), 3000);
             return () => clearTimeout(timer);
         }
+        document.title = 'GN-Test';
     }, []);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {

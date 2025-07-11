@@ -87,6 +87,7 @@ const UserComponent: React.FC = () => {
         severity: 'success',
     });
     const loggedInUserId = Number(localStorage.getItem('userId'));
+    const isEditingLoggedInUser = selectedUser?.id === loggedInUserId;
 
     // Fetch users from the API
     const fetchUsers = async () => {
@@ -277,7 +278,7 @@ const UserComponent: React.FC = () => {
                 </Alert>
             </Snackbar>
             <br/>
-            <Button variant="contained" color="primary" onClick={() => handleOpen()}>
+            <Button variant="outlined" color="primary" onClick={() => handleOpen()}>
                 + Add User
             </Button>
 
@@ -310,6 +311,7 @@ const UserComponent: React.FC = () => {
                                         checked={user.isActive}
                                         onChange={() => toggleActiveStatus(user)}
                                         color="primary"
+                                        disabled={user.id === loggedInUserId}
                                     />
                                 </TableCell>
                                 <TableCell>
@@ -330,9 +332,7 @@ const UserComponent: React.FC = () => {
 
             {/* Add/Edit Dialog */}
             <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-                <DialogTitle sx={{backgroundColor: '#1976d2', color: '#fff', py: 2}}>
-                    {isEdit ? 'Edit User' : 'Add User'}
-                </DialogTitle>
+                <DialogTitle>{isEdit ? 'Edit User' : 'Add User'}</DialogTitle>
                 <DialogContent dividers sx={{p: 3, display: 'flex', flexDirection: 'column', gap: 2}}>
                     <TextField
                         name="firstName"
@@ -368,7 +368,7 @@ const UserComponent: React.FC = () => {
 
                     <FormControl fullWidth>
                         <InputLabel>Role</InputLabel>
-                        <Select name="roleId" value={formData.roleId} onChange={handleChange} label="Role" variant="outlined">
+                        <Select name="roleId" value={formData.roleId} onChange={handleChange} label="Role" variant="outlined" disabled={isEditingLoggedInUser}>
                             {roles.map((role) => (
                                 <MenuItem key={role.roleId} value={role.roleId}>
                                     {role.roleName}

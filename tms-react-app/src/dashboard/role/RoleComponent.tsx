@@ -132,7 +132,7 @@ const RoleComponent: React.FC = () => {
     return (
         <div>
             <br/>
-            <Button variant="contained" color="primary" onClick={handleOpenAdd} sx={{mb: 2}}>
+            <Button variant="outlined" color="primary" onClick={handleOpenAdd} sx={{mb: 2}}>
                 + Add Role
             </Button>
 
@@ -164,10 +164,8 @@ const RoleComponent: React.FC = () => {
 
             {/* Add/Edit Role Dialog */}
             <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-                <DialogTitle sx={{bgcolor: '#1976d2', color: '#fff', py: 2}}>
-                    {isEdit ? 'Edit Role' : 'Add Role'}
-                </DialogTitle>
-                <DialogContent dividers sx={{p: 3}}>
+                <DialogTitle>{isEdit ? 'Edit Role' : 'Add Role'}</DialogTitle>
+                <DialogContent dividers sx={{p: 3, display: 'flex', flexDirection: 'column', gap: 2}}>
                     <TextField
                         label="Role Name"
                         value={roleName}
