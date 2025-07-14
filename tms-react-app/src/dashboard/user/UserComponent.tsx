@@ -49,7 +49,7 @@ interface Project {
     projectName: string;
 }
 
-const API_URL_BASE = "http://localhost:8080/dhtcms/api/v1";
+const API_URL_BASE = "/dhtcms/api/v1";
 const UserComponent: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [open, setOpen] = useState(false);

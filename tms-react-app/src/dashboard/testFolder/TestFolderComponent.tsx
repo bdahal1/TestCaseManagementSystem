@@ -40,8 +40,8 @@ interface TestFolderComponentProps {
     projId: number;
 }
 
-const API_URL_TEST_FOLDER = 'http://localhost:8080/dhtcms/api/v1/testFolders';
-const API_URL_TESTCASE = 'http://localhost:8080/dhtcms/api/v1/testCase';
+const API_URL_TEST_FOLDER = '/dhtcms/api/v1/testFolders';
+const API_URL_TESTCASE = '/dhtcms/api/v1/testCase';
 
 const TestFolderComponent: React.FC<TestFolderComponentProps> = ({projId}) => {
     const [testFolders, setTestFolders] = useState<TestFolder[]>([]);

@@ -88,7 +88,7 @@ interface Project {
     projectName: string;
 }
 
-const API_BASE_URL = "http://localhost:8080/dhtcms/api/v1";
+const API_BASE_URL = "/dhtcms/api/v1";
 
 const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
     const navigate = useNavigate();

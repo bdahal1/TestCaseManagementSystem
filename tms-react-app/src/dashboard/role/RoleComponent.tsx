@@ -43,7 +43,7 @@ const RoleComponent: React.FC = () => {
         severity: 'success',
     });
 
-    const API_URL = 'http://localhost:8080/dhtcms/api/v1/roles';
+    const API_URL = '/dhtcms/api/v1/roles';
 
     const fetchRoles = async () => {
         try {

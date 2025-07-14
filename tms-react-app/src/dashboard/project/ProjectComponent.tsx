@@ -45,7 +45,7 @@ const ProjectComponent: React.FC = () => {
         severity: 'success',
     });
 
-    const API_URL = 'http://localhost:8080/dhtcms/api/v1/project';
+    const API_URL = '/dhtcms/api/v1/project';
 
     const fetchProjects = async () => {
         try {

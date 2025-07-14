@@ -5,7 +5,7 @@ import axios from "axios";
 import Login from "./login/Login";
 import Dashboard from "./dashboard/Dashboard";
 
-const API_BASE_URL = "http://localhost:8080/dhtcms/api/v1";
+const API_BASE_URL = "/dhtcms/api/v1";
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {

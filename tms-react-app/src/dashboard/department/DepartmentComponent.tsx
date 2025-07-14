@@ -43,7 +43,7 @@ const DepartmentComponent: React.FC = () => {
         severity: 'success',
     });
 
-    const API_URL = 'http://localhost:8080/dhtcms/api/v1/department';
+    const API_URL = '/dhtcms/api/v1/department';
 
     const fetchDepartments = async () => {
         try {

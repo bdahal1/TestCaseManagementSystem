@@ -29,10 +29,10 @@ import {Box} from "@mui/system";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-const API_URL_TESTCASE = "http://localhost:8080/dhtcms/api/v1/testCase";
-const API_URL_PROJECT = "http://localhost:8080/dhtcms/api/v1/project";
-const API_URL_TAGS = "http://localhost:8080/dhtcms/api/v1/tags";
-const API_URL_TEST_STEPS = "http://localhost:8080/dhtcms/api/v1/testSteps";
+const API_URL_TESTCASE = "/dhtcms/api/v1/testCase";
+const API_URL_PROJECT = "/dhtcms/api/v1/project";
+const API_URL_TAGS = "/dhtcms/api/v1/tags";
+const API_URL_TEST_STEPS = "/dhtcms/api/v1/testSteps";
 
 interface Project {
     id: number;
@@ -411,18 +411,24 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                                     value={step.testStepDesc}
                                     onChange={(e) => handleStepChange(e.target.value, index, "testStepDesc")}
                                     fullWidth
+                                    multiline
+                                    minRows={2}
                                 />
                                 <TextField
                                     label="Data"
                                     value={step.testStepData}
                                     onChange={(e) => handleStepChange(e.target.value, index, "testStepData")}
                                     fullWidth
+                                    multiline
+                                    minRows={2}
                                 />
                                 <TextField
                                     label="Expected Output"
                                     value={step.testExpectedOutput}
                                     onChange={(e) => handleStepChange(e.target.value, index, "testExpectedOutput")}
                                     fullWidth
+                                    multiline
+                                    minRows={2}
                                 />
                                 <IconButton onClick={() => removeStep(index)} color="error">
                                     <DeleteIcon/>

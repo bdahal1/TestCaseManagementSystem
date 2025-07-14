@@ -40,7 +40,7 @@ const Login: React.FC<{ onLoginSuccess: () => void }> = ({onLoginSuccess}) => {
 
         setError("");
         try {
-            const response = await axios.post("http://localhost:8080/dhtcms/api/v1/login", {
+            const response = await axios.post("/dhtcms/api/v1/login", {
                 userName,
                 password,
             });

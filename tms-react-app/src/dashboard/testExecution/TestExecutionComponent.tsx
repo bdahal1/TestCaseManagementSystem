@@ -35,8 +35,8 @@ interface TestExecutionComponentProps {
     projId: number;
 }
 
-const API_URL_TEST_EXECUTION = 'http://localhost:8080/dhtcms/api/v1/testExecutions';
-const API_URL_TESTCASE = 'http://localhost:8080/dhtcms/api/v1/testCase';
+const API_URL_TEST_EXECUTION = '/dhtcms/api/v1/testExecutions';
+const API_URL_TESTCASE = '/dhtcms/api/v1/testCase';
 
 const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId}) => {
     const [testExecutions, setTestExecutions] = useState<TestExecution[]>([]);
