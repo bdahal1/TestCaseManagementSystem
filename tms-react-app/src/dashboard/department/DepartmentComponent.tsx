@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import {Box} from "@mui/system";
 
 interface Department {
     depId: number;
@@ -128,8 +129,7 @@ const DepartmentComponent: React.FC = () => {
     };
 
     return (
-        <div>
-            <br/>
+        <Box sx={{padding: 2}}>
             <Button variant="outlined" color="primary" onClick={handleOpenAdd} sx={{ mb: 2 }}>
                 + Add Department
             </Button>
@@ -197,7 +197,7 @@ const DepartmentComponent: React.FC = () => {
                     {alert.message}
                 </Alert>
             </Snackbar>
-        </div>
+        </Box>
     );
 };
 

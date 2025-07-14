@@ -28,14 +28,12 @@ import axios from "axios";
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import FolderIcon from '@mui/icons-material/Folder';
 import PlayCircleFilledIcon from '@mui/icons-material/PlayCircleFilled';
-
-import UserComponent from "./user/UserComponent";
-import RoleComponent from "./role/RoleComponent";
-import DepartmentComponent from "./department/DepartmentComponent";
-import ProjectComponent from "./project/ProjectComponent";
+import LogoutIcon from '@mui/icons-material/Logout';
+import SettingsIcon from '@mui/icons-material/Settings';
 import TestCaseComponent from "./testCase/TestCaseComponent";
 import TestFolderComponent from "./testFolder/TestFolderComponent";
 import TestExecutionComponent from "./testExecution/TestExecutionComponent.tsx";
+import AdminPage from "./admin/AdminPage.tsx";
 
 const drawerWidth = 240;
 
@@ -152,12 +150,24 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
     }, [navigate]);
 
     const menuItems = [
-        { label: "Dashboard", icon: <DashboardIcon /> },
-        ...(selectedProjectId !== null ? [{ label: "Test Cases", icon: <FolderIcon /> },{ label: "Test Folders", icon: <FolderIcon /> }, { label: "Test Executions", icon: <PlayCircleFilledIcon /> }] : []),
+        {label: "Dashboard", icon: <DashboardIcon/>},
+        ...(selectedProjectId !== null ? [{label: "Test Cases", icon: <FolderIcon/>}, {
+            label: "Test Folders",
+            icon: <FolderIcon/>
+        }, {label: "Test Executions", icon: <PlayCircleFilledIcon/>}] : []),
     ];
 
     return (
         <Box sx={{display: "flex"}}>
+            <Snackbar
+                open={showAlert}
+                autoHideDuration={3000}
+                onClose={() => setShowAlert(false)}
+                anchorOrigin={{vertical: "top", horizontal: "right"}}>
+                <Alert onClose={() => setShowAlert(false)} severity="success" variant="filled" sx={{width: "100%",mt:6}}>
+                    Login successful!
+                </Alert>
+            </Snackbar>
             <CssBaseline/>
             <AppBar position="fixed" open={open} sx={{background: "#1976d2", boxShadow: 3}}>
                 <Toolbar>
@@ -172,7 +182,7 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
                     />
 
                     <Typography variant="h6" noWrap sx={{fontWeight: "bold", color: "#fff"}}>
-                        {selectedProjectName?selectedProjectName+" / ":""}{currentView}
+                        {selectedProjectName ? selectedProjectName + " / " : ""}{currentView}
                     </Typography>
                     <Box sx={{marginLeft: "auto", display: "flex", alignItems: "center"}}>
                         <Tooltip title="Open profile menu">
@@ -187,31 +197,26 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
                         <Menu anchorEl={anchorElUser} open={Boolean(anchorElUser)} onClose={handleCloseUserMenu}>
                             {isQAManager && (
                                 <>
-                                    <MenuItem disabled>
-                                        <Typography variant="subtitle1" fontWeight="bold">Admin Settings</Typography>
+                                    <MenuItem onClick={() => {
+                                        setCurrentView("AdminPage");
+                                        handleCloseUserMenu();
+                                    }}>
+                                        <ListItemIcon>
+                                            <SettingsIcon fontSize="small"/>
+                                        </ListItemIcon>
+                                        <Typography variant="subtitle1">Admin Settings</Typography>
                                     </MenuItem>
-
-                                    <MenuItem onClick={() => { setCurrentView("Users"); handleCloseUserMenu(); }}>
-                                        Users
-                                    </MenuItem>
-                                    <MenuItem onClick={() => { setCurrentView("Roles"); handleCloseUserMenu(); }}>
-                                        Roles
-                                    </MenuItem>
-                                    <MenuItem onClick={() => { setCurrentView("Department"); handleCloseUserMenu(); }}>
-                                        Department
-                                    </MenuItem>
-                                    <MenuItem onClick={() => { setCurrentView("Project"); handleCloseUserMenu(); }}>
-                                        Project
-                                    </MenuItem>
-
-                                    <Divider />
+                                    <Divider/>
                                 </>
                             )}
-
                             <MenuItem onClick={handleLogoutClick}>
+                                <ListItemIcon>
+                                    <LogoutIcon fontSize="small"/>
+                                </ListItemIcon>
                                 Logout
                             </MenuItem>
                         </Menu>
+
                     </Box>
                 </Toolbar>
             </AppBar>
@@ -252,32 +257,11 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
                 </List>
                 <Divider/>
             </Drawer>
-
             <Main open={open} sx={{backgroundColor: "#f9fbfc", minHeight: "100vh"}}>
                 <DrawerHeader/>
-                <Snackbar
-                    open={showAlert}
-                    autoHideDuration={3000}
-                    onClose={() => setShowAlert(false)}
-                    anchorOrigin={{vertical: "top", horizontal: "right"}}
-                >
-                    <Alert onClose={() => setShowAlert(false)} severity="success" variant="filled" sx={{width: "100%"}}>
-                        Login successful!
-                    </Alert>
-                </Snackbar>
-
-                {currentView === "Users" && isQAManager && <UserComponent/>}
-                {currentView === "Roles" && isQAManager && <RoleComponent/>}
-                {currentView === "Department" && isQAManager && <DepartmentComponent/>}
-                {currentView === "Project" && isQAManager && <ProjectComponent/>}
-                {currentView === "Test Folders" && selectedProjectId && (
-                    <TestFolderComponent projId={selectedProjectId}/>
-                )}
-                {currentView === "Test Executions" && selectedProjectId && (
-                    <TestExecutionComponent projId={selectedProjectId}/>
-                )}
+                {currentView === "Test Folders" && selectedProjectId && (<TestFolderComponent projId={selectedProjectId}/>)}
+                {currentView === "Test Executions" && selectedProjectId && (<TestExecutionComponent projId={selectedProjectId}/>)}
                 {currentView === "Test Cases" && selectedProjectId && <TestCaseComponent projId={selectedProjectId}/>}
-
                 {currentView === "Dashboard" && (
                     <Box
                         sx={{display: "flex", flexWrap: "wrap", gap: 2, justifyContent: "center", mt: 8, px: 2, pb: 4}}>
@@ -314,6 +298,7 @@ const Dashboard: React.FC<{ onLogout: () => void }> = ({onLogout}) => {
                         ))}
                     </Box>
                 )}
+                {currentView==="AdminPage" && isQAManager && <AdminPage/>}
             </Main>
         </Box>
     );

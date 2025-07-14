@@ -23,7 +23,7 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
-    Autocomplete, Typography
+    Autocomplete
 } from "@mui/material";
 import {Box} from "@mui/system";
 import EditIcon from "@mui/icons-material/Edit";

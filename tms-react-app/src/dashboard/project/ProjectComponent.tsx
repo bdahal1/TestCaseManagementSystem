@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import {Box} from "@mui/system";
 
 interface Project {
     id: number;
@@ -133,8 +134,7 @@ const ProjectComponent: React.FC = () => {
     };
 
     return (
-        <div>
-            <br/>
+        <Box sx={{padding: 2}}>
             <Button variant="outlined" color="primary" onClick={handleOpenAdd} sx={{mb: 2}}>
                 + Add Project
             </Button>
@@ -209,7 +209,7 @@ const ProjectComponent: React.FC = () => {
                     {alert.message}
                 </Alert>
             </Snackbar>
-        </div>
+        </Box>
     );
 };
 

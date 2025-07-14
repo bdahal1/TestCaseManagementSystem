@@ -262,7 +262,7 @@ const UserComponent: React.FC = () => {
     };
 
     return (
-        <div>
+        <Box sx={{padding: 2}}>
             <Snackbar
                 open={alert.open}
                 autoHideDuration={3000}
@@ -277,7 +277,6 @@ const UserComponent: React.FC = () => {
                     {alert.message}
                 </Alert>
             </Snackbar>
-            <br/>
             <Button variant="outlined" color="primary" onClick={() => handleOpen()}>
                 + Add User
             </Button>
@@ -426,7 +425,7 @@ const UserComponent: React.FC = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
-        </div>
+        </Box>
     );
 };
 

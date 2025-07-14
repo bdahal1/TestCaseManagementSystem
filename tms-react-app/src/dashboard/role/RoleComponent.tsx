@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import {Box} from "@mui/system";
 
 interface Role {
     roleId: number;
@@ -130,8 +131,7 @@ const RoleComponent: React.FC = () => {
     };
 
     return (
-        <div>
-            <br/>
+        <Box sx={{padding: 2}}>
             <Button variant="outlined" color="primary" onClick={handleOpenAdd} sx={{mb: 2}}>
                 + Add Role
             </Button>
@@ -198,7 +198,7 @@ const RoleComponent: React.FC = () => {
                     {alert.message}
                 </Alert>
             </Snackbar>
-        </div>
+        </Box>
     );
 };
 
