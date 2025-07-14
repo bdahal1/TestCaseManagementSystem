@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Box } from '@mui/material';
 import AdminNavigationPanel from './AdminNavigationPanel.tsx';
-import UserComponent from './user/UserComponent';
-import RoleComponent from './role/RoleComponent';
-import DepartmentComponent from './department/DepartmentComponent';
-import ProjectComponent from './project/ProjectComponent';
+import UserComponent from '../user/UserComponent';
+import RoleComponent from '../role/RoleComponent';
+import DepartmentComponent from '../department/DepartmentComponent';
+import ProjectComponent from '../project/ProjectComponent';
 
 const AdminPage: React.FC = () => {
     const [currentView, setCurrentView] = useState('Users');
