@@ -44,7 +44,7 @@ public class CustomUserDetailService implements UserDetailsService {
                         return new SimpleGrantedAuthority(role != null ? role.getRoleName() : "ROLE_USER");
                     })
                     .collect(Collectors.toSet());
-            return new org.springframework.security.core.userdetails.User(user.getUserName(), user.getPassword(), grantedAuthorities);
+            return new org.springframework.security.core.userdetails.User(user.getUserName(), user.getPassword(), user.getIsActive(), true, true, true, grantedAuthorities);
         } catch (Exception ex) {
             throw new UsernameNotFoundException("Failed to load user: " + username, ex);
         }

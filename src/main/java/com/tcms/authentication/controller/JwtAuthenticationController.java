@@ -10,6 +10,7 @@ import com.tcms.authentication.service.CustomUserDetailService;
 import com.tcms.authentication.service.RefreshTokenService;
 import com.tcms.authentication.service.TokenRefreshException;
 import com.tcms.helper.pojo.CustomResponseMessage;
+import com.tcms.helper.util.Util;
 import com.tcms.models.Roles;
 import com.tcms.models.Users;
 import com.tcms.repositories.UserRepository;
@@ -71,7 +72,7 @@ public class JwtAuthenticationController {
                 return ResponseEntity.status(HttpStatus.OK).body(new JwtResponse(responseBody));
             }
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new CustomResponseMessage(new Date(), "Login Issue", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new CustomResponseMessage(new Date(), "Login Issue : "+ Util.capitalizeWords(e.getMessage().replace("_"," ")), e.getMessage()));
         }
     }
 
