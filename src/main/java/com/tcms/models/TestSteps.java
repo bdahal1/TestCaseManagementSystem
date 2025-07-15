@@ -1,6 +1,7 @@
 package com.tcms.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.tcms.enums.TestTypes;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -30,6 +31,10 @@ public class TestSteps {
 
     @Column(name = "ts_expected_output", nullable = false)
     private String testExpectedOutput;
+
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "ts_type", nullable = false)
+    private TestTypes testType = TestTypes.MANUAL;
 
     @Column(name = "ts_remarks")
     private String testRemarks;

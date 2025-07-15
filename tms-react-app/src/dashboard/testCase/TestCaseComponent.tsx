@@ -43,6 +43,12 @@ interface TagsSet {
     id: number | null;
     tagName: string
 }
+enum TestTypes {
+    MANUAL = "MANUAL",
+    CUCUMBER_MANUAL = "CUCUMBER_MANUAL",
+    CUCUMBER_AUTOMATION = "CUCUMBER_AUTOMATION",
+    KEYWORD_DRIVEN = "KEYWORD_DRIVEN"
+}
 
 interface TestCase {
     id: number;
@@ -54,6 +60,7 @@ interface TestCase {
     testModifiedDate: string;
     projects: Project;
     tagsSet: TagsSet[];
+    testType?: TestTypes;
 }
 
 interface TestCaseComponentProps {
@@ -76,21 +83,27 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [selectedTestCase, setSelectedTestCase] = useState<TestCase | null>(null);
     const [formMode, setFormMode] = useState("create");
-
+    const [testType, setTestType] = useState<TestTypes | "">(formMode === "edit" ? selectedTestCase?.testType ?? "" : "");
     // Form state
     const [testName, setTestName] = useState<string>("");
     const [testCaseId, setTestCaseId] = useState<number>(0);
     const [projectId, setProjectId] = useState<number>(0);
     const [steps, setSteps] = useState<{
-        id: number;
-        testStepDesc: string;
-        testStepData: string,
+        id: number
+        testStepDesc: string
+        testStepData: string
         testExpectedOutput: string
+        testType: number
     }[]>([]);
-
+    const testTypeOptions = [
+        { label: "Manual", value: TestTypes.MANUAL },
+        { label: "Cucumber Manual", value: TestTypes.CUCUMBER_MANUAL },
+        { label: "Cucumber Automation", value: TestTypes.CUCUMBER_AUTOMATION },
+        { label: "Keyword Driven", value: TestTypes.KEYWORD_DRIVEN }
+    ];
 // Handle adding a new step
     const addStep = () => {
-        setSteps([...steps, {id: 0, testStepDesc: "", testStepData: "", testExpectedOutput: ""}]);
+        setSteps([...steps, {id: 0, testStepDesc: "", testStepData: "", testExpectedOutput: "", testType: 0}]);
     };
 
 // Handle removing a step
@@ -181,6 +194,9 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
             setTestName(testCase.testName);
             setProjectId(testCase.projects.id);
             setSelectedTags(testCase.tagsSet);
+            if (testCase.testType) {
+                setTestType(testCase.testType); // Make sure this matches enum: TestTypes
+            }
             try {
                 const response = await axios.get(`${API_URL_TEST_STEPS}/testCaseId/${testCase.id}`, {
                     headers: {Authorization: `Bearer ${localStorage.getItem("authToken")}`},
@@ -191,8 +207,6 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
             }
         } else {
             setFormMode("create");
-            setSteps([]);
-            resetForm();
             setSteps([]);
             resetForm();
             if (projects.length === 1) {
@@ -229,6 +243,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
             projectId,
             userId: localStorage.getItem("userId"),
             selectedTags: selectedTags.map(tag => tag.id),
+            testType: testType
         };
 
         let currentTestCaseId = testCaseId;
@@ -257,6 +272,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                     testCaseId: currentTestCaseId,
                     userId: localStorage.getItem("userId"),
                     stepId: step.id,
+                    testType: testType
                 }));
                 await axios.post(API_URL_TEST_STEPS, testStepsPayload, {
                     headers: {Authorization: `Bearer ${localStorage.getItem("authToken")}`},
@@ -400,7 +416,20 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                         }}
                         renderInput={(params) => <TextField {...params} label="Tags"/>}
                     />
-
+                    <FormControl fullWidth required>
+                        <InputLabel>Test Type</InputLabel>
+                        <Select
+                            value={testType}
+                            onChange={(e) => setTestType(e.target.value as TestTypes)}
+                            label="Test Type"
+                        >
+                            {testTypeOptions.map((type) => (
+                                <MenuItem key={type.value} value={type.value}>
+                                    {type.label}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
                     <Box sx={{mt: 2}}>
                         <Box sx={{fontWeight: "bold", mb: 1}}>Test Steps</Box>
                         {steps.map((step, index) => (

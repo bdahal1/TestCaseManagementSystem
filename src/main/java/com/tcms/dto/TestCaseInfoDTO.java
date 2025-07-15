@@ -1,5 +1,6 @@
 package com.tcms.dto;
 
+import com.tcms.enums.TestTypes;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -10,4 +11,5 @@ public class TestCaseInfoDTO {
     Integer userId;
     Integer projectId;
     Integer[] selectedTags;
+    TestTypes testType;
 }

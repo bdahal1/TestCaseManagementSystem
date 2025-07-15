@@ -2,6 +2,7 @@ package com.tcms.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.tcms.enums.TestTypes;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -41,6 +42,10 @@ public class TestCase {
 
     @Column(name = "tc_modified_date", nullable = false)
     private Timestamp testModifiedDate;
+
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "tc_type", nullable = false)
+    private TestTypes testType = TestTypes.MANUAL;
 
     @OneToMany(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.PERSIST}, fetch = FetchType.LAZY, orphanRemoval = true)
     @JoinTable(name = "case_steps", joinColumns = {@JoinColumn(name = "case_id", referencedColumnName = "tc_id")}, inverseJoinColumns = {@JoinColumn(name = "step_id", referencedColumnName = "ts_id")})

@@ -52,6 +52,7 @@ public class TestCaseService {
         testCase.setTestCreatedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
         testCase.setTestModifiedBy(fullName);
         testCase.setTestModifiedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
+        testCase.setTestType(testCaseInfoDTO.getTestType());
         if (testCaseInfoDTO.getSelectedTags() != null) {
             Set<Tags> tagsList = new HashSet<>();
             for (Integer tagId : Arrays.asList(testCaseInfoDTO.getSelectedTags())) {
@@ -80,6 +81,7 @@ public class TestCaseService {
         Users user = userRepository.findById(testCaseInfoDTO.getUserId());
         String fullName = user.getFirstName() + " " + user.getLastName();
         testCaseEdit.setTestModifiedBy(fullName);
+        testCaseEdit.setTestType(testCaseInfoDTO.getTestType());
         testCaseEdit.setTestModifiedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
         if (testCaseInfoDTO.getSelectedTags() != null) {
             Set<Tags> tagsList = new HashSet<>();

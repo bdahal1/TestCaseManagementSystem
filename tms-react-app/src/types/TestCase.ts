@@ -2,10 +2,11 @@
 export type ResultStatus = 'PASS' | 'FAIL' | 'SKIPPED' | 'BLOCKED' | 'NOT_RUN';
 
 export interface TestStep {
-    testStepDesc: string;
-    testExpectedOutput: string;
-    testStepData: string;
-    stepOrder: number;
+    testStepDesc: string
+    testExpectedOutput: string
+    testStepData: string
+    stepOrder: number
+    testType:number
 }
 
 export interface TestCase {

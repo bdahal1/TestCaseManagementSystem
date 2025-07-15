@@ -1,5 +1,6 @@
 package com.tcms.repositories;
 
+import com.tcms.enums.TestTypes;
 import com.tcms.models.TestCase;
 import com.tcms.models.TestSteps;
 import org.springframework.data.domain.Page;
@@ -17,7 +18,7 @@ public interface TestStepsRepository extends PagingAndSortingRepository<TestStep
 
     List<TestSteps> findTestStepsByTestCaseOrderByTestStepOrderAsc(TestCase testCase);
 
-    Page<TestSteps> findAllByTestCase(TestCase testCase, Pageable pageable);
+    Page<TestSteps> findAllByTestCaseAndTestType(TestCase testCase, TestTypes testType, Pageable pageable);
 
     TestSteps findById(int id);
 

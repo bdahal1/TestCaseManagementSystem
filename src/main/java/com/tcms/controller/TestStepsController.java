@@ -62,7 +62,7 @@ public class TestStepsController {
         if (testCase == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Record not found.\n");
         } else {
-            Page<TestSteps> testStepsList = testStepsRepository.findAllByTestCase(testCase, paging);
+            Page<TestSteps> testStepsList = testStepsRepository.findAllByTestCaseAndTestType(testCase,testCase.getTestType(), paging);
             return ResponseEntity.status(HttpStatus.OK).body(testStepService.getTestStepsListResponse(testStepsList));
         }
     }

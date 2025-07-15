@@ -82,13 +82,14 @@ public class TestStepService {
         testSteps.setTsCreatedDate(testSteps.getTsCreatedDate());
         testSteps.setTsModifiedBy(fullName);
         testSteps.setTsModifiedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
+        testSteps.setTestType(testStepInfoDTO.getTestType());
         testStepsRepository.save(testSteps);
         return testSteps;
     }
 
     public List<TestSteps> orderTestSteps(TestCase testCase) {
         List<TestSteps> testStepsList = testStepsRepository.findTestStepsByTestCaseOrderByTestStepOrderAsc(testCase);
-        if (testStepsList.size() == 0) {
+        if (testStepsList.isEmpty()) {
             return null;
         }
         int newOrder = 1;
