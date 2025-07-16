@@ -259,7 +259,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
 
             if (steps.length) {
                 const testStepsPayload = steps.map((step, index) => ({
-                    testStepDesc: step.testStepDesc,
+                    testStepDesc: step.testStepDesc.split('\n').map(line => line.trim()).join('\n'),
                     testExpectedOutput: step.testExpectedOutput,
                     testStepData: step.testStepData,
                     testStepOrder: index + 1,
