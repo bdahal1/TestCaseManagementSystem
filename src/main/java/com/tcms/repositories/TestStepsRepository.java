@@ -16,7 +16,7 @@ public interface TestStepsRepository extends PagingAndSortingRepository<TestStep
 
     Page<TestSteps> findAll(Pageable pageable);
 
-    List<TestSteps> findTestStepsByTestCaseOrderByTestStepOrderAsc(TestCase testCase);
+    List<TestSteps> findTestStepsByTestCaseAndTestTypeOrderByTestStepOrderAsc(TestCase testCase, TestTypes testType);
 
     Page<TestSteps> findAllByTestCaseAndTestType(TestCase testCase, TestTypes testType, Pageable pageable);
 

@@ -43,6 +43,7 @@ interface TagsSet {
     id: number | null;
     tagName: string
 }
+
 enum TestTypes {
     MANUAL = "MANUAL",
     CUCUMBER_MANUAL = "CUCUMBER_MANUAL",
@@ -93,17 +94,24 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
         testStepDesc: string
         testStepData: string
         testExpectedOutput: string
-        testType: number
+        testType: TestTypes
     }[]>([]);
     const testTypeOptions = [
-        { label: "Manual", value: TestTypes.MANUAL },
-        { label: "Cucumber Manual", value: TestTypes.CUCUMBER_MANUAL },
-        { label: "Cucumber Automation", value: TestTypes.CUCUMBER_AUTOMATION },
-        { label: "Keyword Driven", value: TestTypes.KEYWORD_DRIVEN }
+        {label: "Manual", value: TestTypes.MANUAL},
+        {label: "Cucumber Manual", value: TestTypes.CUCUMBER_MANUAL},
+        {label: "Cucumber Automation", value: TestTypes.CUCUMBER_AUTOMATION},
+        {label: "Keyword Driven", value: TestTypes.KEYWORD_DRIVEN}
     ];
 // Handle adding a new step
     const addStep = () => {
-        setSteps([...steps, {id: 0, testStepDesc: "", testStepData: "", testExpectedOutput: "", testType: 0}]);
+        console.log("Adding a step...");
+        setSteps([...steps, {
+            id: 0,
+            testStepDesc: "",
+            testStepData: "",
+            testExpectedOutput: "",
+            testType: TestTypes.MANUAL
+        }]);
     };
 
 // Handle removing a step
@@ -186,7 +194,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
         });
     };
 
-    const handleOpenDialog = async (testCase: TestCase | null) => {
+    const handleOpenDialog = async (testCase: TestCase | null, overrideTestType?: TestTypes) => {
         if (testCase) {
             setFormMode("edit");
             setSelectedTestCase(testCase);
@@ -194,11 +202,12 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
             setTestName(testCase.testName);
             setProjectId(testCase.projects.id);
             setSelectedTags(testCase.tagsSet);
-            if (testCase.testType) {
-                setTestType(testCase.testType); // Make sure this matches enum: TestTypes
+            const effectiveType = overrideTestType || testCase.testType;
+            if (effectiveType) {
+                setTestType(effectiveType);
             }
             try {
-                const response = await axios.get(`${API_URL_TEST_STEPS}/testCaseId/${testCase.id}`, {
+                const response = await axios.get(`${API_URL_TEST_STEPS}/testCaseId/${testCase.id}?type=${effectiveType}`, {
                     headers: {Authorization: `Bearer ${localStorage.getItem("authToken")}`},
                 });
                 setSteps(response.data.testSteps);
@@ -320,6 +329,18 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
         }
     }, [projects]);
 
+    useEffect(() => {
+        if ((testType === TestTypes.CUCUMBER_MANUAL || testType === TestTypes.CUCUMBER_AUTOMATION) && steps.length === 0) {
+            setSteps([{
+                id: 0,
+                testStepDesc: "",
+                testStepData: "",
+                testExpectedOutput: "",
+                testType: TestTypes.MANUAL
+            }]);
+        }
+    }, [steps]);
+
     if (loading) return <CircularProgress/>;
     if (error) return <div>{error}</div>;
 
@@ -420,8 +441,14 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                         <InputLabel>Test Type</InputLabel>
                         <Select
                             value={testType}
-                            onChange={(e) => setTestType(e.target.value as TestTypes)}
+                            onChange={(e) => {
+                                const selectedValue = e.target.value as TestTypes;
+                                console.log("Selected Test Type:", selectedValue);
+                                setTestType(selectedValue);
+                                handleOpenDialog(selectedTestCase ?? null, selectedValue).then();
+                            }}
                             label="Test Type"
+                            variant="outlined"
                         >
                             {testTypeOptions.map((type) => (
                                 <MenuItem key={type.value} value={type.value}>
@@ -431,40 +458,127 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                         </Select>
                     </FormControl>
                     <Box sx={{mt: 2}}>
-                        <Box sx={{fontWeight: "bold", mb: 1}}>Test Steps</Box>
-                        {steps.map((step, index) => (
-                            <Box key={index}
-                                 sx={{display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 2, mb: 2}}>
-                                <TextField
-                                    label={`Step ${index + 1}`}
-                                    value={step.testStepDesc}
-                                    onChange={(e) => handleStepChange(e.target.value, index, "testStepDesc")}
-                                    fullWidth
-                                    multiline
-                                    minRows={2}
-                                />
-                                <TextField
-                                    label="Data"
-                                    value={step.testStepData}
-                                    onChange={(e) => handleStepChange(e.target.value, index, "testStepData")}
-                                    fullWidth
-                                    multiline
-                                    minRows={2}
-                                />
-                                <TextField
-                                    label="Expected Output"
-                                    value={step.testExpectedOutput}
-                                    onChange={(e) => handleStepChange(e.target.value, index, "testExpectedOutput")}
-                                    fullWidth
-                                    multiline
-                                    minRows={2}
-                                />
-                                <IconButton onClick={() => removeStep(index)} color="error">
-                                    <DeleteIcon/>
-                                </IconButton>
-                            </Box>
-                        ))}
-                        <Button onClick={addStep}>+ Add Step</Button>
+                        {testType === TestTypes.MANUAL && (
+                            <>
+                                <Box sx={{fontWeight: "bold", mb: 1}}>Test Steps</Box>
+                                {steps.map((step, index) => (
+                                    <Box key={index}
+                                         sx={{display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 2, mb: 2}}>
+                                        <TextField
+                                            label={`Step ${index + 1}`}
+                                            value={step.testStepDesc}
+                                            onChange={(e) => handleStepChange(e.target.value, index, "testStepDesc")}
+                                            fullWidth
+                                            multiline
+                                            minRows={2}
+                                        />
+                                        <TextField
+                                            label="Data"
+                                            value={step.testStepData}
+                                            onChange={(e) => handleStepChange(e.target.value, index, "testStepData")}
+                                            fullWidth
+                                            multiline
+                                            minRows={2}
+                                        />
+                                        <TextField
+                                            label="Expected Output"
+                                            value={step.testExpectedOutput}
+                                            onChange={(e) => handleStepChange(e.target.value, index, "testExpectedOutput")}
+                                            fullWidth
+                                            multiline
+                                            minRows={2}
+                                        />
+                                        <IconButton onClick={() => removeStep(index)} color="error">
+                                            <DeleteIcon/>
+                                        </IconButton>
+                                    </Box>
+                                ))}
+                                <Button onClick={addStep}>+ Add Step</Button>
+
+                            </>
+                        )}
+                        {testType === TestTypes.CUCUMBER_MANUAL && (
+                            <>
+                                <Box sx={{display: "grid", gridTemplateColumns: "1fr", gap: 2, mb: 2}}>
+                                    {steps.map((step, index) => (
+                                        <Box key={index} sx={{display: "grid"}}>
+                                            <TextField
+                                                key={index}
+                                                label="Cucumber Steps"
+                                                placeholder="Given I am on the login page..."
+                                                value={step.testStepDesc}
+                                                onChange={(e) =>
+                                                    handleStepChange(e.target.value, index, "testStepDesc")
+                                                }
+                                                fullWidth
+                                                multiline
+                                                minRows={3}
+                                            />
+                                        </Box>
+                                    ))}
+                                </Box>
+                            </>
+                        )}
+                        {testType === TestTypes.CUCUMBER_AUTOMATION && (
+                            <>
+                                <Box sx={{display: "grid", gridTemplateColumns: "1fr", gap: 2, mb: 2}}>
+                                    {steps.map((step, index) => (
+                                        <Box key={index}>
+                                            <TextField
+                                                label="Automation Script ID or Reference"
+                                                placeholder="e.g., test_login.feature:12"
+                                                value={step.testStepDesc}
+                                                onChange={(e) =>
+                                                    handleStepChange(e.target.value, index, "testStepDesc")
+                                                }
+                                                fullWidth
+                                                multiline
+                                                minRows={6}
+                                            />
+                                        </Box>
+                                    ))}
+                                </Box>
+                            </>
+                        )}
+
+                        {testType === TestTypes.KEYWORD_DRIVEN && (
+                            <>
+                                <Box sx={{fontWeight: "bold", mb: 1}}>Keyword Driven</Box>
+                                {steps.map((step, index) => (
+                                    <Box key={index}
+                                         sx={{display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 2, mb: 2}}>
+                                        <TextField
+                                            label={`Action ${index + 1}`}
+                                            value={step.testStepDesc}
+                                            onChange={(e) => handleStepChange(e.target.value, index, "testStepDesc")}
+                                            fullWidth
+                                            multiline
+                                            minRows={2}
+                                        />
+                                        <TextField
+                                            label="Target"
+                                            value={step.testStepData}
+                                            onChange={(e) => handleStepChange(e.target.value, index, "testStepData")}
+                                            fullWidth
+                                            multiline
+                                            minRows={2}
+                                        />
+                                        <TextField
+                                            label="Value"
+                                            value={step.testExpectedOutput}
+                                            onChange={(e) => handleStepChange(e.target.value, index, "testExpectedOutput")}
+                                            fullWidth
+                                            multiline
+                                            minRows={2}
+                                        />
+                                        <IconButton onClick={() => removeStep(index)} color="error">
+                                            <DeleteIcon/>
+                                        </IconButton>
+                                    </Box>
+                                ))}
+                                <Button onClick={addStep}>+ Add Step</Button>
+                            </>
+                        )}
                     </Box>
                 </DialogContent>
                 <DialogActions>

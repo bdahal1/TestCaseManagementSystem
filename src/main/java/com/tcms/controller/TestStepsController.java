@@ -2,6 +2,7 @@ package com.tcms.controller;
 
 import com.tcms.dto.TestStepInfoDTO;
 import com.tcms.dto.TestStepOrderDTO;
+import com.tcms.enums.TestTypes;
 import com.tcms.helper.pojo.CustomResponseMessage;
 import com.tcms.models.TestCase;
 import com.tcms.models.TestSteps;
@@ -56,13 +57,13 @@ public class TestStepsController {
     }
 
     @GetMapping(path = "/testCaseId/{id}")
-    public ResponseEntity<Object> getTestStepsByTestCaseId(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @PathVariable int id) {
+    public ResponseEntity<Object> getTestStepsByTestCaseId(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @PathVariable int id, @RequestParam TestTypes type) {
         Pageable paging = PageRequest.of(page, size);
         TestCase testCase = testCaseRepository.findById(id);
         if (testCase == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Record not found.\n");
         } else {
-            Page<TestSteps> testStepsList = testStepsRepository.findAllByTestCaseAndTestType(testCase,testCase.getTestType(), paging);
+            Page<TestSteps> testStepsList = testStepsRepository.findAllByTestCaseAndTestType(testCase,type, paging);
             return ResponseEntity.status(HttpStatus.OK).body(testStepService.getTestStepsListResponse(testStepsList));
         }
     }
@@ -143,7 +144,7 @@ public class TestStepsController {
                 testStepsList.add(testSteps);
             }
             this.orderTestSteps(testStepsList.get(0).getTestCase().getId());
-            return ResponseEntity.status(HttpStatus.OK).body(testStepsRepository.findTestStepsByTestCaseOrderByTestStepOrderAsc(testStepsList.get(0).getTestCase()));
+            return ResponseEntity.status(HttpStatus.OK).body(testStepsRepository.findTestStepsByTestCaseAndTestTypeOrderByTestStepOrderAsc(testStepsList.get(0).getTestCase(),testStepsList.get(0).getTestType()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }

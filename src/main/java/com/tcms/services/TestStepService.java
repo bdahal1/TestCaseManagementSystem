@@ -37,7 +37,7 @@ public class TestStepService {
 
     public List<TestSteps> getAllTestStepsFromTestCase(Integer testCaseId) {
         TestCase testCase = testCaseRepository.findById(testCaseId);
-        return testStepsRepository.findTestStepsByTestCaseOrderByTestStepOrderAsc(testCase);
+        return testStepsRepository.findTestStepsByTestCaseAndTestTypeOrderByTestStepOrderAsc(testCase,testCase.getTestType());
     }
 
     public void deleteAllTestSteps(List<TestSteps> testSteps) {
@@ -61,6 +61,7 @@ public class TestStepService {
         testSteps.setTsCreatedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
         testSteps.setTsModifiedBy(fullName);
         testSteps.setTsModifiedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
+        testSteps.setTestType(testStepInfoDTO.getTestType());
         testStepsRepository.save(testSteps);
         return testSteps;
     }
@@ -88,7 +89,7 @@ public class TestStepService {
     }
 
     public List<TestSteps> orderTestSteps(TestCase testCase) {
-        List<TestSteps> testStepsList = testStepsRepository.findTestStepsByTestCaseOrderByTestStepOrderAsc(testCase);
+        List<TestSteps> testStepsList = testStepsRepository.findTestStepsByTestCaseAndTestTypeOrderByTestStepOrderAsc(testCase,testCase.getTestType());
         if (testStepsList.isEmpty()) {
             return null;
         }
