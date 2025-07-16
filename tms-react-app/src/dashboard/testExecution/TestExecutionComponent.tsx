@@ -1,35 +1,37 @@
 import React, {useEffect, useState} from 'react';
 import {
+    Alert,
+    Autocomplete,
     Box,
     Button,
+    Collapse,
     Dialog,
     DialogActions,
     DialogContent,
     DialogTitle,
     Divider,
+    IconButton,
     List,
     ListItem,
+    ListItemButton,
     ListItemText,
-    TextField,
-    Typography,
-    Snackbar,
-    Alert,
-    IconButton,
     Paper,
+    Snackbar,
     Table,
     TableBody,
     TableCell,
+    TableHead,
     TableRow,
-    Autocomplete,
-    ListItemButton, Collapse, TableHead
+    TextField,
+    Typography
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
-import {ResultStatus, TestCase, TestExecution} from '../../types/TestCase';
+import {ResultStatus, TestCase, TestExecution, TestTypes} from '../../types/TestCase';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import { alpha } from '@mui/material/styles';
+import {alpha} from '@mui/material/styles';
 
 interface TestExecutionComponentProps {
     projId: number;
@@ -58,6 +60,26 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
     const toggleExpand = (id: number) => {
         setExpandedRowId(prev => (prev === id ? null : id));
     };
+    const keywordColors: Record<string, string> = {
+        Given: "green",
+        When: "blue",
+        Then: "orange",
+        And: "purple",
+        But: "red"
+    };
+
+    const formatText = (text: string) => {
+        return text.split('\n').map(line => {
+            const match = line.match(/^(Given|When|Then|And|But)\b/);
+            if (match) {
+                const keyword = match[1] as keyof typeof keywordColors;
+                const coloredKeyword = `<span style="color:${keywordColors[keyword]}; font-weight: bold;">${keyword}</span>`;
+                return line.replace(keyword, coloredKeyword);
+            }
+            return line;
+        }).join('<br/>');
+    };
+
 
     const getRowColor = (status?: string | null) => {
         switch (status) {
@@ -388,33 +410,53 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                                                         <Box margin={2}>
                                                             {/* Test Steps Table */}
                                                             {tc.testSteps?.length > 0 && (
-                                                                <Paper variant="outlined" sx={{ mb: 2 }}>
+                                                                <Paper variant="outlined" sx={{mb: 2}}>
                                                                     <Box p={2}>
                                                                         <Typography variant="subtitle1" gutterBottom>
                                                                             Test Steps
                                                                         </Typography>
-                                                                        <Table size="small">
-                                                                            <TableHead>
-                                                                                <TableRow>
-                                                                                    <TableCell><strong>#</strong></TableCell>
-                                                                                    <TableCell><strong>Description</strong></TableCell>
-                                                                                    <TableCell><strong>Data</strong></TableCell>
-                                                                                    <TableCell><strong>Expected Output</strong></TableCell>
-                                                                                </TableRow>
-                                                                            </TableHead>
-                                                                            <TableBody>
+                                                                        {(tc.testType === TestTypes.MANUAL || tc.testType === TestTypes.KEYWORD_DRIVEN) && (
+                                                                            <Table size="small">
+                                                                                <TableHead>
+                                                                                    <TableRow>
+                                                                                        <TableCell><strong>#</strong></TableCell>
+                                                                                        <TableCell><strong>Description</strong></TableCell>
+                                                                                        <TableCell><strong>Data</strong></TableCell>
+                                                                                        <TableCell><strong>Expected
+                                                                                            Output</strong></TableCell>
+                                                                                    </TableRow>
+                                                                                </TableHead>
+                                                                                <TableBody>
+                                                                                    {tc.testSteps
+                                                                                        .sort((a, b) => a.stepOrder - b.stepOrder)
+                                                                                        .map((step, idx) => (
+                                                                                            <TableRow key={idx}>
+                                                                                                <TableCell>{idx + 1}</TableCell>
+                                                                                                <TableCell>{step.testStepDesc}</TableCell>
+                                                                                                <TableCell>{step.testStepData}</TableCell>
+                                                                                                <TableCell>{step.testExpectedOutput}</TableCell>
+                                                                                            </TableRow>
+                                                                                        ))}
+                                                                                </TableBody>
+                                                                            </Table>
+                                                                        )}
+                                                                        {(tc.testType === TestTypes.CUCUMBER_MANUAL || tc.testType === TestTypes.CUCUMBER_AUTOMATION) && (
+                                                                            <>
                                                                                 {tc.testSteps
                                                                                     .sort((a, b) => a.stepOrder - b.stepOrder)
-                                                                                    .map((step, idx) => (
-                                                                                        <TableRow key={idx}>
-                                                                                            <TableCell>{step.stepOrder}</TableCell>
-                                                                                            <TableCell>{step.testStepDesc}</TableCell>
-                                                                                            <TableCell>{step.testStepData}</TableCell>
-                                                                                            <TableCell>{step.testExpectedOutput}</TableCell>
-                                                                                        </TableRow>
+                                                                                    .map((step) => (
+                                                                                        <div
+                                                                                            dangerouslySetInnerHTML={{__html: formatText(step.testStepDesc)}}
+                                                                                            style={{
+                                                                                                padding: "8px",
+                                                                                                minHeight: "150px",
+                                                                                                whiteSpace: "pre-wrap",
+                                                                                                borderRadius: "4px"
+                                                                                            }}
+                                                                                        />
                                                                                     ))}
-                                                                            </TableBody>
-                                                                        </Table>
+                                                                            </>
+                                                                        )}
                                                                     </Box>
                                                                 </Paper>
                                                             )}
@@ -424,11 +466,13 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                                                                 value={tc.resultStatus ?? 'NOT_RUN'}
                                                                 onChange={(_, newStatus: ResultStatus | null) => {
                                                                     const updatedStatus: ResultStatus = newStatus ?? 'NOT_RUN';
-                                                                    handleSaveResult(tc.id, updatedStatus, tc.resultComment ?? '');
+                                                                    handleSaveResult(tc.id, updatedStatus, tc.resultComment ?? '').then();
                                                                 }}
                                                                 options={['PASS', 'FAIL', 'SKIPPED', 'BLOCKED', 'NOT_RUN']}
-                                                                renderInput={(params) => <TextField {...params} label="Status" fullWidth />}
-                                                                sx={{ mb: 2, width: '300px' }}
+                                                                renderInput={(params) => <TextField {...params}
+                                                                                                    label="Status"
+                                                                                                    fullWidth/>}
+                                                                sx={{mb: 2, width: '300px'}}
                                                             />
 
                                                             {/* Comment Box */}

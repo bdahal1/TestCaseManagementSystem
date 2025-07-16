@@ -28,6 +28,7 @@ import {
 import {Box} from "@mui/system";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import {TestTypes} from "../../types/TestCase.ts";
 
 // Constants
 const API_URLS = {
@@ -36,13 +37,6 @@ const API_URLS = {
     TAGS: "/dhtcms/api/v1/tags",
     TEST_STEPS: "/dhtcms/api/v1/testSteps"
 };
-
-enum TestTypes {
-    MANUAL = "MANUAL",
-    CUCUMBER_MANUAL = "CUCUMBER_MANUAL",
-    CUCUMBER_AUTOMATION = "CUCUMBER_AUTOMATION",
-    KEYWORD_DRIVEN = "KEYWORD_DRIVEN"
-}
 
 const TEST_TYPE_OPTIONS = [
     {label: "Manual", value: TestTypes.MANUAL},

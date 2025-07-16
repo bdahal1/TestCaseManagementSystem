@@ -83,16 +83,18 @@ public class TestExecutionsController {
                     .map(tce -> {
                         TestCase tc = tce.getTestCase();
                         Set<TestStepInfoDTO> testStepInfoDTOSet = new HashSet<>();
-                        for(TestSteps testSteps:tc.getTestStepsSet()){
+                        for (TestSteps testSteps : tc.getTestStepsSet()) {
                             TestStepInfoDTO testStepInfoDTO = new TestStepInfoDTO();
-                            testStepInfoDTO.setTestStepData(testSteps.getTestStepData());
-                            testStepInfoDTO.setTestStepDesc(testSteps.getTestStepDesc());
-                            testStepInfoDTO.setStepOrder(testSteps.getTestStepOrder());
-                            testStepInfoDTO.setTestExpectedOutput(testSteps.getTestExpectedOutput());
-                            testStepInfoDTOSet.add(testStepInfoDTO);
+                            if (tc.getTestType() == testSteps.getTestType()) {
+                                testStepInfoDTO.setTestStepData(testSteps.getTestStepData());
+                                testStepInfoDTO.setTestStepDesc(testSteps.getTestStepDesc());
+                                testStepInfoDTO.setStepOrder(testSteps.getTestStepOrder());
+                                testStepInfoDTO.setTestExpectedOutput(testSteps.getTestExpectedOutput());
+                                testStepInfoDTO.setTestType(testSteps.getTestType());
+                                testStepInfoDTOSet.add(testStepInfoDTO);
+                            }
                         }
-
-                        return new TestCaseWithResultDTO(tc.getId(), tc.getTestName(),testStepInfoDTOSet, tce.getResultStatus(), tce.getResultComment());
+                        return new TestCaseWithResultDTO(tc.getId(), tc.getTestName(),testStepInfoDTOSet, tce.getResultStatus(),tc.getTestType(), tce.getResultComment());
                     })
                     .collect(Collectors.toSet());
             testExecutionResponseDTO.setTestCases(testCaseDTOs);
@@ -113,7 +115,7 @@ public class TestExecutionsController {
         try {
             TestExecutions testExecutions = new TestExecutions();
             testExecutions.setExecutionName(testExecutionDTO.getExecutionName());
-            testExecutions.setExecutionStatus(testExecutionDTO.getExecutionStatus()==null?ExecutionStatus.IN_PROGRESS:testExecutionDTO.getExecutionStatus());
+            testExecutions.setExecutionStatus(testExecutionDTO.getExecutionStatus() == null ? ExecutionStatus.IN_PROGRESS : testExecutionDTO.getExecutionStatus());
             testExecutions.setProjects(projects);
             return ResponseEntity.status(HttpStatus.OK).body(testExecutionService.saveTestExecution(testExecutions));
         } catch (Exception e) {
