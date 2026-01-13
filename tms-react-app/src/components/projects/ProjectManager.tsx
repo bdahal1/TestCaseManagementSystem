@@ -1,5 +1,4 @@
-import React, {useEffect, useState} from 'react';
-import axios from 'axios';
+import React, { useEffect, useState } from 'react';
 import {
     Table,
     TableBody,
@@ -20,7 +19,9 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
-import {Box} from "@mui/system";
+import { Box } from "@mui/system";
+import api from "../../services/api";
+import { AxiosError } from "axios";
 
 interface Project {
     id: number;
@@ -45,13 +46,11 @@ const ProjectComponent: React.FC = () => {
         severity: 'success',
     });
 
-    const API_URL = '/dhtcms/api/v1/project';
+    const API_URL = '/project';
 
     const fetchProjects = async () => {
         try {
-            const response = await axios.get(API_URL, {
-                headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
-            });
+            const response = await api.get(API_URL);
             setProjects(response.data.projects);
         } catch (error) {
             console.error('Error fetching Projects:', error);
@@ -87,55 +86,57 @@ const ProjectComponent: React.FC = () => {
 
     const handleSubmit = async () => {
         if (!projectName.trim()) {
-            setAlert({open: true, message: 'Project name cannot be empty.', severity: 'error'});
+            setAlert({ open: true, message: 'Project name cannot be empty.', severity: 'error' });
             return;
         }
         try {
             if (isEdit && selectedProject) {
-                await axios.put(
+                await api.put(
                     `${API_URL}/${selectedProject.id}`,
-                    {projectName, projectInitials},
-                    {headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')}}
+                    { projectName, projectInitials }
                 );
                 setProjects(
                     projects.map((proj) =>
-                        proj.id === selectedProject.id ? {...proj, projectName, projectInitials} : proj
+                        proj.id === selectedProject.id ? { ...proj, projectName, projectInitials } : proj
                     )
                 );
-                setAlert({open: true, message: 'Project updated successfully!', severity: 'success'});
+                setAlert({ open: true, message: 'Project updated successfully!', severity: 'success' });
             } else {
-                const response = await axios.post(
+                const response = await api.post(
                     API_URL,
-                    {projectName, projectInitials},
-                    {headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')}}
+                    { projectName, projectInitials }
                 );
                 const newProject: Project = response.data;
                 setProjects([...projects, newProject]);
-                setAlert({open: true, message: 'Project added successfully!', severity: 'success'});
+                setAlert({ open: true, message: 'Project added successfully!', severity: 'success' });
             }
             handleClose();
-        } catch (error) {
+        } catch (err) {
+            const error = err as AxiosError<any>;
             console.error('Error saving Project:', error);
-            setAlert({open: true, message: 'Error saving Project.', severity: 'error'});
+            if (error.response?.status === 409) {
+                setAlert({ open: true, message: 'Project with this name already exists.', severity: 'error' });
+            } else {
+                setAlert({ open: true, message: 'Error saving Project.', severity: 'error' });
+            }
+
         }
     };
 
     const deleteProject = async (projectId: number) => {
         try {
-            await axios.delete(`${API_URL}/${projectId}`, {
-                headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
-            });
+            await api.delete(`${API_URL}/${projectId}`);
             setProjects(projects.filter((proj) => proj.id !== projectId));
-            setAlert({open: true, message: 'Project deleted successfully!', severity: 'success'});
+            setAlert({ open: true, message: 'Project deleted successfully!', severity: 'success' });
         } catch (error) {
             console.error('Error deleting Project:', error);
-            setAlert({open: true, message: 'Error deleting Project.', severity: 'error'});
+            setAlert({ open: true, message: 'Error deleting Project.', severity: 'error' });
         }
     };
 
     return (
-        <Box sx={{padding: 2}}>
-            <Button variant="outlined" color="primary" onClick={handleOpenAdd} sx={{mb: 2}}>
+        <Box sx={{ padding: 2 }}>
+            <Button variant="outlined" color="primary" onClick={handleOpenAdd} sx={{ mb: 2 }}>
                 + Add Project
             </Button>
 
@@ -155,10 +156,10 @@ const ProjectComponent: React.FC = () => {
                                 <TableCell>{project.projectInitials}</TableCell>
                                 <TableCell>
                                     <IconButton color="primary" onClick={() => handleOpenEdit(project)}>
-                                        <EditIcon/>
+                                        <EditIcon />
                                     </IconButton>
                                     <IconButton color="secondary" onClick={() => deleteProject(project.id)}>
-                                        <DeleteIcon/>
+                                        <DeleteIcon />
                                     </IconButton>
                                 </TableCell>
                             </TableRow>
@@ -170,7 +171,7 @@ const ProjectComponent: React.FC = () => {
             {/* Add/Edit Project Dialog */}
             <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
                 <DialogTitle>{isEdit ? 'Edit Project' : 'Add Project'}</DialogTitle>
-                <DialogContent dividers sx={{p: 3, display: 'flex', flexDirection: 'column', gap: 2}}>
+                <DialogContent dividers sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <TextField
                         label="Project Name"
                         value={projectName}
@@ -184,7 +185,7 @@ const ProjectComponent: React.FC = () => {
                         fullWidth
                     />
                 </DialogContent>
-                <DialogActions sx={{p: 2}}>
+                <DialogActions sx={{ p: 2 }}>
                     <Button onClick={handleClose} variant="outlined">
                         Cancel
                     </Button>
@@ -198,11 +199,11 @@ const ProjectComponent: React.FC = () => {
             <Snackbar
                 open={alert.open}
                 autoHideDuration={3000}
-                onClose={() => setAlert({...alert, open: false})}
-                anchorOrigin={{vertical: 'top', horizontal: 'center'}}
+                onClose={() => setAlert({ ...alert, open: false })}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
             >
                 <Alert
-                    onClose={() => setAlert({...alert, open: false})}
+                    onClose={() => setAlert({ ...alert, open: false })}
                     severity={alert.severity as 'success' | 'error' | 'warning' | 'info'}
                     variant="filled"
                 >

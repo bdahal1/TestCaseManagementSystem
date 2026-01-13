@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Alert,
     Autocomplete,
@@ -27,20 +27,20 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import axios from 'axios';
-import {ResultStatus, TestCase, TestExecution, TestTypes} from '../../types/TestCase';
+import { ResultStatus, TestCase, TestExecution, TestTypes } from '../../types/TestCase';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import {alpha} from '@mui/material/styles';
+import { alpha } from '@mui/material/styles';
+import api from "../../services/api";
 
 interface TestExecutionComponentProps {
     projId: number;
 }
 
-const API_URL_TEST_EXECUTION = '/dhtcms/api/v1/testExecutions';
-const API_URL_TESTCASE = '/dhtcms/api/v1/testCase';
+const API_URL_TEST_EXECUTION = '/testExecutions';
+const API_URL_TESTCASE = '/testCase';
 
-const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId}) => {
+const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({ projId }) => {
     const [testExecutions, setTestExecutions] = useState<TestExecution[]>([]);
     const [selectedExecution, setSelectedExecution] = useState<TestExecution | null>(null);
     const [executionName, setExecutionName] = useState('');
@@ -98,9 +98,7 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
 
     const fetchTestExecutions = async () => {
         try {
-            const response = await axios.get(`${API_URL_TEST_EXECUTION}/project/${projId}`, {
-                headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}
-            });
+            const response = await api.get(`${API_URL_TEST_EXECUTION}/project/${projId}`);
             const executions = response.data.testExecutions || [];
             setTestExecutions(executions);
             if (executions.length) setSelectedExecution(executions[0]);
@@ -111,9 +109,7 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
 
     const fetchAllExecutionTestCases = async (executionId: number) => {
         try {
-            const response = await axios.get(`${API_URL_TEST_EXECUTION}/id/${executionId}`, {
-                headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}
-            });
+            const response = await api.get(`${API_URL_TEST_EXECUTION}/id/${executionId}`);
             const sortedCases = (response.data.testCases || []).sort((a: TestCase, b: TestCase) => a.testName.localeCompare(b.testName));
             setTestCases(sortedCases);
         } catch (error) {
@@ -123,9 +119,7 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
 
     const fetchAllUnassignedTestCases = async (executionId: number) => {
         try {
-            const response = await axios.get(`${API_URL_TESTCASE}/unassignedExecution?projectId=${projId}&&executionId=${executionId}`, {
-                headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}
-            });
+            const response = await api.get(`${API_URL_TESTCASE}/unassignedExecution?projectId=${projId}&&executionId=${executionId}`);
             setAllTestCases(response.data.testCase);
         } catch (err) {
             console.error('Failed to fetch test cases.');
@@ -135,34 +129,32 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
     const handleAddSelectedTestCases = async () => {
         if (!selectedExecution || !selectedTestCases.length) return;
         try {
-            await axios.post(`${API_URL_TEST_EXECUTION}/${selectedExecution.id}/addCases`,
-                {testCaseIds: selectedTestCases.map(tc => tc.id)},
-                {headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}});
+            await api.post(`${API_URL_TEST_EXECUTION}/${selectedExecution.id}/addCases`,
+                { testCaseIds: selectedTestCases.map(tc => tc.id) });
             await Promise.all([
                 fetchAllExecutionTestCases(selectedExecution.id),
                 fetchAllUnassignedTestCases(selectedExecution.id)
             ]);
             setOpenAddTestCaseDialog(false);
             setSelectedTestCases([]);
-            setAlert({open: true, message: 'Test cases added to Execution.', severity: 'success'});
+            setAlert({ open: true, message: 'Test cases added to Execution.', severity: 'success' });
         } catch (error) {
             console.error('Error adding test cases:', error);
-            setAlert({open: true, message: 'Failed to add test cases.', severity: 'error'});
+            setAlert({ open: true, message: 'Failed to add test cases.', severity: 'error' });
         }
     };
 
     const handleRemoveTestsFromList = async (testCaseId: number) => {
         if (!selectedExecution?.id) return;
         try {
-            await axios.post(`${API_URL_TEST_EXECUTION}/${selectedExecution.id}/removeCases`,
-                {testCaseIds: [testCaseId]},
-                {headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}});
+            await api.post(`${API_URL_TEST_EXECUTION}/${selectedExecution.id}/removeCases`,
+                { testCaseIds: [testCaseId] });
             setTestCases(prev => prev.filter(tc => tc.id !== testCaseId));
             await fetchAllUnassignedTestCases(selectedExecution.id);
-            setAlert({open: true, message: 'Test case deleted.', severity: 'success'});
+            setAlert({ open: true, message: 'Test case deleted.', severity: 'success' });
         } catch (error) {
             console.error('Error deleting test case:', error);
-            setAlert({open: true, message: 'Failed to delete test case.', severity: 'error'});
+            setAlert({ open: true, message: 'Failed to delete test case.', severity: 'error' });
         }
     };
     const handleSaveResult = async (
@@ -171,30 +163,25 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
         resultComment: string
     ) => {
         try {
-            await axios.post(
+            await api.post(
                 `${API_URL_TEST_EXECUTION}/results`,
                 {
                     executionId: selectedExecution?.id,
                     testCaseId,
                     resultStatus,
                     resultComment
-                },
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('authToken')}`
-                    }
                 }
             );
 
             setTestCases(prev =>
                 prev.map(tc =>
-                    tc.id === testCaseId ? {...tc, resultStatus, resultComment} : tc
+                    tc.id === testCaseId ? { ...tc, resultStatus, resultComment } : tc
                 )
             );
-            setAlert({open: true, message: 'Result saved', severity: 'success'});
+            setAlert({ open: true, message: 'Result saved', severity: 'success' });
         } catch (error) {
             console.error('Failed to save result:', error);
-            setAlert({open: true, message: 'Failed to save result', severity: 'error'});
+            setAlert({ open: true, message: 'Failed to save result', severity: 'error' });
         }
     };
 
@@ -235,35 +222,31 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
 
     const handleSubmit = async () => {
         if (!executionName.trim()) {
-            setAlert({open: true, message: 'Execution name cannot be empty.', severity: 'error'});
+            setAlert({ open: true, message: 'Execution name cannot be empty.', severity: 'error' });
             return;
         }
         try {
             if (isEdit && selectedExecution) {
-                const response = await axios.put(`${API_URL_TEST_EXECUTION}/${selectedExecution.id}`,
-                    {executionName, projectId: projId},
-                    {headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}});
+                const response = await api.put(`${API_URL_TEST_EXECUTION}/${selectedExecution.id}`,
+                    { executionName, projectId: projId });
                 setTestExecutions(prev => prev.map(f => f.id === selectedExecution.id ? response.data : f));
-                setAlert({open: true, message: 'Test Execution updated.', severity: 'success'});
+                setAlert({ open: true, message: 'Test Execution updated.', severity: 'success' });
             } else {
-                const response = await axios.post(API_URL_TEST_EXECUTION,
-                    {executionName, projectId: projId},
-                    {headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}});
+                const response = await api.post(API_URL_TEST_EXECUTION,
+                    { executionName, projectId: projId });
                 setTestExecutions(prev => [...prev, response.data]);
-                setAlert({open: true, message: 'Test Execution created.', severity: 'success'});
+                setAlert({ open: true, message: 'Test Execution created.', severity: 'success' });
             }
             handleDialogClose();
         } catch (error) {
             console.error('Error saving Execution:', error);
-            setAlert({open: true, message: 'Error saving Execution.', severity: 'error'});
+            setAlert({ open: true, message: 'Error saving Execution.', severity: 'error' });
         }
     };
 
     const deleteTestExecution = async (executionId: number) => {
         try {
-            await axios.delete(`${API_URL_TEST_EXECUTION}/${executionId}`, {
-                headers: {Authorization: `Bearer ${localStorage.getItem('authToken')}`}
-            });
+            await api.delete(`${API_URL_TEST_EXECUTION}/${executionId}`);
             const updatedExecutions = testExecutions.filter(f => f.id !== executionId);
             setTestExecutions(updatedExecutions);
             if (selectedExecution?.id === executionId && updatedExecutions.length) {
@@ -272,36 +255,36 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                 setSelectedExecution(null);
                 setTestCases([]);
             }
-            setAlert({open: true, message: 'Test Execution deleted.', severity: 'success'});
+            setAlert({ open: true, message: 'Test Execution deleted.', severity: 'success' });
         } catch (error) {
             console.error('Error deleting Execution:', error);
-            setAlert({open: true, message: 'Failed to delete Execution.', severity: 'error'});
+            setAlert({ open: true, message: 'Failed to delete Execution.', severity: 'error' });
         }
     };
 
     return (
         <Box display="flex">
-            <Box sx={{width: 240, p: 2}}>
-                <Button variant="outlined" size="small" onClick={handleOpenAdd} sx={{mt: 1, mb: 2}}>
+            <Box sx={{ width: 240, p: 2 }}>
+                <Button variant="outlined" size="small" onClick={handleOpenAdd} sx={{ mt: 1, mb: 2 }}>
                     + Add Execution
                 </Button>
-                <Divider/>
+                <Divider />
                 <List>
                     {testExecutions.map((execution) => (
                         <ListItem
                             key={execution.id}
                             disablePadding
                             sx={{
-                                '&:hover .action-icons': {opacity: 1},
+                                '&:hover .action-icons': { opacity: 1 },
                                 position: 'relative',
                             }}
                         >
                             <ListItemButton
                                 selected={selectedExecution?.id === execution.id}
                                 onClick={() => setSelectedExecution(execution)}
-                                sx={{pr: 6}} // leave space for icons
+                                sx={{ pr: 6 }} // leave space for icons
                             >
-                                <ListItemText primary={execution.executionName}/>
+                                <ListItemText primary={execution.executionName} />
                             </ListItemButton>
 
                             <Box
@@ -318,24 +301,24 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                                 }}
                             >
                                 <IconButton size="small" onClick={() => handleOpenEdit(execution)}>
-                                    <EditIcon fontSize="small"/>
+                                    <EditIcon fontSize="small" />
                                 </IconButton>
                                 <IconButton size="small" onClick={() => deleteTestExecution(execution.id)}>
-                                    <DeleteIcon fontSize="small"/>
+                                    <DeleteIcon fontSize="small" />
                                 </IconButton>
                             </Box>
                         </ListItem>
                     ))}
                 </List>
             </Box>
-            <Box sx={{flexGrow: 1, p: 3}}>
+            <Box sx={{ flexGrow: 1, p: 3 }}>
                 <Typography variant="subtitle1" gutterBottom>
                     {selectedExecution ? `Test Cases in ${selectedExecution.executionName}` : 'Select a Execution to view test cases'}
                 </Typography>
                 {selectedExecution && (
                     <>
                         <Box display="flex" mb={2} justifyContent="space-between" alignItems="center">
-                            <Button variant="outlined" sx={{mb: 2}} onClick={() => setOpenAddTestCaseDialog(true)}>
+                            <Button variant="outlined" sx={{ mb: 2 }} onClick={() => setOpenAddTestCaseDialog(true)}>
                                 + Add Test Case
                             </Button>
                         </Box>
@@ -345,7 +328,7 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                             gap={3}
                             flexWrap="wrap"
                             mb={3}
-                            sx={{backgroundColor: '#f5f5f5', p: 2, borderRadius: 1}}
+                            sx={{ backgroundColor: '#f5f5f5', p: 2, borderRadius: 1 }}
                         >
                             <Typography><strong>Total:</strong> {testCases.length}</Typography>
                             <Typography
@@ -385,8 +368,8 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                                                 </TableCell>
                                                 <TableCell align="right">
                                                     <IconButton onClick={() => toggleExpand(tc.id)} size="small">
-                                                        {expandedRowId === tc.id ? <ExpandLessIcon/> :
-                                                            <ExpandMoreIcon/>}
+                                                        {expandedRowId === tc.id ? <ExpandLessIcon /> :
+                                                            <ExpandMoreIcon />}
                                                     </IconButton>
                                                     <IconButton
                                                         size="small"
@@ -400,17 +383,17 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                                                             transition: 'opacity 0.2s ease-in-out',
                                                         }}
                                                     >
-                                                        <DeleteIcon fontSize="small" color="error"/>
+                                                        <DeleteIcon fontSize="small" color="error" />
                                                     </IconButton>
                                                 </TableCell>
                                             </TableRow>
                                             <TableRow>
-                                                <TableCell colSpan={2} sx={{paddingBottom: 0, paddingTop: 0}}>
+                                                <TableCell colSpan={2} sx={{ paddingBottom: 0, paddingTop: 0 }}>
                                                     <Collapse in={expandedRowId === tc.id} timeout="auto" unmountOnExit>
                                                         <Box margin={2}>
                                                             {/* Test Steps Table */}
                                                             {tc.testSteps?.length > 0 && (
-                                                                <Paper variant="outlined" sx={{mb: 2}}>
+                                                                <Paper variant="outlined" sx={{ mb: 2 }}>
                                                                     <Box p={2}>
                                                                         <Typography variant="subtitle1" gutterBottom>
                                                                             Test Steps
@@ -446,7 +429,7 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                                                                                     .sort((a, b) => a.stepOrder - b.stepOrder)
                                                                                     .map((step) => (
                                                                                         <div
-                                                                                            dangerouslySetInnerHTML={{__html: formatText(step.testStepDesc)}}
+                                                                                            dangerouslySetInnerHTML={{ __html: formatText(step.testStepDesc) }}
                                                                                             style={{
                                                                                                 padding: "8px",
                                                                                                 minHeight: "150px",
@@ -470,9 +453,9 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
                                                                 }}
                                                                 options={['PASS', 'FAIL', 'SKIPPED', 'BLOCKED', 'NOT_RUN']}
                                                                 renderInput={(params) => <TextField {...params}
-                                                                                                    label="Status"
-                                                                                                    fullWidth/>}
-                                                                sx={{mb: 2, width: '300px'}}
+                                                                    label="Status"
+                                                                    fullWidth />}
+                                                                sx={{ mb: 2, width: '300px' }}
                                                             />
 
                                                             {/* Comment Box */}
@@ -502,7 +485,7 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
 
             <Dialog open={openDialog} onClose={handleClose} fullWidth maxWidth="sm">
                 <DialogTitle>{isEdit ? 'Edit Test Execution' : 'Add Test Execution'}</DialogTitle>
-                <DialogContent dividers sx={{p: 3, display: 'flex', flexDirection: 'column', gap: 2}}>
+                <DialogContent dividers sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <TextField
                         label="Execution Name"
                         value={executionName}
@@ -519,9 +502,9 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
             </Dialog>
 
             <Dialog open={openAddTestCaseDialog} onClose={() => setOpenAddTestCaseDialog(false)} fullWidth
-                    maxWidth="sm">
+                maxWidth="sm">
                 <DialogTitle>Select Test Cases to Add</DialogTitle>
-                <DialogContent dividers sx={{p: 3, display: 'flex', flexDirection: 'column', gap: 2}}>
+                <DialogContent dividers sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <Autocomplete
                         multiple
                         options={allTestCases}
@@ -540,7 +523,7 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
 
                     {/* Add All Test Cases Button */}
                     <Button
-                        sx={{mt: 2}}
+                        sx={{ mt: 2 }}
                         onClick={() => setSelectedTestCases(allTestCases)}
                         variant="outlined"
                         fullWidth
@@ -559,11 +542,11 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({projId})
             <Snackbar
                 open={alert.open}
                 autoHideDuration={3000}
-                onClose={() => setAlert({...alert, open: false})}
-                anchorOrigin={{vertical: 'top', horizontal: 'center'}}
+                onClose={() => setAlert({ ...alert, open: false })}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
             >
                 <Alert
-                    onClose={() => setAlert({...alert, open: false})}
+                    onClose={() => setAlert({ ...alert, open: false })}
                     severity={alert.severity}
                     variant="filled"
                 >

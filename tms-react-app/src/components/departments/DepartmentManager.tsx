@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import {
     Table,
     TableBody,
@@ -20,7 +19,8 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
-import {Box} from "@mui/system";
+import { Box } from "@mui/system";
+import api from "../../services/api";
 
 interface Department {
     depId: number;
@@ -43,13 +43,11 @@ const DepartmentComponent: React.FC = () => {
         severity: 'success',
     });
 
-    const API_URL = '/dhtcms/api/v1/department';
+    const API_URL = '/department';
 
     const fetchDepartments = async () => {
         try {
-            const response = await axios.get(API_URL, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
-            });
+            const response = await api.get(API_URL);
             setDepartments(response.data.departments);
         } catch (error) {
             console.error('Error fetching Departments:', error);
@@ -87,7 +85,7 @@ const DepartmentComponent: React.FC = () => {
         }
         try {
             if (isEdit && selectedDepartment) {
-                await axios.put(
+                await api.put(
                     `${API_URL}/${selectedDepartment.depId}`,
                     { depName },
                     { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } }
@@ -99,7 +97,7 @@ const DepartmentComponent: React.FC = () => {
                 );
                 setAlert({ open: true, message: 'Department updated successfully!', severity: 'success' });
             } else {
-                const response = await axios.post(
+                const response = await api.post(
                     API_URL,
                     { depName },
                     { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } }
@@ -117,9 +115,7 @@ const DepartmentComponent: React.FC = () => {
 
     const deleteDepartment = async (depId: number) => {
         try {
-            await axios.delete(`${API_URL}/${depId}`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
-            });
+            await api.delete(`${API_URL}/${depId}`);
             setDepartments(departments.filter((dep) => dep.depId !== depId));
             setAlert({ open: true, message: 'Department deleted successfully!', severity: 'success' });
         } catch (error) {
@@ -129,7 +125,7 @@ const DepartmentComponent: React.FC = () => {
     };
 
     return (
-        <Box sx={{padding: 2}}>
+        <Box sx={{ padding: 2 }}>
             <Button variant="outlined" color="primary" onClick={handleOpenAdd} sx={{ mb: 2 }}>
                 + Add Department
             </Button>
@@ -163,7 +159,7 @@ const DepartmentComponent: React.FC = () => {
             {/* Add/Edit Department Dialog */}
             <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
                 <DialogTitle>{isEdit ? 'Edit Department' : 'Add Department'}</DialogTitle>
-                <DialogContent dividers sx={{p: 3, display: 'flex', flexDirection: 'column', gap: 2}}>
+                <DialogContent dividers sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <TextField
                         label="Department Name"
                         value={depName}

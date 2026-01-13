@@ -1,31 +1,17 @@
-import React, {useEffect, useState} from "react";
-import axios from "axios";
-import {
-    Box,
-    TextField,
-    Button,
-    Alert,
-    CircularProgress,
-    Card,
-    CardContent,
-    Typography,
-} from "@mui/material";
+import React, { useEffect, useState } from "react";
+import { Alert, Box, Button, Card, CardContent, CircularProgress, TextField, Typography, } from "@mui/material";
+import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
-const Login: React.FC<{ onLoginSuccess: () => void }> = ({onLoginSuccess}) => {
+const Login: React.FC = () => {
+    const { login } = useAuth();
     const [userName, setUserName] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+
     const [loading, setLoading] = useState(false);
-    const [showAlert, setShowAlert] = useState(false);
 
     useEffect(() => {
-        const isLoggedIn = localStorage.getItem("isLoggedIn");
-        localStorage.removeItem("isLoggedIn");
-        if (isLoggedIn === "false") {
-            setShowAlert(true);
-            const timer = setTimeout(() => setShowAlert(false), 3000);
-            return () => clearTimeout(timer);
-        }
         document.title = 'GN-Test';
     }, []);
 
@@ -40,16 +26,19 @@ const Login: React.FC<{ onLoginSuccess: () => void }> = ({onLoginSuccess}) => {
 
         setError("");
         try {
-            const response = await axios.post("/dhtcms/api/v1/login", {
+            const response = await api.post("/login", {
                 userName,
                 password,
             });
-            localStorage.setItem("isLoggedIn", "true");
-            localStorage.setItem("userId", response.data.data.userId);
-            localStorage.setItem("authToken", response.data.data.accessToken);
-            localStorage.setItem("roleList", JSON.stringify(response.data.data.rolesList));
-            localStorage.setItem("fullName", response.data.data.fullName);
-            onLoginSuccess();
+
+            const { userId, accessToken, rolesList, fullName } = response.data.data;
+
+            login(accessToken, {
+                userId,
+                fullName,
+                roleList: rolesList
+            });
+
         } catch (err: any) {
             setError(err.response?.data?.message || "Something went wrong");
         } finally {
@@ -93,13 +82,9 @@ const Login: React.FC<{ onLoginSuccess: () => void }> = ({onLoginSuccess}) => {
                     </Typography>
 
                     <form onSubmit={handleSubmit}>
-                        {showAlert && (
-                            <Alert severity="success" sx={{mb: 2}} onClose={() => setShowAlert(false)}>
-                                Logout successful!
-                            </Alert>
-                        )}
+                        {/* Alert removed as logout alert should be handled by Dashboard or Toast */}
                         {error && (
-                            <Alert severity="error" sx={{mb: 2}}>
+                            <Alert severity="error" sx={{ mb: 2 }}>
                                 {error}
                             </Alert>
                         )}
@@ -129,10 +114,10 @@ const Login: React.FC<{ onLoginSuccess: () => void }> = ({onLoginSuccess}) => {
                             fullWidth
                             variant="contained"
                             color="primary"
-                            sx={{mt: 2}}
+                            sx={{ mt: 2 }}
                             disabled={loading}
                         >
-                            {loading ? <CircularProgress size={24}/> : "Login"}
+                            {loading ? <CircularProgress size={24} /> : "Login"}
                         </Button>
                     </form>
                 </CardContent>

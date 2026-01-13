@@ -4,6 +4,7 @@ import com.tcms.helper.pojo.CustomResponseMessage;
 import com.tcms.models.Projects;
 import com.tcms.repositories.ProjectRepository;
 import com.tcms.services.ProjectService;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -78,6 +79,8 @@ public class ProjectController {
         try {
             projectRepository.save(projects);
             return ResponseEntity.status(HttpStatus.OK).body(projects);
+        } catch (DataIntegrityViolationException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(new CustomResponseMessage(new Date(), "Duplicate Entry", "Project with same unique value already exists."));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
         }

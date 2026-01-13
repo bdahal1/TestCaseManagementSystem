@@ -1,5 +1,4 @@
-import React, {useEffect, useState} from 'react';
-import axios from 'axios';
+import React, { useEffect, useState } from 'react';
 import {
     Table,
     TableBody,
@@ -11,15 +10,23 @@ import {
     TextField,
     Button,
     IconButton,
-    Switch,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Snackbar,
+    Alert,
+    FormControl,
+    InputLabel,
     MenuItem,
     Select,
-    FormControl,
-    InputLabel, Dialog, DialogTitle, DialogContent, DialogActions, SelectChangeEvent, Alert, Snackbar,
+    Switch,
+    Box,
+    SelectChangeEvent
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
-import Box from "@mui/material/Box";
+import api from "../../services/api";
 
 // User type interface
 interface User {
@@ -49,7 +56,7 @@ interface Project {
     projectName: string;
 }
 
-const API_URL_BASE = "/dhtcms/api/v1";
+const API_URL_BASE = "";
 const UserComponent: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [open, setOpen] = useState(false);
@@ -92,9 +99,7 @@ const UserComponent: React.FC = () => {
     // Fetch users from the API
     const fetchUsers = async () => {
         try {
-            const response = await axios.get(`${API_URL_BASE}/users`, {
-                headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
-            });
+            const response = await api.get(`${API_URL_BASE}/users`);
             setUsers(response.data.users);
         } catch (error) {
             console.error('Error fetching users:', error);
@@ -103,18 +108,14 @@ const UserComponent: React.FC = () => {
 
     const fetchRolesAndDepartments = async () => {
         try {
-            const rolesResponse = await axios.get(`${API_URL_BASE}/roles`, {
-                headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
-            });
+            const rolesResponse = await api.get(`${API_URL_BASE}/roles`);
             setRoles(rolesResponse.data.roles);
         } catch (error) {
             console.error("Failed to fetch roles:", error);
         }
 
         try {
-            const departmentsResponse = await axios.get(`${API_URL_BASE}/department`, {
-                headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
-            });
+            const departmentsResponse = await api.get(`${API_URL_BASE}/department`);
             setDepartments(departmentsResponse.data.departments);
         } catch (error) {
             console.error("Failed to fetch departments:", error);
@@ -124,9 +125,7 @@ const UserComponent: React.FC = () => {
     // Fetch projects from the API
     const fetchProjects = async () => {
         try {
-            const response = await axios.get(`${API_URL_BASE}/project`, {
-                headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
-            });
+            const response = await api.get(`${API_URL_BASE}/project`);
             const data = response.data.projects;  // Assuming response.data is the array you want to transform
 
             // Keep only the id and projectName attributes
@@ -150,9 +149,9 @@ const UserComponent: React.FC = () => {
     const handleChange = (
         e: React.ChangeEvent<{ name?: string; value: unknown }> | SelectChangeEvent
     ) => {
-        const {name, value} = e.target;
+        const { name, value } = e.target;
         if (name) {
-            setFormData({...formData, [name]: value});
+            setFormData({ ...formData, [name]: value });
         }
     };
 
@@ -202,29 +201,29 @@ const UserComponent: React.FC = () => {
                 departmentId: parseInt(formData.departmentId),
             };
             if (isEdit && selectedUser) {
-                await axios.put(
+                await api.put(
                     `${API_URL_BASE}/users/${selectedUser.id}`,
                     payload,
                     {
-                        headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
+                        headers: { Authorization: `Bearer ` + localStorage.getItem('authToken') },
                     }
                 );
-                setAlert({open: true, message: 'User Updated Successfully!', severity: 'success'});
+                setAlert({ open: true, message: 'User Updated Successfully!', severity: 'success' });
             } else {
-                await axios.post(
+                await api.post(
                     `${API_URL_BASE}/users`,
                     payload,
                     {
-                        headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
+                        headers: { Authorization: `Bearer ` + localStorage.getItem('authToken') },
                     }
                 );
-                setAlert({open: true, message: 'User Added Successfully!', severity: 'success'});
+                setAlert({ open: true, message: 'User Added Successfully!', severity: 'success' });
             }
             fetchUsers().then();
             handleClose();
         } catch (error) {
             console.error('Error saving user:', error);
-            setAlert({open: true, message: 'Error saving user!', severity: 'error'});
+            setAlert({ open: true, message: 'Error saving user!', severity: 'error' });
         }
     };
 
@@ -232,14 +231,12 @@ const UserComponent: React.FC = () => {
     const handleDelete = async (id: number) => {
         if (window.confirm('Are you sure you want to delete this user?')) {
             try {
-                await axios.delete(`${API_URL_BASE}/users/${id}`, {
-                    headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
-                });
+                await api.delete(`${API_URL_BASE}/users/${id}`);
                 fetchUsers().then();
-                setAlert({open: true, message: 'User Deleted Successfully!', severity: 'success'});
+                setAlert({ open: true, message: 'User Deleted Successfully!', severity: 'success' });
             } catch (error) {
                 console.error('Error deleting user:', error);
-                setAlert({open: true, message: 'Error deleting user!', severity: 'error'});
+                setAlert({ open: true, message: 'Error deleting user!', severity: 'error' });
             }
         }
     };
@@ -247,30 +244,27 @@ const UserComponent: React.FC = () => {
     // Handle toggle active status
     const toggleActiveStatus = async (user: User) => {
         try {
-            await axios.put(
+            await api.put(
                 `${API_URL_BASE}/users/${user.id}`,
-                {...user, isActive: !user.isActive},
-                {
-                    headers: {Authorization: `Bearer ` + localStorage.getItem('authToken')},
-                }
+                { ...user, isActive: !user.isActive }
             );
             fetchUsers().then();
-            setAlert({open: true, message: 'User active status changed!', severity: 'success'});
+            setAlert({ open: true, message: 'User active status changed!', severity: 'success' });
         } catch (error) {
             console.error('Error updating active status:', error);
         }
     };
 
     return (
-        <Box sx={{padding: 2}}>
+        <Box sx={{ padding: 2 }}>
             <Snackbar
                 open={alert.open}
                 autoHideDuration={3000}
-                onClose={() => setAlert({...alert, open: false})}
-                anchorOrigin={{vertical: 'top', horizontal: 'center'}}
+                onClose={() => setAlert({ ...alert, open: false })}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
             >
                 <Alert
-                    onClose={() => setAlert({...alert, open: false})}
+                    onClose={() => setAlert({ ...alert, open: false })}
                     severity={alert.severity as 'success' | 'error' | 'warning' | 'info'}
                     variant="filled"
                 >
@@ -282,7 +276,7 @@ const UserComponent: React.FC = () => {
             </Button>
 
             {/* Users Table */}
-            <TableContainer component={Paper} style={{marginTop: 20}}>
+            <TableContainer component={Paper} style={{ marginTop: 20 }}>
                 <Table>
                     <TableHead>
                         <TableRow>
@@ -315,11 +309,11 @@ const UserComponent: React.FC = () => {
                                 </TableCell>
                                 <TableCell>
                                     <IconButton color="primary" onClick={() => handleOpen(user)}>
-                                        <EditIcon/>
+                                        <EditIcon />
                                     </IconButton>
                                     {user.id !== loggedInUserId && (
                                         <IconButton color="secondary" onClick={() => handleDelete(user.id)}>
-                                            <DeleteIcon/>
+                                            <DeleteIcon />
                                         </IconButton>
                                     )}
                                 </TableCell>
@@ -332,7 +326,7 @@ const UserComponent: React.FC = () => {
             {/* Add/Edit Dialog */}
             <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
                 <DialogTitle>{isEdit ? 'Edit User' : 'Add User'}</DialogTitle>
-                <DialogContent dividers sx={{p: 3, display: 'flex', flexDirection: 'column', gap: 2}}>
+                <DialogContent dividers sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <TextField
                         name="firstName"
                         label="First Name"
@@ -394,10 +388,10 @@ const UserComponent: React.FC = () => {
                     </FormControl>
 
                     <div>
-                        <strong style={{display: 'block', marginBottom: 8}}>Assign Projects:</strong>
-                        <Box sx={{display: 'flex', flexWrap: 'wrap', gap: 1}}>
+                        <strong style={{ display: 'block', marginBottom: 8 }}>Assign Projects:</strong>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                             {projectSet.map((project) => (
-                                <label key={project.id} style={{display: 'flex', alignItems: 'center', gap: 4}}>
+                                <label key={project.id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                     <input
                                         type="checkbox"
                                         checked={formData.projectsSet.some((p) => p.id === project.id)}
@@ -406,7 +400,7 @@ const UserComponent: React.FC = () => {
                                                 const updated = e.target.checked
                                                     ? [...prev.projectsSet, project]
                                                     : prev.projectsSet.filter((p) => p.id !== project.id);
-                                                return {...prev, projectsSet: updated};
+                                                return { ...prev, projectsSet: updated };
                                             });
                                         }}
                                     />
@@ -416,7 +410,7 @@ const UserComponent: React.FC = () => {
                         </Box>
                     </div>
                 </DialogContent>
-                <DialogActions sx={{p: 2}}>
+                <DialogActions sx={{ p: 2 }}>
                     <Button onClick={handleClose} variant="outlined">
                         Cancel
                     </Button>

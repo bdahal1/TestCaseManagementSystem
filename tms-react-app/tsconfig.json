@@ -8,6 +8,8 @@
       "path": "./tsconfig.node.json"
     }
   ],
-  "jsx": "react-jsx",
-  "strict": true
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "strict": true
+  }
 }

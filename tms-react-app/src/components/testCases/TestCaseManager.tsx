@@ -1,48 +1,49 @@
-import React, {useEffect, useState, useCallback} from "react";
-import axios from "axios";
+import React, { useCallback, useEffect, useState } from "react";
 import {
-    TextField,
+    Alert,
+    Autocomplete,
     Button,
-    MenuItem,
-    Select,
-    InputLabel,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
     FormControl,
+    IconButton,
+    InputLabel,
+    Link,
+    MenuItem,
+    Paper,
+    Select,
+    Snackbar,
     Table,
     TableBody,
     TableCell,
     TableContainer,
     TableHead,
     TableRow,
-    Paper,
-    CircularProgress,
-    Snackbar,
-    Alert,
-    IconButton,
-    Link,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    Autocomplete
+    TextField
 } from "@mui/material";
-import {Box} from "@mui/system";
+import { Box } from "@mui/system";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import {TestTypes} from "../../types/TestCase.ts";
+import { TestTypes } from "../../types/TestCase.ts";
+import api from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
 
 // Constants
 const API_URLS = {
-    TESTCASE: "/dhtcms/api/v1/testCase",
-    PROJECT: "/dhtcms/api/v1/project",
-    TAGS: "/dhtcms/api/v1/tags",
-    TEST_STEPS: "/dhtcms/api/v1/testSteps"
+    TESTCASE: "/testCase",
+    PROJECT: "/project",
+    TAGS: "/tags",
+    TEST_STEPS: "/testSteps"
 };
 
 const TEST_TYPE_OPTIONS = [
-    {label: "Manual", value: TestTypes.MANUAL},
-    {label: "Cucumber Manual", value: TestTypes.CUCUMBER_MANUAL},
-    {label: "Cucumber Automation", value: TestTypes.CUCUMBER_AUTOMATION},
-    {label: "Keyword Driven", value: TestTypes.KEYWORD_DRIVEN}
+    { label: "Manual", value: TestTypes.MANUAL },
+    { label: "Cucumber Manual", value: TestTypes.CUCUMBER_MANUAL },
+    { label: "Cucumber Automation", value: TestTypes.CUCUMBER_AUTOMATION },
+    { label: "Keyword Driven", value: TestTypes.KEYWORD_DRIVEN }
 ];
 
 // Interfaces
@@ -81,8 +82,9 @@ interface TestCaseComponentProps {
     projId?: number;
 }
 
-const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
+const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
     // State
+    const { user } = useAuth();
     const [testCases, setTestCases] = useState<TestCase[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [tags, setTags] = useState<TagsSet[]>([]);
@@ -106,15 +108,13 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
     const [steps, setSteps] = useState<TestStep[]>([]);
 
     // Memoized auth headers
-    const getAuthHeaders = useCallback(() => ({
-        headers: {Authorization: `Bearer ${localStorage.getItem("authToken")}`}
-    }), []);
+
 
     // API Calls
     const fetchTestCases = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await axios.get(`${API_URLS.TESTCASE}?projectId=${projId}`, getAuthHeaders());
+            const response = await api.get(`${API_URLS.TESTCASE}?projectId=${projId}`);
             setTestCases(response.data.testCase ?? []);
             setError(null);
         } catch (err) {
@@ -123,27 +123,27 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
         } finally {
             setLoading(false);
         }
-    }, [projId, getAuthHeaders]);
+    }, [projId]);
 
     const fetchProjects = useCallback(async () => {
         try {
-            const response = await axios.get(`${API_URLS.PROJECT}/id/${projId}`, getAuthHeaders());
+            const response = await api.get(`${API_URLS.PROJECT}/id/${projId}`);
             setProjects(response.data.projects);
         } catch (err) {
             setError("Failed to fetch projects.");
             console.error("Error fetching projects:", err);
         }
-    }, [projId, getAuthHeaders]);
+    }, [projId]);
 
     const fetchTags = useCallback(async () => {
         try {
-            const response = await axios.get(API_URLS.TAGS, getAuthHeaders());
+            const response = await api.get(API_URLS.TAGS);
             setTags(Array.isArray(response.data?.tags) ? response.data.tags : []);
         } catch (err) {
             setError("Failed to fetch tags.");
             console.error("Error fetching tags:", err);
         }
-    }, [getAuthHeaders]);
+    }, []);
 
     const syncMissingTags = async (incomingTags: TagsSet[]): Promise<TagsSet[]> => {
         const existingTagNames = new Set(tags.map(tag => tag.tagName.toLowerCase()));
@@ -152,7 +152,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
         for (const tag of incomingTags) {
             if (!existingTagNames.has(tag.tagName.toLowerCase())) {
                 try {
-                    const res = await axios.post(API_URLS.TAGS, {tagName: tag.tagName}, getAuthHeaders());
+                    const res = await api.post(API_URLS.TAGS, { tagName: tag.tagName });
                     createdTags.push(res.data);
                 } catch (err) {
                     console.error("Error creating tag:", err);
@@ -187,9 +187,8 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
             setSelectedTags(testCase.tagsSet);
 
             try {
-                const response = await axios.get(
-                    `${API_URLS.TEST_STEPS}/testCaseId/${testCase.id}?type=${effectiveType}`,
-                    getAuthHeaders()
+                const response = await api.get(
+                    `${API_URLS.TEST_STEPS}/testCaseId/${testCase.id}?type=${effectiveType}`
                 );
                 setSteps(response.data.testSteps);
             } catch (err) {
@@ -215,8 +214,12 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
     };
 
     const handleFormChange = (field: keyof typeof formData, value: any) => {
-        setFormData(prev => ({...prev, [field]: value}));
+        setFormData(prev => ({ ...prev, [field]: value }));
     };
+
+
+
+    // ...
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
@@ -239,7 +242,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
         const testPayload = {
             testName: formData.testName,
             projectId: formData.projectId,
-            userId: localStorage.getItem("userId"),
+            userId: user?.userId,
             selectedTags: selectedTags.map(tag => tag.id),
             testType: formData.testType
         };
@@ -248,11 +251,11 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
             let currentTestCaseId = formData.testCaseId;
 
             if (formMode === "edit" && selectedTestCase) {
-                await axios.put(`${API_URLS.TESTCASE}/${selectedTestCase.id}`, testPayload, getAuthHeaders());
+                await api.put(`${API_URLS.TESTCASE}/${selectedTestCase.id}`, testPayload);
                 currentTestCaseId = selectedTestCase.id;
                 showSnackbar("Test case updated successfully!");
             } else {
-                const response = await axios.post(API_URLS.TESTCASE, testPayload, getAuthHeaders());
+                const response = await api.post(API_URLS.TESTCASE, testPayload);
                 currentTestCaseId = response.data.id;
                 showSnackbar("Test case created successfully!");
             }
@@ -264,11 +267,11 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                     testStepData: step.testStepData,
                     testStepOrder: index + 1,
                     testCaseId: currentTestCaseId,
-                    userId: localStorage.getItem("userId"),
+                    userId: user?.userId,
                     stepId: step.id,
                     testType: formData.testType
                 }));
-                await axios.post(API_URLS.TEST_STEPS, testStepsPayload, getAuthHeaders());
+                await api.post(API_URLS.TEST_STEPS, testStepsPayload);
             }
 
             await fetchTestCases();
@@ -282,7 +285,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
 
     const deleteTestCase = async (id: number) => {
         try {
-            await axios.delete(`${API_URLS.TESTCASE}/${id}`, getAuthHeaders());
+            await api.delete(`${API_URLS.TESTCASE}/${id}`);
             setTestCases(testCases.filter(tc => tc.id !== id));
             showSnackbar("Test case deleted successfully!");
         } catch (err) {
@@ -349,7 +352,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
 
     useEffect(() => {
         if ((formData.testType === TestTypes.CUCUMBER_MANUAL ||
-                formData.testType === TestTypes.CUCUMBER_AUTOMATION) &&
+            formData.testType === TestTypes.CUCUMBER_AUTOMATION) &&
             steps.length === 0) {
             addStep();
         }
@@ -357,13 +360,13 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
 
     // Render
     if (!projId) return <div>Please select a project.</div>;
-    if (loading) return <CircularProgress/>;
+    if (loading) return <CircularProgress />;
     if (error) return <div>{error}</div>;
 
     return (
-        <Box sx={{padding: 2}}>
-            <br/>
-            <Button variant="outlined" onClick={() => handleOpenDialog(null)} sx={{mb: 2}}>
+        <Box sx={{ padding: 2 }}>
+            <br />
+            <Button variant="outlined" onClick={() => handleOpenDialog(null)} sx={{ mb: 2 }}>
                 + Add Test Case
             </Button>
 
@@ -397,10 +400,10 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                                 <TableCell>{tc.testCreatedBy}</TableCell>
                                 <TableCell>
                                     <IconButton color="primary" onClick={() => handleOpenDialog(tc)}>
-                                        <EditIcon/>
+                                        <EditIcon />
                                     </IconButton>
                                     <IconButton color="secondary" onClick={() => deleteTestCase(tc.id)}>
-                                        <DeleteIcon/>
+                                        <DeleteIcon />
                                     </IconButton>
                                 </TableCell>
                             </TableRow>
@@ -411,7 +414,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
 
             <Dialog open={dialogOpen} onClose={handleCloseDialog} fullWidth maxWidth="md">
                 <DialogTitle>{formMode === "create" ? "Add" : "Edit"} Test Case</DialogTitle>
-                <DialogContent dividers sx={{display: "flex", flexDirection: "column", gap: 2, p: 3}}>
+                <DialogContent dividers sx={{ display: "flex", flexDirection: "column", gap: 2, p: 3 }}>
                     {projects.length > 1 ? (
                         <FormControl fullWidth>
                             <InputLabel>Project</InputLabel>
@@ -432,7 +435,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                             label="Project"
                             value={projects[0]?.projectName || ""}
                             fullWidth
-                            slotProps={{input: {readOnly: true}}}
+                            slotProps={{ input: { readOnly: true } }}
                         />
                     )}
 
@@ -452,12 +455,12 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                         value={selectedTags}
                         onChange={async (_, newValue) => {
                             const formattedTags: TagsSet[] = newValue.map((item) =>
-                                typeof item === "string" ? {id: null, tagName: item} : item
+                                typeof item === "string" ? { id: null, tagName: item } : item
                             );
                             const resolved = await syncMissingTags(formattedTags);
                             setSelectedTags(resolved);
                         }}
-                        renderInput={(params) => <TextField {...params} label="Tags"/>}
+                        renderInput={(params) => <TextField {...params} label="Tags" />}
                         isOptionEqualToValue={(option, value) => {
                             // Compare tags by ID if available, otherwise by name (case insensitive)
                             if (option.id && value.id) {
@@ -500,13 +503,13 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                         </Select>
                     </FormControl>
 
-                    <Box sx={{mt: 2}}>
+                    <Box sx={{ mt: 2 }}>
                         {formData.testType === TestTypes.MANUAL && (
                             <>
-                                <Box sx={{fontWeight: "bold", mb: 1}}>Test Steps</Box>
+                                <Box sx={{ fontWeight: "bold", mb: 1 }}>Test Steps</Box>
                                 {steps.map((step, index) => (
                                     <Box key={index}
-                                         sx={{display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 2, mb: 2}}>
+                                        sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 2, mb: 2 }}>
                                         <TextField
                                             label={`Step ${index + 1}`}
                                             value={step.testStepDesc}
@@ -532,7 +535,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                                             minRows={2}
                                         />
                                         <IconButton onClick={() => removeStep(index)} color="error">
-                                            <DeleteIcon/>
+                                            <DeleteIcon />
                                         </IconButton>
                                     </Box>
                                 ))}
@@ -542,7 +545,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
 
                         {formData.testType === TestTypes.CUCUMBER_MANUAL && (
                             <>
-                                <Box sx={{display: "grid", gridTemplateColumns: "1fr", gap: 2, mb: 2}}>
+                                <Box sx={{ display: "grid", gridTemplateColumns: "1fr", gap: 2, mb: 2 }}>
                                     {steps.map((step, index) => (
                                         <Box key={index}>
                                             <TextField
@@ -562,7 +565,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
 
                         {formData.testType === TestTypes.CUCUMBER_AUTOMATION && (
                             <>
-                                <Box sx={{display: "grid", gridTemplateColumns: "1fr", gap: 2, mb: 2}}>
+                                <Box sx={{ display: "grid", gridTemplateColumns: "1fr", gap: 2, mb: 2 }}>
                                     {steps.map((step, index) => (
                                         <Box key={index}>
                                             <TextField
@@ -582,10 +585,10 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
 
                         {formData.testType === TestTypes.KEYWORD_DRIVEN && (
                             <>
-                                <Box sx={{fontWeight: "bold", mb: 1}}>Keyword Driven</Box>
+                                <Box sx={{ fontWeight: "bold", mb: 1 }}>Keyword Driven</Box>
                                 {steps.map((step, index) => (
                                     <Box key={index}
-                                         sx={{display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 2, mb: 2}}>
+                                        sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 2, mb: 2 }}>
                                         <TextField
                                             label={`Action ${index + 1}`}
                                             value={step.testStepDesc}
@@ -611,7 +614,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
                                             minRows={2}
                                         />
                                         <IconButton onClick={() => removeStep(index)} color="error">
-                                            <DeleteIcon/>
+                                            <DeleteIcon />
                                         </IconButton>
                                     </Box>
                                 ))}
@@ -629,7 +632,8 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({projId}) => {
             </Dialog>
 
             <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={() => setSnackbarOpen(false)}>
-                <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarMessage.includes("success") ? "success" : "error"}>
+                <Alert onClose={() => setSnackbarOpen(false)}
+                    severity={snackbarMessage.includes("success") ? "success" : "error"}>
                     {snackbarMessage}
                 </Alert>
             </Snackbar>

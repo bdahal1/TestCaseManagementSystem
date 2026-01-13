@@ -1,54 +1,35 @@
-import { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import axios from "axios";
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import Login from "./pages/Login";
+import DashboardLayout from "./layouts/DashboardLayout";
+import ProjectList from "./pages/DashboardHome";
+import TestCaseComponent from "./components/testCases/TestCaseManager";
+import TestFolderComponent from "./components/testFolders/TestFolderManager";
+import TestExecutionComponent from "./components/testExecutions/TestExecutionManager";
+import AdminPage from "./pages/AdminPage";
 
-import Login from "./login/Login";
-import Dashboard from "./dashboard/Dashboard";
+// Wrapper components to extract route params
+const TestCaseRoute = () => {
+    const { projectId } = useParams();
+    return projectId ? <TestCaseComponent projId={Number(projectId)} /> : <Navigate to="/dashboard" />;
+};
 
-const API_BASE_URL = "/dhtcms/api/v1";
+const TestFolderRoute = () => {
+    const { projectId } = useParams();
+    return projectId ? <TestFolderComponent projId={Number(projectId)} /> : <Navigate to="/dashboard" />;
+};
 
-function App() {
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-        return Boolean(localStorage.getItem("authToken"));
-    });
+const TestExecutionRoute = () => {
+    const { projectId } = useParams();
+    return projectId ? <TestExecutionComponent projId={Number(projectId)} /> : <Navigate to="/dashboard" />;
+};
 
-    const handleLoginSuccess = () => {
-        setIsAuthenticated(true);
-    };
+function AppRoutes() {
+    const { isAuthenticated, loading } = useAuth();
 
-    const handleLogout = () => {
-        setIsAuthenticated(false);
-        clearAuthStorage();
-    };
-
-    const clearAuthStorage = () => {
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("isLoggedIn");
-        localStorage.removeItem("userId");
-    };
-
-    useEffect(() => {
-        const checkToken = async () => {
-            const token = localStorage.getItem("authToken");
-            if (!token) {
-                clearAuthStorage();
-                return setIsAuthenticated(false);
-            }
-
-            try {
-                await axios.get(`${API_BASE_URL}/validate`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                setIsAuthenticated(true);
-            } catch (err) {
-                console.error("Token validation failed:", err);
-                clearAuthStorage();
-                setIsAuthenticated(false);
-            }
-        };
-
-        checkToken().then();
-    }, []);
+    if (loading) {
+        return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>Loading...</div>;
+    }
 
     return (
         <Router>
@@ -56,18 +37,35 @@ function App() {
                 <Route
                     path="/login"
                     element={
-                        isAuthenticated ? <Navigate to="/dashboard" /> : <Login onLoginSuccess={handleLoginSuccess} />
+                        isAuthenticated ? <Navigate to="/dashboard" /> : <Login />
                     }
                 />
+
                 <Route
                     path="/dashboard"
                     element={
-                        isAuthenticated ? <Dashboard onLogout={handleLogout} /> : <Navigate to="/login" />
+                        isAuthenticated ? <DashboardLayout /> : <Navigate to="/login" />
                     }
-                />
-                <Route path="/" element={<Navigate to="/login" />} />
+                >
+                    <Route index element={<ProjectList />} />
+                    <Route path="project/:projectId/test-cases" element={<TestCaseRoute />} />
+                    <Route path="project/:projectId/test-folders" element={<TestFolderRoute />} />
+                    <Route path="project/:projectId/test-executions" element={<TestExecutionRoute />} />
+                    <Route path="admin" element={<AdminPage />} />
+                </Route>
+
+                <Route path="/" element={<Navigate to="/dashboard" />} />
+                <Route path="*" element={<Navigate to="/dashboard" />} />
             </Routes>
         </Router>
+    );
+}
+
+function App() {
+    return (
+        <AuthProvider>
+            <AppRoutes />
+        </AuthProvider>
     );
 }
 
