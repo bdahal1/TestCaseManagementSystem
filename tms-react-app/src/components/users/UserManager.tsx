@@ -22,10 +22,14 @@ import {
     Select,
     Switch,
     Box,
-    SelectChangeEvent
+    SelectChangeEvent,
+    Typography
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import SearchIcon from '@mui/icons-material/Search';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import { InputAdornment } from '@mui/material';
 import api from "../../services/api";
 
 // User type interface
@@ -59,6 +63,8 @@ interface Project {
 const API_URL_BASE = "";
 const UserComponent: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
+    const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
     const [open, setOpen] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -101,6 +107,7 @@ const UserComponent: React.FC = () => {
         try {
             const response = await api.get(`${API_URL_BASE}/users`);
             setUsers(response.data.users);
+            setFilteredUsers(response.data.users);
         } catch (error) {
             console.error('Error fetching users:', error);
         }
@@ -144,6 +151,16 @@ const UserComponent: React.FC = () => {
         fetchRolesAndDepartments().then();
         fetchProjects().then();
     }, []);
+
+    useEffect(() => {
+        const lowerCaseQuery = searchQuery.toLowerCase();
+        const filtered = users.filter((user) =>
+            user.firstName.toLowerCase().includes(lowerCaseQuery) ||
+            user.lastName.toLowerCase().includes(lowerCaseQuery) ||
+            user.userName.toLowerCase().includes(lowerCaseQuery)
+        );
+        setFilteredUsers(filtered);
+    }, [searchQuery, users]);
 
     // Handle form input change
     const handleChange = (
@@ -271,9 +288,34 @@ const UserComponent: React.FC = () => {
                     {alert.message}
                 </Alert>
             </Snackbar>
-            <Button variant="outlined" color="primary" onClick={() => handleOpen()}>
-                + Add User
-            </Button>
+
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <TextField
+                    placeholder="Search users..."
+                    variant="outlined"
+                    size="small"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    sx={{ width: 300 }}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <SearchIcon color="action" />
+                            </InputAdornment>
+                        ),
+                    }}
+                />
+                <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={() => handleOpen()}
+                    startIcon={<PersonAddIcon />}
+                    sx={{ borderRadius: '10px', px: 3 }}
+                >
+                    Add User
+                </Button>
+            </Box>
 
             {/* Users Table */}
             <TableContainer component={Paper} style={{ marginTop: 20 }}>
@@ -291,7 +333,7 @@ const UserComponent: React.FC = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {users.map((user) => (
+                        {filteredUsers.map((user) => (
                             <TableRow key={user.id}>
                                 <TableCell>{user.firstName}</TableCell>
                                 <TableCell>{user.lastName}</TableCell>
@@ -308,12 +350,12 @@ const UserComponent: React.FC = () => {
                                     />
                                 </TableCell>
                                 <TableCell>
-                                    <IconButton color="primary" onClick={() => handleOpen(user)}>
-                                        <EditIcon />
+                                    <IconButton size="small" onClick={() => handleOpen(user)}>
+                                        <EditIcon fontSize="small" color="primary" />
                                     </IconButton>
                                     {user.id !== loggedInUserId && (
-                                        <IconButton color="secondary" onClick={() => handleDelete(user.id)}>
-                                            <DeleteIcon />
+                                        <IconButton size="small" onClick={() => handleDelete(user.id)}>
+                                            <DeleteIcon fontSize="small" color="error" />
                                         </IconButton>
                                     )}
                                 </TableCell>
@@ -324,102 +366,160 @@ const UserComponent: React.FC = () => {
             </TableContainer>
 
             {/* Add/Edit Dialog */}
-            <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-                <DialogTitle>{isEdit ? 'Edit User' : 'Add User'}</DialogTitle>
-                <DialogContent dividers sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <TextField
-                        name="firstName"
-                        label="First Name"
-                        value={formData.firstName}
-                        onChange={handleChange}
-                        fullWidth
-                    />
-                    <TextField
-                        name="lastName"
-                        label="Last Name"
-                        value={formData.lastName}
-                        onChange={handleChange}
-                        fullWidth
-                    />
-                    <TextField
-                        name="userName"
-                        label="Username"
-                        value={formData.userName}
-                        onChange={handleChange}
-                        fullWidth
-                    />
-                    {!isEdit && (
+            <Dialog
+                open={open}
+                onClose={handleClose}
+                fullWidth
+                maxWidth="sm"
+                PaperProps={{
+                    sx: { borderRadius: '20px', p: 1 }
+                }}
+            >
+                <DialogTitle sx={{
+                    fontWeight: 700,
+                    fontSize: '1.5rem',
+                    color: 'text.primary',
+                    pb: 1
+                }}>
+                    {isEdit ? 'Edit User' : 'New User'}
+                </DialogTitle>
+                <DialogContent sx={{ p: 3 }}>
+                    <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                            <TextField
+                                name="firstName"
+                                label="First Name"
+                                value={formData.firstName}
+                                onChange={handleChange}
+                                fullWidth
+                                variant="outlined"
+                            />
+                            <TextField
+                                name="lastName"
+                                label="Last Name"
+                                value={formData.lastName}
+                                onChange={handleChange}
+                                fullWidth
+                                variant="outlined"
+                            />
+                        </Box>
+
                         <TextField
-                            name="password"
-                            label="Password"
-                            type="password"
-                            value={formData.password}
+                            name="userName"
+                            label="Username"
+                            value={formData.userName}
                             onChange={handleChange}
                             fullWidth
-                        />
-                    )}
-
-                    <FormControl fullWidth>
-                        <InputLabel>Role</InputLabel>
-                        <Select name="roleId" value={formData.roleId} onChange={handleChange} label="Role" variant="outlined" disabled={isEditingLoggedInUser}>
-                            {roles.map((role) => (
-                                <MenuItem key={role.roleId} value={role.roleId}>
-                                    {role.roleName}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-
-                    <FormControl fullWidth>
-                        <InputLabel>Department</InputLabel>
-                        <Select
-                            name="departmentId"
-                            value={formData.departmentId}
-                            onChange={handleChange}
-                            label="Department"
                             variant="outlined"
-                        >
-                            {departments.map((dep) => (
-                                <MenuItem key={dep.depId} value={dep.depId}>
-                                    {dep.depName}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
+                        />
 
-                    <div>
-                        <strong style={{ display: 'block', marginBottom: 8 }}>Assign Projects:</strong>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                            {projectSet.map((project) => (
-                                <label key={project.id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.projectsSet.some((p) => p.id === project.id)}
-                                        onChange={(e) => {
+                        {!isEdit && (
+                            <TextField
+                                name="password"
+                                label="Password"
+                                type="password"
+                                value={formData.password}
+                                onChange={handleChange}
+                                fullWidth
+                                variant="outlined"
+                            />
+                        )}
+
+                        <FormControl fullWidth>
+                            <InputLabel>Role</InputLabel>
+                            <Select
+                                name="roleId"
+                                value={formData.roleId}
+                                onChange={handleChange}
+                                label="Role"
+                                disabled={isEditingLoggedInUser}
+                            >
+                                {roles.map((role) => (
+                                    <MenuItem key={role.roleId} value={role.roleId}>
+                                        {role.roleName}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+
+                        <FormControl fullWidth>
+                            <InputLabel>Department</InputLabel>
+                            <Select
+                                name="departmentId"
+                                value={formData.departmentId}
+                                onChange={handleChange}
+                                label="Department"
+                            >
+                                {departments.map((dep) => (
+                                    <MenuItem key={dep.depId} value={dep.depId}>
+                                        {dep.depName}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+
+                        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, backgroundColor: 'background.default' }}>
+                            <Typography variant="subtitle2" fontWeight="600" mb={1.5}>
+                                Assign Projects
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                {projectSet.map((project) => (
+                                    <Box
+                                        key={project.id}
+                                        sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1,
+                                            px: 1.5,
+                                            py: 0.5,
+                                            borderRadius: '20px',
+                                            backgroundColor: formData.projectsSet.some((p) => p.id === project.id)
+                                                ? 'primary.light'
+                                                : 'white',
+                                            color: formData.projectsSet.some((p) => p.id === project.id)
+                                                ? 'white'
+                                                : 'text.secondary',
+                                            cursor: 'pointer',
+                                            border: '1px solid',
+                                            borderColor: formData.projectsSet.some((p) => p.id === project.id)
+                                                ? 'primary.main'
+                                                : 'divider',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onClick={() => {
+                                            const isSelected = formData.projectsSet.some((p) => p.id === project.id);
                                             setFormData((prev) => {
-                                                const updated = e.target.checked
+                                                const updated = !isSelected
                                                     ? [...prev.projectsSet, project]
                                                     : prev.projectsSet.filter((p) => p.id !== project.id);
                                                 return { ...prev, projectsSet: updated };
                                             });
                                         }}
-                                    />
-                                    {project.projectName}
-                                </label>
-                            ))}
-                        </Box>
-                    </div>
+                                    >
+                                        <Typography variant="body2" fontWeight={500}>
+                                            {project.projectName}
+                                        </Typography>
+                                    </Box>
+                                ))}
+                            </Box>
+                        </Paper>
+                    </Box>
                 </DialogContent>
-                <DialogActions sx={{ p: 2 }}>
-                    <Button onClick={handleClose} variant="outlined">
+                <DialogActions sx={{ p: 3, pt: 1 }}>
+                    <Button onClick={handleClose} variant="text" color="inherit" sx={{ borderRadius: '10px' }}>
                         Cancel
                     </Button>
-                    <Button onClick={handleSubmit} variant="contained" color="primary">
-                        {isEdit ? 'Update' : 'Add'}
+                    <Button
+                        onClick={handleSubmit}
+                        variant="contained"
+                        color="primary"
+                        sx={{ px: 4, borderRadius: '10px' }}
+                    >
+                        {isEdit ? 'Save Changes' : 'Create User'}
                     </Button>
                 </DialogActions>
             </Dialog>
-        </Box>
+        </Box >
     );
 };
 

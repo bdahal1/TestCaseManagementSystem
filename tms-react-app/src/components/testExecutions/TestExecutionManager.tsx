@@ -31,6 +31,10 @@ import { ResultStatus, TestCase, TestExecution, TestTypes } from '../../types/Te
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { alpha } from '@mui/material/styles';
+import SearchIcon from '@mui/icons-material/Search';
+import AddIcon from '@mui/icons-material/Add';
+import PlayCircleFilledWhiteIcon from '@mui/icons-material/PlayCircleFilledWhite';
+import { InputAdornment } from '@mui/material';
 import api from "../../services/api";
 
 interface TestExecutionComponentProps {
@@ -46,6 +50,8 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({ projId 
     const [executionName, setExecutionName] = useState('');
     const [openDialog, setOpenDialog] = useState(false);
     const [testCases, setTestCases] = useState<TestCase[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filteredTestCases, setFilteredTestCases] = useState<TestCase[]>([]);
     const [alert, setAlert] = useState({
         open: false,
         message: '',
@@ -55,7 +61,13 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({ projId 
     const [openAddTestCaseDialog, setOpenAddTestCaseDialog] = useState(false);
     const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
     const [selectedTestCases, setSelectedTestCases] = useState<TestCase[]>([]);
+
     const [hoveredRow, setHoveredRow] = useState<number | null>(null);
+    const [searchExecutionQuery, setSearchExecutionQuery] = useState('');
+
+    const filteredExecutions = testExecutions.filter(ex =>
+        ex.executionName.toLowerCase().includes(searchExecutionQuery.toLowerCase())
+    );
     const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
     const toggleExpand = (id: number) => {
         setExpandedRowId(prev => (prev === id ? null : id));
@@ -112,6 +124,7 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({ projId 
             const response = await api.get(`${API_URL_TEST_EXECUTION}/id/${executionId}`);
             const sortedCases = (response.data.testCases || []).sort((a: TestCase, b: TestCase) => a.testName.localeCompare(b.testName));
             setTestCases(sortedCases);
+            setFilteredTestCases(sortedCases);
         } catch (error) {
             console.error('Error fetching test cases:', error);
         }
@@ -196,6 +209,14 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({ projId 
         }
     }, [selectedExecution]);
 
+    useEffect(() => {
+        const lowerCaseQuery = searchQuery.toLowerCase();
+        const filtered = testCases.filter(tc =>
+            tc.testName.toLowerCase().includes(lowerCaseQuery)
+        );
+        setFilteredTestCases(filtered);
+    }, [searchQuery, testCases]);
+
     const handleDialogClose = () => {
         setOpenDialog(false);
         setExecutionName('');
@@ -227,16 +248,15 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({ projId 
         }
         try {
             if (isEdit && selectedExecution) {
-                const response = await api.put(`${API_URL_TEST_EXECUTION}/${selectedExecution.id}`,
+                await api.put(`${API_URL_TEST_EXECUTION}/${selectedExecution.id}`,
                     { executionName, projectId: projId });
-                setTestExecutions(prev => prev.map(f => f.id === selectedExecution.id ? response.data : f));
                 setAlert({ open: true, message: 'Test Execution updated.', severity: 'success' });
             } else {
-                const response = await api.post(API_URL_TEST_EXECUTION,
+                await api.post(API_URL_TEST_EXECUTION,
                     { executionName, projectId: projId });
-                setTestExecutions(prev => [...prev, response.data]);
                 setAlert({ open: true, message: 'Test Execution created.', severity: 'success' });
             }
+            fetchTestExecutions().then();
             handleDialogClose();
         } catch (error) {
             console.error('Error saving Execution:', error);
@@ -247,11 +267,8 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({ projId 
     const deleteTestExecution = async (executionId: number) => {
         try {
             await api.delete(`${API_URL_TEST_EXECUTION}/${executionId}`);
-            const updatedExecutions = testExecutions.filter(f => f.id !== executionId);
-            setTestExecutions(updatedExecutions);
-            if (selectedExecution?.id === executionId && updatedExecutions.length) {
-                setSelectedExecution(updatedExecutions[0]);
-            } else if (!updatedExecutions.length) {
+            fetchTestExecutions().then();
+            if (selectedExecution?.id === executionId) {
                 setSelectedExecution(null);
                 setTestCases([]);
             }
@@ -265,12 +282,34 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({ projId 
     return (
         <Box display="flex">
             <Box sx={{ width: 240, p: 2 }}>
-                <Button variant="outlined" size="small" onClick={handleOpenAdd} sx={{ mt: 1, mb: 2 }}>
-                    + Add Execution
+                <Button
+                    variant="contained"
+                    size="small"
+                    onClick={handleOpenAdd}
+                    sx={{ mt: 1, mb: 1, borderRadius: '10px', width: '100%' }}
+                    startIcon={<PlayCircleFilledWhiteIcon />}
+                >
+                    Add Execution
                 </Button>
+                <TextField
+                    placeholder="Search executions..."
+                    size="small"
+                    fullWidth
+                    variant="outlined"
+                    value={searchExecutionQuery}
+                    onChange={(e) => setSearchExecutionQuery(e.target.value)}
+                    sx={{ mb: 1 }}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <SearchIcon fontSize="small" color="action" />
+                            </InputAdornment>
+                        ),
+                    }}
+                />
                 <Divider />
                 <List>
-                    {testExecutions.map((execution) => (
+                    {filteredExecutions.map((execution) => (
                         <ListItem
                             key={execution.id}
                             disablePadding
@@ -282,9 +321,12 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({ projId 
                             <ListItemButton
                                 selected={selectedExecution?.id === execution.id}
                                 onClick={() => setSelectedExecution(execution)}
-                                sx={{ pr: 6 }} // leave space for icons
+                                sx={{ pr: 6, borderRadius: 1 }} // leave space for icons
                             >
-                                <ListItemText primary={execution.executionName} />
+                                <ListItemText
+                                    primary={execution.executionName}
+                                    primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 500 }}
+                                />
                             </ListItemButton>
 
                             <Box
@@ -301,10 +343,10 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({ projId 
                                 }}
                             >
                                 <IconButton size="small" onClick={() => handleOpenEdit(execution)}>
-                                    <EditIcon fontSize="small" />
+                                    <EditIcon fontSize="small" color="primary" />
                                 </IconButton>
                                 <IconButton size="small" onClick={() => deleteTestExecution(execution.id)}>
-                                    <DeleteIcon fontSize="small" />
+                                    <DeleteIcon fontSize="small" color="error" />
                                 </IconButton>
                             </Box>
                         </ListItem>
@@ -312,14 +354,35 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({ projId 
                 </List>
             </Box>
             <Box sx={{ flexGrow: 1, p: 3 }}>
-                <Typography variant="subtitle1" gutterBottom>
-                    {selectedExecution ? `Test Cases in ${selectedExecution.executionName}` : 'Select a Execution to view test cases'}
+                <Typography variant="h6" fontWeight="bold" gutterBottom>
+                    {selectedExecution ? `${selectedExecution.executionName}` : 'Select a Execution to view test cases'}
                 </Typography>
                 {selectedExecution && (
                     <>
-                        <Box display="flex" mb={2} justifyContent="space-between" alignItems="center">
-                            <Button variant="outlined" sx={{ mb: 2 }} onClick={() => setOpenAddTestCaseDialog(true)}>
-                                + Add Test Case
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                            <TextField
+                                placeholder="Search test cases..."
+                                variant="outlined"
+                                size="small"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                sx={{ width: 300 }}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <SearchIcon color="action" />
+                                        </InputAdornment>
+                                    ),
+                                }}
+                            />
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                onClick={() => setOpenAddTestCaseDialog(true)}
+                                startIcon={<AddIcon />}
+                                sx={{ borderRadius: '10px', px: 3 }}
+                            >
+                                Add Test Case
                             </Button>
                         </Box>
                         {/* Stats Section */}
@@ -330,27 +393,27 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({ projId 
                             mb={3}
                             sx={{ backgroundColor: '#f5f5f5', p: 2, borderRadius: 1 }}
                         >
-                            <Typography><strong>Total:</strong> {testCases.length}</Typography>
+                            <Typography><strong>Total:</strong> {filteredTestCases.length}</Typography>
                             <Typography
-                                color="success.main"><strong>Passed:</strong> {testCases.filter(tc => tc.resultStatus === 'PASS').length}
+                                color="success.main"><strong>Passed:</strong> {filteredTestCases.filter(tc => tc.resultStatus === 'PASS').length}
                             </Typography>
                             <Typography
-                                color="error.main"><strong>Failed:</strong> {testCases.filter(tc => tc.resultStatus === 'FAIL').length}
+                                color="error.main"><strong>Failed:</strong> {filteredTestCases.filter(tc => tc.resultStatus === 'FAIL').length}
                             </Typography>
                             <Typography
-                                color="warning.main"><strong>Skipped:</strong> {testCases.filter(tc => tc.resultStatus === 'SKIPPED').length}
+                                color="warning.main"><strong>Skipped:</strong> {filteredTestCases.filter(tc => tc.resultStatus === 'SKIPPED').length}
                             </Typography>
                             <Typography
-                                color="text.secondary"><strong>Blocked:</strong> {testCases.filter(tc => tc.resultStatus === 'BLOCKED').length}
+                                color="text.secondary"><strong>Blocked:</strong> {filteredTestCases.filter(tc => tc.resultStatus === 'BLOCKED').length}
                             </Typography>
                             <Typography color="text.secondary"><strong>Not
-                                Run:</strong> {testCases.filter(tc => tc.resultStatus === 'NOT_RUN' || !tc.resultStatus).length}
+                                Run:</strong> {filteredTestCases.filter(tc => tc.resultStatus === 'NOT_RUN' || !tc.resultStatus).length}
                             </Typography>
                         </Box>
                         <Paper>
                             <Table>
                                 <TableBody>
-                                    {testCases.map((tc) => (
+                                    {filteredTestCases.map((tc) => (
                                         <React.Fragment key={tc.id}>
                                             <TableRow
                                                 onMouseEnter={() => setHoveredRow(tc.id)}
@@ -483,58 +546,85 @@ const TestExecutionComponent: React.FC<TestExecutionComponentProps> = ({ projId 
                 )}
             </Box>
 
-            <Dialog open={openDialog} onClose={handleClose} fullWidth maxWidth="sm">
-                <DialogTitle>{isEdit ? 'Edit Test Execution' : 'Add Test Execution'}</DialogTitle>
-                <DialogContent dividers sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <TextField
-                        label="Execution Name"
-                        value={executionName}
-                        onChange={(e) => setExecutionName(e.target.value)}
-                        fullWidth
-                    />
+            {/* Add/Edit Execution Dialog */}
+            <Dialog
+                open={openDialog}
+                onClose={handleClose}
+                fullWidth
+                maxWidth="xs"
+                PaperProps={{ sx: { borderRadius: '20px', p: 1 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 700, fontSize: '1.25rem', pb: 1 }}>
+                    {isEdit ? 'Edit Execution' : 'New Execution'}
+                </DialogTitle>
+                <DialogContent sx={{ p: 3, pt: 1 }}>
+                    <Box component="form" sx={{ mt: 1 }}>
+                        <TextField
+                            label="Execution Run Name"
+                            value={executionName}
+                            onChange={(e) => setExecutionName(e.target.value)}
+                            fullWidth
+                            variant="outlined"
+                        />
+                    </Box>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleClose}>Cancel</Button>
-                    <Button onClick={handleSubmit} variant="contained">
+                <DialogActions sx={{ p: 3, pt: 1 }}>
+                    <Button onClick={handleClose} variant="text" color="inherit" sx={{ borderRadius: '10px' }}>
+                        Cancel
+                    </Button>
+                    <Button onClick={handleSubmit} variant="contained" color="primary" sx={{ borderRadius: '10px', px: 3 }}>
                         {isEdit ? 'Update' : 'Create'}
                     </Button>
                 </DialogActions>
             </Dialog>
 
-            <Dialog open={openAddTestCaseDialog} onClose={() => setOpenAddTestCaseDialog(false)} fullWidth
-                maxWidth="sm">
-                <DialogTitle>Select Test Cases to Add</DialogTitle>
-                <DialogContent dividers sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <Autocomplete
-                        multiple
-                        options={allTestCases}
-                        getOptionLabel={(option) => option.testName}
-                        value={selectedTestCases}
-                        onChange={(_, newValue) => setSelectedTestCases(newValue)}
-                        renderInput={(params) => (
-                            <TextField
-                                {...params}
-                                variant="outlined"
-                                label="Test Cases"
-                                placeholder="Choose test cases"
-                            />
-                        )}
-                    />
-
-                    {/* Add All Test Cases Button */}
-                    <Button
-                        sx={{ mt: 2 }}
-                        onClick={() => setSelectedTestCases(allTestCases)}
-                        variant="outlined"
-                        fullWidth
-                    >
-                        Add All Test Cases
-                    </Button>
+            {/* Add Test Cases Dialog */}
+            <Dialog
+                open={openAddTestCaseDialog}
+                onClose={() => setOpenAddTestCaseDialog(false)}
+                fullWidth
+                maxWidth="sm"
+                PaperProps={{ sx: { borderRadius: '20px', p: 1 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 700, fontSize: '1.25rem', pb: 1 }}>
+                    Add Test Cases
+                </DialogTitle>
+                <DialogContent sx={{ p: 3, pt: 1 }}>
+                    <Box sx={{ mt: 2 }}>
+                        <Autocomplete
+                            multiple
+                            options={allTestCases}
+                            getOptionLabel={(option) => option.testName}
+                            value={selectedTestCases}
+                            onChange={(_, newValue) => setSelectedTestCases(newValue)}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    variant="outlined"
+                                    label="Select Test Cases"
+                                    placeholder="Search test cases..."
+                                />
+                            )}
+                        />
+                        <Button
+                            sx={{ mt: 2, borderRadius: 2 }}
+                            onClick={() => setSelectedTestCases(allTestCases)}
+                            variant="outlined"
+                            fullWidth
+                            color="inherit"
+                        >
+                            Select All Available
+                        </Button>
+                    </Box>
                 </DialogContent>
 
-                <DialogActions>
-                    <Button onClick={() => setOpenAddTestCaseDialog(false)}>Cancel</Button>
-                    <Button onClick={handleAddSelectedTestCases} variant="contained">Add</Button>
+                <DialogActions sx={{ p: 3, pt: 1 }}>
+                    <Button onClick={() => setOpenAddTestCaseDialog(false)} variant="text" color="inherit" sx={{ borderRadius: '10px' }}>
+                        Cancel
+                    </Button>
+                    <Button onClick={handleAddSelectedTestCases} variant="contained" color="primary" sx={{ borderRadius: '10px', px: 3 }}>
+                        Add Selected
+                    </Button>
                 </DialogActions>
             </Dialog>
 

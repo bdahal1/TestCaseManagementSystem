@@ -19,6 +19,9 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import SearchIcon from '@mui/icons-material/Search';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import { InputAdornment } from '@mui/material';
 import { Box } from "@mui/system";
 import api from "../../services/api";
 import { AxiosError } from "axios";
@@ -31,6 +34,8 @@ interface Project {
 
 const ProjectComponent: React.FC = () => {
     const [projects, setProjects] = useState<Project[]>([]);
+    const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
     const [open, setOpen] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
     const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -52,6 +57,7 @@ const ProjectComponent: React.FC = () => {
         try {
             const response = await api.get(API_URL);
             setProjects(response.data.projects);
+            setFilteredProjects(response.data.projects);
         } catch (error) {
             console.error('Error fetching Projects:', error);
         }
@@ -60,6 +66,15 @@ const ProjectComponent: React.FC = () => {
     useEffect(() => {
         fetchProjects().then();
     }, []);
+
+    useEffect(() => {
+        const lowerCaseQuery = searchQuery.toLowerCase();
+        const filtered = projects.filter(proj =>
+            proj.projectName.toLowerCase().includes(lowerCaseQuery) ||
+            proj.projectInitials.toLowerCase().includes(lowerCaseQuery)
+        );
+        setFilteredProjects(filtered);
+    }, [searchQuery, projects]);
 
     const handleOpenAdd = () => {
         setIsEdit(false);
@@ -95,21 +110,15 @@ const ProjectComponent: React.FC = () => {
                     `${API_URL}/${selectedProject.id}`,
                     { projectName, projectInitials }
                 );
-                setProjects(
-                    projects.map((proj) =>
-                        proj.id === selectedProject.id ? { ...proj, projectName, projectInitials } : proj
-                    )
-                );
                 setAlert({ open: true, message: 'Project updated successfully!', severity: 'success' });
             } else {
-                const response = await api.post(
+                await api.post(
                     API_URL,
                     { projectName, projectInitials }
                 );
-                const newProject: Project = response.data;
-                setProjects([...projects, newProject]);
                 setAlert({ open: true, message: 'Project added successfully!', severity: 'success' });
             }
+            fetchProjects();
             handleClose();
         } catch (err) {
             const error = err as AxiosError<any>;
@@ -126,8 +135,8 @@ const ProjectComponent: React.FC = () => {
     const deleteProject = async (projectId: number) => {
         try {
             await api.delete(`${API_URL}/${projectId}`);
-            setProjects(projects.filter((proj) => proj.id !== projectId));
             setAlert({ open: true, message: 'Project deleted successfully!', severity: 'success' });
+            fetchProjects();
         } catch (error) {
             console.error('Error deleting Project:', error);
             setAlert({ open: true, message: 'Error deleting Project.', severity: 'error' });
@@ -136,9 +145,32 @@ const ProjectComponent: React.FC = () => {
 
     return (
         <Box sx={{ padding: 2 }}>
-            <Button variant="outlined" color="primary" onClick={handleOpenAdd} sx={{ mb: 2 }}>
-                + Add Project
-            </Button>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <TextField
+                    placeholder="Search projects..."
+                    variant="outlined"
+                    size="small"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    sx={{ width: 300 }}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <SearchIcon color="action" />
+                            </InputAdornment>
+                        ),
+                    }}
+                />
+                <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleOpenAdd}
+                    startIcon={<AssignmentIcon />}
+                    sx={{ borderRadius: '10px', px: 3 }}
+                >
+                    Add Project
+                </Button>
+            </Box>
 
             <TableContainer component={Paper}>
                 <Table>
@@ -150,16 +182,16 @@ const ProjectComponent: React.FC = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {projects.map((project) => (
-                            <TableRow key={project.id}>
+                        {filteredProjects.map((project) => (
+                            <TableRow key={project.id} hover>
                                 <TableCell>{project.projectName}</TableCell>
                                 <TableCell>{project.projectInitials}</TableCell>
                                 <TableCell>
-                                    <IconButton color="primary" onClick={() => handleOpenEdit(project)}>
-                                        <EditIcon />
+                                    <IconButton size="small" onClick={() => handleOpenEdit(project)}>
+                                        <EditIcon fontSize="small" color="primary" />
                                     </IconButton>
-                                    <IconButton color="secondary" onClick={() => deleteProject(project.id)}>
-                                        <DeleteIcon />
+                                    <IconButton size="small" onClick={() => deleteProject(project.id)}>
+                                        <DeleteIcon fontSize="small" color="error" />
                                     </IconButton>
                                 </TableCell>
                             </TableRow>
@@ -169,28 +201,40 @@ const ProjectComponent: React.FC = () => {
             </TableContainer>
 
             {/* Add/Edit Project Dialog */}
-            <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-                <DialogTitle>{isEdit ? 'Edit Project' : 'Add Project'}</DialogTitle>
-                <DialogContent dividers sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <TextField
-                        label="Project Name"
-                        value={projectName}
-                        onChange={(e) => setProjectName(e.target.value)}
-                        fullWidth
-                    />
-                    <TextField
-                        label="Project Initials"
-                        value={projectInitials}
-                        onChange={(e) => setProjectInitials(e.target.value)}
-                        fullWidth
-                    />
+            <Dialog
+                open={open}
+                onClose={handleClose}
+                fullWidth
+                maxWidth="xs"
+                PaperProps={{ sx: { borderRadius: '20px', p: 1 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 700, fontSize: '1.25rem', pb: 1 }}>
+                    {isEdit ? 'Edit Project' : 'New Project'}
+                </DialogTitle>
+                <DialogContent sx={{ p: 3, pt: 1 }}>
+                    <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
+                        <TextField
+                            label="Project Name"
+                            value={projectName}
+                            onChange={(e) => setProjectName(e.target.value)}
+                            fullWidth
+                            variant="outlined"
+                        />
+                        <TextField
+                            label="Project Initials"
+                            value={projectInitials}
+                            onChange={(e) => setProjectInitials(e.target.value)}
+                            fullWidth
+                            variant="outlined"
+                        />
+                    </Box>
                 </DialogContent>
-                <DialogActions sx={{ p: 2 }}>
-                    <Button onClick={handleClose} variant="outlined">
+                <DialogActions sx={{ p: 3, pt: 1 }}>
+                    <Button onClick={handleClose} variant="text" color="inherit" sx={{ borderRadius: '10px' }}>
                         Cancel
                     </Button>
-                    <Button onClick={handleSubmit} variant="contained" color="primary">
-                        {isEdit ? 'Update' : 'Add'}
+                    <Button onClick={handleSubmit} variant="contained" color="primary" sx={{ borderRadius: '10px', px: 3 }}>
+                        {isEdit ? 'Update' : 'Create'}
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -206,6 +250,7 @@ const ProjectComponent: React.FC = () => {
                     onClose={() => setAlert({ ...alert, open: false })}
                     severity={alert.severity as 'success' | 'error' | 'warning' | 'info'}
                     variant="filled"
+                    sx={{ width: '100%', borderRadius: 3 }}
                 >
                     {alert.message}
                 </Alert>

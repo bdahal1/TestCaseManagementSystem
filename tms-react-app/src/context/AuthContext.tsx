@@ -58,6 +58,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const isAuthenticated = !!token;
 
+    useEffect(() => {
+        const handleLogoutEvent = () => {
+            logout();
+        };
+
+        window.addEventListener('auth:logout', handleLogoutEvent);
+
+        return () => {
+            window.removeEventListener('auth:logout', handleLogoutEvent);
+        };
+    }, []);
+
     return (
         <AuthContext.Provider value={{ user, token, isAuthenticated, login, logout, loading }}>
             {children}

@@ -22,11 +22,15 @@ import {
     TableContainer,
     TableHead,
     TableRow,
-    TextField
+    TextField,
+    createFilterOptions
 } from "@mui/material";
 import { Box } from "@mui/system";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import SearchIcon from '@mui/icons-material/Search';
+import AddIcon from '@mui/icons-material/Add';
+import { InputAdornment } from '@mui/material';
 import { TestTypes } from "../../types/TestCase.ts";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -52,9 +56,12 @@ interface Project {
     projectName: string;
 }
 
+const filter = createFilterOptions<TagsSet>();
+
 interface TagsSet {
     id: number | null;
     tagName: string;
+    inputValue?: string;
 }
 
 interface TestStep {
@@ -96,6 +103,8 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [selectedTestCase, setSelectedTestCase] = useState<TestCase | null>(null);
     const [formMode, setFormMode] = useState<"create" | "edit">("create");
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filteredTestCases, setFilteredTestCases] = useState<TestCase[]>([]);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -116,6 +125,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
         try {
             const response = await api.get(`${API_URLS.TESTCASE}?projectId=${projId}`);
             setTestCases(response.data.testCase ?? []);
+            setFilteredTestCases(response.data.testCase ?? []);
             setError(null);
         } catch (err) {
             setError("Failed to fetch test cases.");
@@ -221,6 +231,13 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
 
     // ...
 
+    // Validators
+    const validateGherkinStep = (stepDesc: string): boolean => {
+        const gherkinKeywords = ["Given", "When", "Then", "And", "But", "*"];
+        const firstWord = stepDesc.trim().split(" ")[0];
+        return gherkinKeywords.includes(firstWord);
+    };
+
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
 
@@ -237,6 +254,15 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
         if (!formData.testType) {
             showSnackbar("Test Type is required.");
             return;
+        }
+
+        // Gherkin Validation
+        if (formData.testType === TestTypes.CUCUMBER_MANUAL) {
+            const invalidSteps = steps.filter(step => !validateGherkinStep(step.testStepDesc));
+            if (invalidSteps.length > 0) {
+                showSnackbar(`Invalid Gherkin step(s) found. Steps must start with Given, When, Then, And, or But.`);
+                return;
+            }
         }
 
         const testPayload = {
@@ -286,7 +312,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
     const deleteTestCase = async (id: number) => {
         try {
             await api.delete(`${API_URLS.TESTCASE}/${id}`);
-            setTestCases(testCases.filter(tc => tc.id !== id));
+            await fetchTestCases();
             showSnackbar("Test case deleted successfully!");
         } catch (err) {
             showSnackbar("Failed to delete test case.");
@@ -358,6 +384,16 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
         }
     }, [steps]);
 
+    useEffect(() => {
+        const lowerCaseQuery = searchQuery.toLowerCase();
+        const filtered = testCases.filter(tc =>
+            tc.testName.toLowerCase().includes(lowerCaseQuery) ||
+            tc.testProjectId.toLowerCase().includes(lowerCaseQuery) ||
+            tc.tagsSet.some(tag => tag.tagName.toLowerCase().includes(lowerCaseQuery))
+        );
+        setFilteredTestCases(filtered);
+    }, [searchQuery, testCases]);
+
     // Render
     if (!projId) return <div>Please select a project.</div>;
     if (loading) return <CircularProgress />;
@@ -365,10 +401,32 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
 
     return (
         <Box sx={{ padding: 2 }}>
-            <br />
-            <Button variant="outlined" onClick={() => handleOpenDialog(null)} sx={{ mb: 2 }}>
-                + Add Test Case
-            </Button>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <TextField
+                    placeholder="Search test cases..."
+                    variant="outlined"
+                    size="small"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    sx={{ width: 300 }}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <SearchIcon color="action" />
+                            </InputAdornment>
+                        ),
+                    }}
+                />
+                <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={() => handleOpenDialog(null)}
+                    startIcon={<AddIcon />}
+                    sx={{ borderRadius: '10px', px: 3 }}
+                >
+                    Add Test Case
+                </Button>
+            </Box>
 
             <TableContainer component={Paper}>
                 <Table>
@@ -383,8 +441,8 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {testCases.map((tc) => (
-                            <TableRow key={tc.id}>
+                        {filteredTestCases.map((tc) => (
+                            <TableRow key={tc.id} hover>
                                 <TableCell>
                                     <Link component="button" onClick={() => handleOpenDialog(tc)}>
                                         {tc.testProjectId}
@@ -399,11 +457,11 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                                 <TableCell>{tc.tagsSet.map(t => t.tagName).join(", ")}</TableCell>
                                 <TableCell>{tc.testCreatedBy}</TableCell>
                                 <TableCell>
-                                    <IconButton color="primary" onClick={() => handleOpenDialog(tc)}>
-                                        <EditIcon />
+                                    <IconButton size="small" onClick={() => handleOpenDialog(tc)}>
+                                        <EditIcon fontSize="small" color="primary" />
                                     </IconButton>
-                                    <IconButton color="secondary" onClick={() => deleteTestCase(tc.id)}>
-                                        <DeleteIcon />
+                                    <IconButton size="small" onClick={() => deleteTestCase(tc.id)}>
+                                        <DeleteIcon fontSize="small" color="error" />
                                     </IconButton>
                                 </TableCell>
                             </TableRow>
@@ -412,104 +470,155 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                 </Table>
             </TableContainer>
 
-            <Dialog open={dialogOpen} onClose={handleCloseDialog} fullWidth maxWidth="md">
-                <DialogTitle>{formMode === "create" ? "Add" : "Edit"} Test Case</DialogTitle>
-                <DialogContent dividers sx={{ display: "flex", flexDirection: "column", gap: 2, p: 3 }}>
-                    {projects.length > 1 ? (
-                        <FormControl fullWidth>
-                            <InputLabel>Project</InputLabel>
-                            <Select
-                                required
-                                value={formData.projectId}
-                                onChange={(e) => handleFormChange("projectId", Number(e.target.value))}
-                                label="Project" variant="outlined"
-                            >
-                                <MenuItem value={0} disabled>Select a project</MenuItem>
-                                {projects.map((project) => (
-                                    <MenuItem key={project.id} value={project.id}>{project.projectName}</MenuItem>
+            <Dialog
+                open={dialogOpen}
+                onClose={handleCloseDialog}
+                fullWidth
+                maxWidth="md"
+                PaperProps={{ sx: { borderRadius: '20px', p: 1 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 700, fontSize: '1.5rem', pb: 1 }}>
+                    {formMode === "create" ? "New Test Case" : "Edit Test Case"}
+                </DialogTitle>
+                <DialogContent sx={{ p: 3, pt: 1, display: "flex", flexDirection: "column", gap: 3 }}>
+                    <Box component="form" sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {projects.length > 1 ? (
+                            <FormControl fullWidth>
+                                <InputLabel>Project</InputLabel>
+                                <Select
+                                    required
+                                    value={formData.projectId}
+                                    onChange={(e) => handleFormChange("projectId", Number(e.target.value))}
+                                    label="Project" variant="outlined"
+                                >
+                                    <MenuItem value={0} disabled>Select a project</MenuItem>
+                                    {projects.map((project) => (
+                                        <MenuItem key={project.id} value={project.id}>{project.projectName}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        ) : (
+                            <TextField
+                                label="Project"
+                                value={projects[0]?.projectName || ""}
+                                fullWidth
+                                slotProps={{ input: { readOnly: true } }}
+                                variant="filled"
+                            />
+                        )}
+
+                        <TextField
+                            label="Test Case Title"
+                            value={formData.testName}
+                            onChange={(e) => handleFormChange("testName", e.target.value)}
+                            required
+                            fullWidth
+                            variant="outlined"
+                        />
+
+                        <Autocomplete
+                            multiple
+                            freeSolo
+                            options={tags}
+                            renderOption={(props, option) => {
+                                const { key, ...otherProps } = props;
+                                return (
+                                    <li key={key} {...otherProps}>
+                                        {option.tagName}
+                                    </li>
+                                );
+                            }}
+                            getOptionLabel={(option) => {
+                                if (typeof option === "string") return option;
+                                if (option.inputValue) return option.inputValue;
+                                return option.tagName;
+                            }}
+                            filterOptions={(options, params) => {
+                                const filtered = filter(options, params);
+                                const { inputValue } = params;
+                                const isExisting = options.some((option) => inputValue.toLowerCase() === option.tagName.toLowerCase());
+                                if (inputValue !== "" && !isExisting) {
+                                    filtered.push({
+                                        inputValue: inputValue,
+                                        tagName: `Add "${inputValue}"`,
+                                        id: null
+                                    } as any);
+                                }
+                                return filtered;
+                            }}
+                            value={selectedTags}
+                            onChange={async (_, newValue) => {
+                                const processedTags = await Promise.all(newValue.map(async (item: any) => {
+                                    if (typeof item === 'string') {
+                                        // Handle free text input that wasn't selected from "Add..." option
+                                        // This creates a tag immediately if user just hits enter on text
+                                        try {
+                                            const res = await api.post(API_URLS.TAGS, { tagName: item });
+                                            // Update local tags list so it shows up next time
+                                            setTags(prev => [...prev, res.data]);
+                                            return res.data;
+                                        } catch (e) {
+                                            console.error("Error creating tag:", e);
+                                            return { id: null, tagName: item };
+                                        }
+                                    } else if (item.inputValue) {
+                                        // Handle "Add [Value]" selection
+                                        try {
+                                            const res = await api.post(API_URLS.TAGS, { tagName: item.inputValue });
+                                            setTags(prev => [...prev, res.data]);
+                                            return res.data;
+                                        } catch (e) {
+                                            console.error("Error creating tag:", e);
+                                            return { id: null, tagName: item.inputValue };
+                                        }
+                                    } else {
+                                        // Existing tag selected
+                                        return item;
+                                    }
+                                }));
+                                setSelectedTags(processedTags);
+                            }}
+                            renderInput={(params) => <TextField {...params} label="Tags" variant="outlined" />}
+                            isOptionEqualToValue={(option, value) => {
+                                if (option.id && value.id) return option.id === value.id;
+                                return option.tagName.toLowerCase() === value.tagName.toLowerCase();
+                            }}
+                        />
+
+                        <FormControl fullWidth required>
+                            <InputLabel>Test Type</InputLabel>
+                            <Select value={formData.testType} onChange={(e) => {
+                                const selectedValue = e.target.value as TestTypes;
+                                handleFormChange("testType", selectedValue);
+                                handleOpenDialog(selectedTestCase, selectedValue).then();
+                            }} label="Test Type" variant="outlined">
+                                {TEST_TYPE_OPTIONS.map((type) => (
+                                    <MenuItem key={type.value} value={type.value}>
+                                        {type.label}
+                                    </MenuItem>
                                 ))}
                             </Select>
                         </FormControl>
-                    ) : (
-                        <TextField
-                            label="Project"
-                            value={projects[0]?.projectName || ""}
-                            fullWidth
-                            slotProps={{ input: { readOnly: true } }}
-                        />
-                    )}
+                    </Box>
 
-                    <TextField
-                        label="Test Case Title"
-                        value={formData.testName}
-                        onChange={(e) => handleFormChange("testName", e.target.value)}
-                        required
-                        fullWidth
-                    />
-
-                    <Autocomplete
-                        multiple
-                        freeSolo
-                        options={tags}
-                        getOptionLabel={(option) => (typeof option === "string" ? option : option.tagName)}
-                        value={selectedTags}
-                        onChange={async (_, newValue) => {
-                            const formattedTags: TagsSet[] = newValue.map((item) =>
-                                typeof item === "string" ? { id: null, tagName: item } : item
-                            );
-                            const resolved = await syncMissingTags(formattedTags);
-                            setSelectedTags(resolved);
-                        }}
-                        renderInput={(params) => <TextField {...params} label="Tags" />}
-                        isOptionEqualToValue={(option, value) => {
-                            // Compare tags by ID if available, otherwise by name (case insensitive)
-                            if (option.id && value.id) {
-                                return option.id === value.id;
-                            }
-                            return option.tagName.toLowerCase() === value.tagName.toLowerCase();
-                        }}
-                        filterOptions={(options, params) => {
-                            const filtered = options.filter(option =>
-                                option.tagName.toLowerCase().includes(params.inputValue.toLowerCase())
-                            );
-
-                            // Show the newly entered tag that's not in options yet
-                            if (params.inputValue !== '' &&
-                                !filtered.some(option =>
-                                    option.tagName.toLowerCase() === params.inputValue.toLowerCase())
-                            ) {
-                                filtered.push({
-                                    id: null,
-                                    tagName: params.inputValue
-                                });
-                            }
-
-                            return filtered;
-                        }}
-                    />
-
-                    <FormControl fullWidth required>
-                        <InputLabel>Test Type</InputLabel>
-                        <Select value={formData.testType} onChange={(e) => {
-                            const selectedValue = e.target.value as TestTypes;
-                            handleFormChange("testType", selectedValue);
-                            handleOpenDialog(selectedTestCase, selectedValue).then();
-                        }} label="Test Type" variant="outlined">
-                            {TEST_TYPE_OPTIONS.map((type) => (
-                                <MenuItem key={type.value} value={type.value}>
-                                    {type.label}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-
-                    <Box sx={{ mt: 2 }}>
+                    <Box sx={{ mt: 1, p: 2, backgroundColor: 'background.default', borderRadius: 3 }}>
                         {formData.testType === TestTypes.MANUAL && (
                             <>
-                                <Box sx={{ fontWeight: "bold", mb: 1 }}>Test Steps</Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                    <Box sx={{ fontWeight: "700", color: 'text.secondary' }}>Test Steps</Box>
+                                    <Button onClick={addStep} size="small" variant="outlined">+ Add Step</Button>
+                                </Box>
                                 {steps.map((step, index) => (
-                                    <Box key={index}
-                                        sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 2, mb: 2 }}>
+                                    <Paper key={index} elevation={0} sx={{
+                                        p: 2,
+                                        mb: 2,
+                                        border: '1px solid',
+                                        borderColor: 'divider',
+                                        borderRadius: 2,
+                                        display: "grid",
+                                        gridTemplateColumns: "1fr 1fr 1fr auto",
+                                        gap: 2
+                                    }}>
                                         <TextField
                                             label={`Step ${index + 1}`}
                                             value={step.testStepDesc}
@@ -517,6 +626,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                                             fullWidth
                                             multiline
                                             minRows={2}
+                                            variant="standard"
                                         />
                                         <TextField
                                             label="Data"
@@ -525,6 +635,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                                             fullWidth
                                             multiline
                                             minRows={2}
+                                            variant="standard"
                                         />
                                         <TextField
                                             label="Expected Output"
@@ -533,13 +644,18 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                                             fullWidth
                                             multiline
                                             minRows={2}
+                                            variant="standard"
                                         />
-                                        <IconButton onClick={() => removeStep(index)} color="error">
+                                        <IconButton onClick={() => removeStep(index)} color="error" sx={{ alignSelf: 'start' }}>
                                             <DeleteIcon />
                                         </IconButton>
-                                    </Box>
+                                    </Paper>
                                 ))}
-                                <Button onClick={addStep}>+ Add Step</Button>
+                                {steps.length === 0 && (
+                                    <Box sx={{ textAlign: 'center', py: 4, color: 'text.disabled' }}>
+                                        No steps added yet.
+                                    </Box>
+                                )}
                             </>
                         )}
 
@@ -549,13 +665,15 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                                     {steps.map((step, index) => (
                                         <Box key={index}>
                                             <TextField
-                                                label="Cucumber Steps"
+                                                label="Cucumber Gherkin Steps"
                                                 placeholder="Given I am on the login page..."
                                                 value={step.testStepDesc}
                                                 onChange={(e) => handleStepChange(e.target.value, index, "testStepDesc")}
                                                 fullWidth
                                                 multiline
                                                 minRows={3}
+                                                variant="outlined"
+                                                sx={{ backgroundColor: 'background.paper' }}
                                             />
                                         </Box>
                                     ))}
@@ -569,13 +687,15 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                                     {steps.map((step, index) => (
                                         <Box key={index}>
                                             <TextField
-                                                label="Automation Script ID or Reference"
+                                                label="Automation Script ID / Reference"
                                                 placeholder="e.g., test_login.feature:12"
                                                 value={step.testStepDesc}
                                                 onChange={(e) => handleStepChange(e.target.value, index, "testStepDesc")}
                                                 fullWidth
                                                 multiline
                                                 minRows={6}
+                                                variant="outlined"
+                                                sx={{ backgroundColor: 'background.paper', fontFamily: 'monospace' }}
                                             />
                                         </Box>
                                     ))}
@@ -585,10 +705,12 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
 
                         {formData.testType === TestTypes.KEYWORD_DRIVEN && (
                             <>
-                                <Box sx={{ fontWeight: "bold", mb: 1 }}>Keyword Driven</Box>
+                                <Box sx={{ fontWeight: "700", mb: 2, color: 'text.secondary' }}>Keyword Driven Actions</Box>
                                 {steps.map((step, index) => (
-                                    <Box key={index}
-                                        sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 2, mb: 2 }}>
+                                    <Paper key={index} elevation={0} sx={{
+                                        p: 2, mb: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2,
+                                        display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 2
+                                    }}>
                                         <TextField
                                             label={`Action ${index + 1}`}
                                             value={step.testStepDesc}
@@ -616,18 +738,25 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                                         <IconButton onClick={() => removeStep(index)} color="error">
                                             <DeleteIcon />
                                         </IconButton>
-                                    </Box>
+                                    </Paper>
                                 ))}
-                                <Button onClick={addStep}>+ Add Step</Button>
+                                <Button onClick={addStep} variant="outlined">+ Add Action</Button>
                             </>
                         )}
                     </Box>
                 </DialogContent>
-                <DialogActions>
-                    <Button variant="contained" onClick={handleSubmit}>
-                        {formMode === "create" ? "Create" : "Update"}
+                <DialogActions sx={{ p: 3, pt: 1 }}>
+                    <Button onClick={handleCloseDialog} variant="text" color="inherit" sx={{ borderRadius: '10px' }}>
+                        Cancel
                     </Button>
-                    <Button variant="outlined" onClick={handleCloseDialog}>Cancel</Button>
+                    <Button
+                        variant="contained"
+                        onClick={handleSubmit}
+                        color="primary"
+                        sx={{ borderRadius: '10px', px: 3 }}
+                    >
+                        {formMode === "create" ? "Create Case" : "Save Changes"}
+                    </Button>
                 </DialogActions>
             </Dialog>
 

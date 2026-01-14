@@ -5,6 +5,7 @@ import UserComponent from '../components/users/UserManager';
 import RoleComponent from '../components/roles/RoleManager';
 import DepartmentComponent from '../components/departments/DepartmentManager';
 import ProjectComponent from '../components/projects/ProjectManager';
+import TagManager from '../components/tags/TagManager';
 
 const AdminPage: React.FC = () => {
     const [currentView, setCurrentView] = useState('Users');
@@ -17,6 +18,7 @@ const AdminPage: React.FC = () => {
                 {currentView === 'Roles' && <RoleComponent />}
                 {currentView === 'Department' && <DepartmentComponent />}
                 {currentView === 'Project' && <ProjectComponent />}
+                {currentView === 'Tags' && <TagManager />}
             </Box>
         </Box>
     );

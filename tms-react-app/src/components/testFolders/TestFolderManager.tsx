@@ -20,10 +20,15 @@ import {
     TableBody,
     TableCell,
     TableRow,
-    Autocomplete, ListItemButton
+    Autocomplete,
+    ListItemButton,
+    InputAdornment
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
+import SearchIcon from '@mui/icons-material/Search';
+import AddIcon from '@mui/icons-material/Add';
 import api from "../../services/api";
 
 interface TestFolder {
@@ -47,6 +52,8 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({ projId }) => 
     const [testFolders, setTestFolders] = useState<TestFolder[]>([]);
     const [selectedFolder, setSelectedFolder] = useState<TestFolder | null>(null);
     const [testCases, setTestCases] = useState<TestCase[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filteredTestCases, setFilteredTestCases] = useState<TestCase[]>([]);
     const [openDialog, setOpenDialog] = useState(false);
     const [folderName, setFolderName] = useState('');
     const [isEdit, setIsEdit] = useState(false);
@@ -60,6 +67,11 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({ projId }) => 
     const [selectedTestCases, setSelectedTestCases] = useState<TestCase[]>([]);
     const [hoveredRow, setHoveredRow] = useState<number | null>(null);
     const [selectedForDeletion] = useState<number[]>([]);
+    const [searchFolderQuery, setSearchFolderQuery] = useState('');
+
+    const filteredFolders = testFolders.filter(folder =>
+        folder.folderName.toLowerCase().includes(searchFolderQuery.toLowerCase())
+    );
 
     const fetchTestFolders = async () => {
         try {
@@ -78,6 +90,7 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({ projId }) => 
             const response = await api.get(`${API_URL_TEST_FOLDER}/id/${folderId}`);
             const sortedCases = (response.data.testCases || []).sort((a: TestCase, b: TestCase) => a.testName.localeCompare(b.testName));
             setTestCases(sortedCases);
+            setFilteredTestCases(sortedCases);
         } catch (error) {
             console.error('Error fetching test cases:', error);
         }
@@ -139,6 +152,14 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({ projId }) => 
         }
     }, [selectedFolder]);
 
+    useEffect(() => {
+        const lowerCaseQuery = searchQuery.toLowerCase();
+        const filtered = testCases.filter(tc =>
+            tc.testName.toLowerCase().includes(lowerCaseQuery)
+        );
+        setFilteredTestCases(filtered);
+    }, [searchQuery, testCases]);
+
     const handleOpenAdd = () => {
         setIsEdit(false);
         setFolderName('');
@@ -167,22 +188,19 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({ projId }) => 
 
         try {
             if (isEdit && selectedFolder) {
-                const response = await api.put(
+                await api.put(
                     `${API_URL_TEST_FOLDER}/${selectedFolder.id}`,
                     { folderName, projectId: projId }
                 );
-                setTestFolders((prev) =>
-                    prev.map((f) => (f.id === selectedFolder.id ? response.data : f))
-                );
                 setAlert({ open: true, message: 'Test folder updated.', severity: 'success' });
             } else {
-                const response = await api.post(
+                await api.post(
                     API_URL_TEST_FOLDER,
                     { folderName, projectId: projId }
                 );
-                setTestFolders((prev) => [...prev, response.data]);
                 setAlert({ open: true, message: 'Test folder created.', severity: 'success' });
             }
+            fetchTestFolders().then();
             handleClose();
         } catch (error) {
             console.error('Error saving folder:', error);
@@ -193,11 +211,8 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({ projId }) => 
     const deleteTestFolder = async (folderId: number) => {
         try {
             await api.delete(`${API_URL_TEST_FOLDER}/${folderId}`);
-            const updatedFolders = testFolders.filter((f) => f.id !== folderId);
-            setTestFolders(updatedFolders);
-            if (selectedFolder?.id === folderId && updatedFolders.length) {
-                setSelectedFolder(updatedFolders[0]);
-            } else if (!updatedFolders.length) {
+            fetchTestFolders().then();
+            if (selectedFolder?.id === folderId) {
                 setSelectedFolder(null);
                 setTestCases([]);
             }
@@ -211,12 +226,34 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({ projId }) => 
     return (
         <Box display="flex">
             <Box sx={{ width: 240, p: 2 }}>
-                <Button variant="outlined" size="small" onClick={handleOpenAdd} sx={{ mt: 1, mb: 2 }}>
-                    + Add Folder
+                <Button
+                    variant="contained"
+                    size="small"
+                    onClick={handleOpenAdd}
+                    sx={{ mt: 1, mb: 1, borderRadius: '10px', width: '100%' }}
+                    startIcon={<CreateNewFolderIcon />}
+                >
+                    Add Folder
                 </Button>
+                <TextField
+                    placeholder="Search folders..."
+                    size="small"
+                    fullWidth
+                    variant="outlined"
+                    value={searchFolderQuery}
+                    onChange={(e) => setSearchFolderQuery(e.target.value)}
+                    sx={{ mb: 1 }}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <SearchIcon fontSize="small" color="action" />
+                            </InputAdornment>
+                        ),
+                    }}
+                />
                 <Divider />
                 <List>
-                    {testFolders.map((folder) => (
+                    {filteredFolders.map((folder) => (
                         <ListItem
                             key={folder.id}
                             disablePadding
@@ -228,9 +265,12 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({ projId }) => 
                             <ListItemButton
                                 selected={selectedFolder?.id === folder.id}
                                 onClick={() => setSelectedFolder(folder)}
-                                sx={{ pr: 6 }} // leave space for icons
+                                sx={{ pr: 6, borderRadius: 1 }} // leave space for icons
                             >
-                                <ListItemText primary={folder.folderName} />
+                                <ListItemText
+                                    primary={folder.folderName}
+                                    primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 500 }}
+                                />
                             </ListItemButton>
 
                             <Box
@@ -247,10 +287,10 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({ projId }) => 
                                 }}
                             >
                                 <IconButton size="small" onClick={() => handleOpenEdit(folder)}>
-                                    <EditIcon fontSize="small" />
+                                    <EditIcon fontSize="small" color="primary" />
                                 </IconButton>
                                 <IconButton size="small" onClick={() => deleteTestFolder(folder.id)}>
-                                    <DeleteIcon fontSize="small" />
+                                    <DeleteIcon fontSize="small" color="error" />
                                 </IconButton>
                             </Box>
                         </ListItem>
@@ -258,18 +298,41 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({ projId }) => 
                 </List>
             </Box>
             <Box sx={{ flexGrow: 1, p: 3 }}>
-                <Typography variant="subtitle1" gutterBottom>
-                    {selectedFolder ? `Test Cases in ${selectedFolder.folderName}` : 'Select a folder to view test cases'}
+                <Typography variant="h6" fontWeight="bold" gutterBottom>
+                    {selectedFolder ? `${selectedFolder.folderName}` : 'Select a folder to view test cases'}
                 </Typography>
                 {selectedFolder && (
                     <>
-                        <Button variant="outlined" sx={{ mb: 2 }} onClick={() => setOpenAddTestCaseDialog(true)}>
-                            + Add Test Case
-                        </Button>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                            <TextField
+                                placeholder="Search test cases..."
+                                variant="outlined"
+                                size="small"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                sx={{ width: 300 }}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <SearchIcon color="action" />
+                                        </InputAdornment>
+                                    ),
+                                }}
+                            />
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                onClick={() => setOpenAddTestCaseDialog(true)}
+                                startIcon={<AddIcon />}
+                                sx={{ borderRadius: '10px', px: 3 }}
+                            >
+                                Add Test Case
+                            </Button>
+                        </Box>
                         <Paper>
                             <Table>
                                 <TableBody>
-                                    {testCases.map((tc) => (
+                                    {filteredTestCases.map((tc) => (
                                         <TableRow
                                             key={tc.id}
                                             onMouseEnter={() => setHoveredRow(tc.id)}
@@ -327,47 +390,75 @@ const TestFolderComponent: React.FC<TestFolderComponentProps> = ({ projId }) => 
                 )}
             </Box>
 
-            <Dialog open={openDialog} onClose={handleClose} fullWidth maxWidth="sm">
-                <DialogTitle>{isEdit ? 'Edit Test Folder' : 'Add Test Folder'}</DialogTitle>
-                <DialogContent dividers sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <TextField
-                        label="Folder Name"
-                        value={folderName}
-                        onChange={(e) => setFolderName(e.target.value)}
-                        fullWidth
-                    />
+            {/* Add/Edit Folder Dialog */}
+            <Dialog
+                open={openDialog}
+                onClose={handleClose}
+                fullWidth
+                maxWidth="xs"
+                PaperProps={{ sx: { borderRadius: '20px', p: 1 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 700, fontSize: '1.25rem', pb: 1 }}>
+                    {isEdit ? 'Edit Test Folder' : 'New Test Folder'}
+                </DialogTitle>
+                <DialogContent sx={{ p: 3, pt: 1 }}>
+                    <Box component="form" sx={{ mt: 1 }}>
+                        <TextField
+                            label="Folder Name"
+                            value={folderName}
+                            onChange={(e) => setFolderName(e.target.value)}
+                            fullWidth
+                            variant="outlined"
+                        />
+                    </Box>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleClose}>Cancel</Button>
-                    <Button onClick={handleSubmit} variant="contained">
+                <DialogActions sx={{ p: 3, pt: 1 }}>
+                    <Button onClick={handleClose} variant="text" color="inherit" sx={{ borderRadius: '10px' }}>
+                        Cancel
+                    </Button>
+                    <Button onClick={handleSubmit} variant="contained" color="primary" sx={{ borderRadius: '10px', px: 3 }}>
                         {isEdit ? 'Update' : 'Create'}
                     </Button>
                 </DialogActions>
             </Dialog>
 
-            <Dialog open={openAddTestCaseDialog} onClose={() => setOpenAddTestCaseDialog(false)} fullWidth
-                maxWidth="sm">
-                <DialogTitle>Select Test Cases to Add</DialogTitle>
-                <DialogContent dividers sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <Autocomplete
-                        multiple
-                        options={allTestCases}
-                        getOptionLabel={(option) => option.testName}
-                        value={selectedTestCases}
-                        onChange={(_, newValue) => setSelectedTestCases(newValue)}
-                        renderInput={(params) => (
-                            <TextField
-                                {...params}
-                                variant="outlined"
-                                label="Test Cases"
-                                placeholder="Choose test cases"
-                            />
-                        )}
-                    />
+            {/* Add Test Cases Dialog */}
+            <Dialog
+                open={openAddTestCaseDialog}
+                onClose={() => setOpenAddTestCaseDialog(false)}
+                fullWidth
+                maxWidth="sm"
+                PaperProps={{ sx: { borderRadius: '20px', p: 1 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 700, fontSize: '1.25rem', pb: 1 }}>
+                    Add Test Cases
+                </DialogTitle>
+                <DialogContent sx={{ p: 3, pt: 1 }}>
+                    <Box sx={{ mt: 2 }}>
+                        <Autocomplete
+                            multiple
+                            options={allTestCases}
+                            getOptionLabel={(option) => option.testName}
+                            value={selectedTestCases}
+                            onChange={(_, newValue) => setSelectedTestCases(newValue)}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    variant="outlined"
+                                    label="Select Test Cases"
+                                    placeholder="Search test cases..."
+                                />
+                            )}
+                        />
+                    </Box>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setOpenAddTestCaseDialog(false)}>Cancel</Button>
-                    <Button onClick={handleAddSelectedTestCases} variant="contained">Add</Button>
+                <DialogActions sx={{ p: 3, pt: 1 }}>
+                    <Button onClick={() => setOpenAddTestCaseDialog(false)} variant="text" color="inherit" sx={{ borderRadius: '10px' }}>
+                        Cancel
+                    </Button>
+                    <Button onClick={handleAddSelectedTestCases} variant="contained" color="primary" sx={{ borderRadius: '10px', px: 3 }}>
+                        Add Selected
+                    </Button>
                 </DialogActions>
             </Dialog>
 

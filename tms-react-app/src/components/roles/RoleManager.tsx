@@ -19,6 +19,9 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import SearchIcon from '@mui/icons-material/Search';
+import SecurityIcon from '@mui/icons-material/Security';
+import { InputAdornment } from '@mui/material';
 import { Box } from "@mui/system";
 import api from "../../services/api";
 
@@ -29,6 +32,8 @@ interface Role {
 
 const RoleComponent: React.FC = () => {
     const [roles, setRoles] = useState<Role[]>([]);
+    const [filteredRoles, setFilteredRoles] = useState<Role[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
     const [open, setOpen] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
     const [selectedRole, setSelectedRole] = useState<Role | null>(null);
@@ -49,6 +54,7 @@ const RoleComponent: React.FC = () => {
         try {
             const response = await api.get(API_URL);
             setRoles(response.data.roles);
+            setFilteredRoles(response.data.roles);
         } catch (error) {
             console.error('Error fetching roles:', error);
         }
@@ -57,6 +63,14 @@ const RoleComponent: React.FC = () => {
     useEffect(() => {
         fetchRoles();
     }, []);
+
+    useEffect(() => {
+        const lowerCaseQuery = searchQuery.toLowerCase();
+        const filtered = roles.filter(role =>
+            role.roleName.toLowerCase().includes(lowerCaseQuery)
+        );
+        setFilteredRoles(filtered);
+    }, [searchQuery, roles]);
 
     const handleOpenAdd = () => {
         setIsEdit(false);
@@ -90,22 +104,16 @@ const RoleComponent: React.FC = () => {
                     `${API_URL}/${selectedRole.roleId}`,
                     { roleName }
                 );
-                setRoles(
-                    roles.map((role) =>
-                        role.roleId === selectedRole.roleId ? { ...role, roleName } : role
-                    )
-                );
                 setAlert({ open: true, message: 'Role updated successfully!', severity: 'success' });
             } else {
                 // Add new role
-                const response = await api.post(
+                await api.post(
                     API_URL,
                     { roleName }
                 );
-                const newRole: Role = response.data;
-                setRoles([...roles, newRole]);
                 setAlert({ open: true, message: 'Role added successfully!', severity: 'success' });
             }
+            fetchRoles();
             handleClose();
         } catch (error) {
             console.error('Error saving role:', error);
@@ -116,8 +124,8 @@ const RoleComponent: React.FC = () => {
     const deleteRole = async (roleId: number) => {
         try {
             await api.delete(`${API_URL}/${roleId}`);
-            setRoles(roles.filter((role) => role.roleId !== roleId));
             setAlert({ open: true, message: 'Role deleted successfully!', severity: 'success' });
+            fetchRoles();
         } catch (error) {
             console.error('Error deleting role:', error);
             setAlert({ open: true, message: 'Error deleting role.', severity: 'error' });
@@ -126,9 +134,32 @@ const RoleComponent: React.FC = () => {
 
     return (
         <Box sx={{ padding: 2 }}>
-            <Button variant="outlined" color="primary" onClick={handleOpenAdd} sx={{ mb: 2 }}>
-                + Add Role
-            </Button>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <TextField
+                    placeholder="Search roles..."
+                    variant="outlined"
+                    size="small"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    sx={{ width: 300 }}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <SearchIcon color="action" />
+                            </InputAdornment>
+                        ),
+                    }}
+                />
+                <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleOpenAdd}
+                    startIcon={<SecurityIcon />}
+                    sx={{ borderRadius: '10px', px: 3 }}
+                >
+                    Add Role
+                </Button>
+            </Box>
 
             <TableContainer component={Paper}>
                 <Table>
@@ -139,15 +170,15 @@ const RoleComponent: React.FC = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {roles.map((role) => (
-                            <TableRow key={role.roleId}>
+                        {filteredRoles.map((role) => (
+                            <TableRow key={role.roleId} hover>
                                 <TableCell>{role.roleName}</TableCell>
                                 <TableCell>
-                                    <IconButton color="primary" onClick={() => handleOpenEdit(role)}>
-                                        <EditIcon />
+                                    <IconButton size="small" onClick={() => handleOpenEdit(role)}>
+                                        <EditIcon fontSize="small" color="primary" />
                                     </IconButton>
-                                    <IconButton color="secondary" onClick={() => deleteRole(role.roleId)}>
-                                        <DeleteIcon />
+                                    <IconButton size="small" onClick={() => deleteRole(role.roleId)}>
+                                        <DeleteIcon fontSize="small" color="error" />
                                     </IconButton>
                                 </TableCell>
                             </TableRow>
@@ -157,22 +188,34 @@ const RoleComponent: React.FC = () => {
             </TableContainer>
 
             {/* Add/Edit Role Dialog */}
-            <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-                <DialogTitle>{isEdit ? 'Edit Role' : 'Add Role'}</DialogTitle>
-                <DialogContent dividers sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <TextField
-                        label="Role Name"
-                        value={roleName}
-                        onChange={(e) => setRoleName(e.target.value)}
-                        fullWidth
-                    />
+            <Dialog
+                open={open}
+                onClose={handleClose}
+                fullWidth
+                maxWidth="xs"
+                PaperProps={{ sx: { borderRadius: '20px', p: 1 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 700, fontSize: '1.25rem', pb: 1 }}>
+                    {isEdit ? 'Edit Role' : 'New Role'}
+                </DialogTitle>
+                <DialogContent sx={{ p: 3, pt: 1 }}>
+                    <Box component="form" sx={{ mt: 1 }}>
+                        <TextField
+                            label="Role Name"
+                            value={roleName}
+                            onChange={(e) => setRoleName(e.target.value)}
+                            fullWidth
+                            variant="outlined"
+                            autoFocus
+                        />
+                    </Box>
                 </DialogContent>
-                <DialogActions sx={{ p: 2 }}>
-                    <Button onClick={handleClose} variant="outlined">
+                <DialogActions sx={{ p: 3, pt: 1 }}>
+                    <Button onClick={handleClose} variant="text" color="inherit" sx={{ borderRadius: '10px' }}>
                         Cancel
                     </Button>
-                    <Button onClick={handleSubmit} variant="contained" color="primary">
-                        {isEdit ? 'Update' : 'Add'}
+                    <Button onClick={handleSubmit} variant="contained" color="primary" sx={{ borderRadius: '10px', px: 3 }}>
+                        {isEdit ? 'Update' : 'Create'}
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -188,6 +231,7 @@ const RoleComponent: React.FC = () => {
                     onClose={() => setAlert({ ...alert, open: false })}
                     severity={alert.severity as 'success' | 'error' | 'warning' | 'info'}
                     variant="filled"
+                    sx={{ width: '100%', borderRadius: 3 }}
                 >
                     {alert.message}
                 </Alert>

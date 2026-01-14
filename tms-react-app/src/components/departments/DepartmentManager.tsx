@@ -19,6 +19,9 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import SearchIcon from '@mui/icons-material/Search';
+import BusinessIcon from '@mui/icons-material/Business';
+import { InputAdornment } from '@mui/material';
 import { Box } from "@mui/system";
 import api from "../../services/api";
 
@@ -29,6 +32,8 @@ interface Department {
 
 const DepartmentComponent: React.FC = () => {
     const [departments, setDepartments] = useState<Department[]>([]);
+    const [filteredDepartments, setFilteredDepartments] = useState<Department[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
     const [open, setOpen] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
     const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
@@ -49,6 +54,7 @@ const DepartmentComponent: React.FC = () => {
         try {
             const response = await api.get(API_URL);
             setDepartments(response.data.departments);
+            setFilteredDepartments(response.data.departments);
         } catch (error) {
             console.error('Error fetching Departments:', error);
         }
@@ -57,6 +63,14 @@ const DepartmentComponent: React.FC = () => {
     useEffect(() => {
         fetchDepartments().then();
     }, []);
+
+    useEffect(() => {
+        const lowerCaseQuery = searchQuery.toLowerCase();
+        const filtered = departments.filter(dep =>
+            dep.depName.toLowerCase().includes(lowerCaseQuery)
+        );
+        setFilteredDepartments(filtered);
+    }, [searchQuery, departments]);
 
     const handleOpenAdd = () => {
         setIsEdit(false);
@@ -90,22 +104,16 @@ const DepartmentComponent: React.FC = () => {
                     { depName },
                     { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } }
                 );
-                setDepartments(
-                    departments.map((dep) =>
-                        dep.depId === selectedDepartment.depId ? { ...dep, depName } : dep
-                    )
-                );
                 setAlert({ open: true, message: 'Department updated successfully!', severity: 'success' });
             } else {
-                const response = await api.post(
+                await api.post(
                     API_URL,
                     { depName },
                     { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } }
                 );
-                const newDepartment: Department = response.data;
-                setDepartments([...departments, newDepartment]);
                 setAlert({ open: true, message: 'Department added successfully!', severity: 'success' });
             }
+            fetchDepartments();
             handleClose();
         } catch (error) {
             console.error('Error saving Department:', error);
@@ -116,8 +124,8 @@ const DepartmentComponent: React.FC = () => {
     const deleteDepartment = async (depId: number) => {
         try {
             await api.delete(`${API_URL}/${depId}`);
-            setDepartments(departments.filter((dep) => dep.depId !== depId));
             setAlert({ open: true, message: 'Department deleted successfully!', severity: 'success' });
+            fetchDepartments();
         } catch (error) {
             console.error('Error deleting Department:', error);
             setAlert({ open: true, message: 'Error deleting Department.', severity: 'error' });
@@ -126,9 +134,32 @@ const DepartmentComponent: React.FC = () => {
 
     return (
         <Box sx={{ padding: 2 }}>
-            <Button variant="outlined" color="primary" onClick={handleOpenAdd} sx={{ mb: 2 }}>
-                + Add Department
-            </Button>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <TextField
+                    placeholder="Search departments..."
+                    variant="outlined"
+                    size="small"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    sx={{ width: 300 }}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <SearchIcon color="action" />
+                            </InputAdornment>
+                        ),
+                    }}
+                />
+                <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleOpenAdd}
+                    startIcon={<BusinessIcon />}
+                    sx={{ borderRadius: '10px', px: 3 }}
+                >
+                    Add Department
+                </Button>
+            </Box>
 
             <TableContainer component={Paper}>
                 <Table>
@@ -139,15 +170,15 @@ const DepartmentComponent: React.FC = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {departments.map((department) => (
+                        {filteredDepartments.map((department) => (
                             <TableRow key={department.depId}>
                                 <TableCell>{department.depName}</TableCell>
                                 <TableCell>
-                                    <IconButton color="primary" onClick={() => handleOpenEdit(department)}>
-                                        <EditIcon />
+                                    <IconButton size="small" onClick={() => handleOpenEdit(department)}>
+                                        <EditIcon fontSize="small" color="primary" />
                                     </IconButton>
-                                    <IconButton color="secondary" onClick={() => deleteDepartment(department.depId)}>
-                                        <DeleteIcon />
+                                    <IconButton size="small" onClick={() => deleteDepartment(department.depId)}>
+                                        <DeleteIcon fontSize="small" color="error" />
                                     </IconButton>
                                 </TableCell>
                             </TableRow>
@@ -157,23 +188,34 @@ const DepartmentComponent: React.FC = () => {
             </TableContainer>
 
             {/* Add/Edit Department Dialog */}
-            <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-                <DialogTitle>{isEdit ? 'Edit Department' : 'Add Department'}</DialogTitle>
-                <DialogContent dividers sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <TextField
-                        label="Department Name"
-                        value={depName}
-                        onChange={(e) => setDepName(e.target.value)}
-                        fullWidth
-                        autoFocus
-                    />
+            <Dialog
+                open={open}
+                onClose={handleClose}
+                fullWidth
+                maxWidth="xs"
+                PaperProps={{ sx: { borderRadius: '20px', p: 1 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 700, fontSize: '1.25rem', pb: 1 }}>
+                    {isEdit ? 'Edit Department' : 'New Department'}
+                </DialogTitle>
+                <DialogContent sx={{ p: 3, pt: 1 }}>
+                    <Box component="form" sx={{ mt: 1 }}>
+                        <TextField
+                            label="Department Name"
+                            value={depName}
+                            onChange={(e) => setDepName(e.target.value)}
+                            fullWidth
+                            variant="outlined"
+                            autoFocus
+                        />
+                    </Box>
                 </DialogContent>
-                <DialogActions sx={{ p: 2 }}>
-                    <Button onClick={handleClose} variant="outlined">
+                <DialogActions sx={{ p: 3, pt: 1 }}>
+                    <Button onClick={handleClose} variant="text" color="inherit" sx={{ borderRadius: '10px' }}>
                         Cancel
                     </Button>
-                    <Button onClick={handleSubmit} variant="contained" color="primary">
-                        {isEdit ? 'Update' : 'Add'}
+                    <Button onClick={handleSubmit} variant="contained" color="primary" sx={{ borderRadius: '10px', px: 3 }}>
+                        {isEdit ? 'Update' : 'Create'}
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -189,6 +231,7 @@ const DepartmentComponent: React.FC = () => {
                     onClose={() => setAlert({ ...alert, open: false })}
                     severity={alert.severity as 'success' | 'error' | 'warning' | 'info'}
                     variant="filled"
+                    sx={{ width: '100%', borderRadius: 3 }}
                 >
                     {alert.message}
                 </Alert>

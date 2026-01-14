@@ -36,15 +36,9 @@ api.interceptors.response.use(
     (error) => {
         const status = error.response?.status;
 
-        if (status === 401) {
-            // Clear auth data
-            localStorage.removeItem("accessToken");
-            localStorage.removeItem("user");
-
-            // Redirect to login if not already there
-            if (!window.location.pathname.includes('/login')) {
-                window.location.href = "/login";
-            }
+        if (status === 403) {
+            // Dispatch a custom event so AuthContext can handle the cleanup and redirect smoothly
+            window.dispatchEvent(new Event('auth:logout'));
         }
 
         return Promise.reject(error);
