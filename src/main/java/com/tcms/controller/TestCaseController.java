@@ -1,5 +1,7 @@
 package com.tcms.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import com.tcms.dto.TestCaseInfoDTO;
 import com.tcms.helper.pojo.CustomResponseMessage;
 import com.tcms.models.TestCase;
@@ -21,7 +23,6 @@ import java.util.Date;
 import java.util.List;
 
 @RestController()
-@CrossOrigin()
 @RequestMapping("/testCase")
 public class TestCaseController {
     private final String defaultSize = "1000";
@@ -31,9 +32,11 @@ public class TestCaseController {
     private final ProjectRepository projectRepository;
     private final TestFolderRepository testFolderRepository;
     private final TestExecutionRepository testExecutionRepository;
+    private final TestCaseExecutionRepository testCaseExecutionRepository;
 
 
-    public TestCaseController(TestCaseRepository testCaseRepository, TestCaseService testCaseService, ProjectRepository projectRepository, TestFolderRepository testFolderRepository, TestExecutionRepository testExecutionRepository) {
+    public TestCaseController(TestCaseRepository testCaseRepository, TestCaseService testCaseService, ProjectRepository projectRepository, TestFolderRepository testFolderRepository, TestExecutionRepository testExecutionRepository, TestCaseExecutionRepository testCaseExecutionRepository) {
+        this.testCaseExecutionRepository=testCaseExecutionRepository;
         this.testCaseRepository = testCaseRepository;
         this.testCaseService = testCaseService;
         this.projectRepository = projectRepository;
@@ -42,6 +45,7 @@ public class TestCaseController {
     }
 
     @GetMapping("")
+    @PreAuthorize("@projectAccess.project(#p2)")
     public ResponseEntity<Object> getTestCase(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @RequestParam String projectId) {
         Pageable paging = PageRequest.of(page, size);
         Page<TestCase> testCaseList = testCaseRepository.findByProjectsIn(Collections.singleton(projectRepository.findById(Integer.parseInt(projectId))), paging);
@@ -52,6 +56,7 @@ public class TestCaseController {
     }
 
     @GetMapping("/unassignedFolder")
+    @PreAuthorize("@projectAccess.project(#p2)")
     public ResponseEntity<Object> getTestCaseNotInAnyFolder(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @RequestParam String projectId) {
         Pageable pageable = PageRequest.of(page, size);
         List<TestCase> testCaseList = testCaseRepository.findByProjectsIn(Collections.singleton(projectRepository.findById(Integer.parseInt(projectId))));
@@ -79,6 +84,7 @@ public class TestCaseController {
 
 
     @GetMapping("/unassignedExecution")
+    @PreAuthorize("@projectAccess.project(#p2) and @projectAccess.execution(#p3)")
     public ResponseEntity<Object> getTestCaseNotInAnyExecution(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @RequestParam String projectId, @RequestParam String executionId) {
         Pageable pageable = PageRequest.of(page, size);
         List<TestCase> testCaseList = testCaseRepository.findByProjectsIn(Collections.singleton(projectRepository.findById(Integer.parseInt(projectId))));
@@ -98,6 +104,7 @@ public class TestCaseController {
 
     @GetMapping(path = "/name/{testCaseName}")
     @SuppressWarnings("Duplicates")
+    @PreAuthorize("@projectAccess.manager()")
     public ResponseEntity<Object> getTestCaseByTestCaseName(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @PathVariable String testCaseName) {
         Pageable paging = PageRequest.of(page, size);
         Page<TestCase> testCasesList = testCaseRepository.findByTestNameContaining(testCaseName, paging);
@@ -109,6 +116,7 @@ public class TestCaseController {
     }
 
     @GetMapping(path = "/id/{id}")
+    @PreAuthorize("@projectAccess.testCase(#p0)")
     public ResponseEntity<Object> getTestCaseById(@PathVariable int id) {
         TestCase testCase = testCaseRepository.findById(id);
         if (testCase == null) {
@@ -120,7 +128,8 @@ public class TestCaseController {
 
     @PostMapping("")
     @SuppressWarnings("Duplicates")
-    public ResponseEntity<Object> saveTestCase(@RequestBody TestCaseInfoDTO testCaseInfoDTO) {
+    @PreAuthorize("@projectAccess.caseWrite(#p0)")
+    public ResponseEntity<Object> saveTestCase(@jakarta.validation.Valid @RequestBody TestCaseInfoDTO testCaseInfoDTO) {
         if (testCaseInfoDTO == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Testcase Info Not Found inside body.\n");
         }
@@ -130,12 +139,13 @@ public class TestCaseController {
             }
             return testCaseService.saveTestCase(testCaseInfoDTO);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 
     @PutMapping("/{testCaseId}")
     @SuppressWarnings("Duplicates")
+    @PreAuthorize("@projectAccess.testCase(#p1) and (#p0.projectId == null or @projectAccess.project(#p0.projectId))")
     public ResponseEntity<Object> editTestCase(@RequestBody TestCaseInfoDTO testCaseInfoDTO, @PathVariable int testCaseId) {
         if (testCaseInfoDTO == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Testcase Info Not Found inside body.\n");
@@ -143,12 +153,13 @@ public class TestCaseController {
         try {
             return testCaseService.editTestCase(testCaseInfoDTO, testCaseId);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 
     @DeleteMapping("/{testCaseId}")
     @SuppressWarnings("Duplicates")
+    @PreAuthorize("@projectAccess.testCase(#p0)")
     public ResponseEntity<Object> deleteTestCase(@PathVariable String testCaseId) {
         if (testCaseId == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("testCaseId not found for delete operation.\n");
@@ -157,6 +168,8 @@ public class TestCaseController {
         if (testCase == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new CustomResponseMessage(new Date(), "Error", "Provided testcase not found for Delete operation!"));
         }
+        if (testCaseExecutionRepository.countProtectedCaseReferences(testCase.getId())>0)
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.CONFLICT, "This case is used in a test plan. Keep it to preserve execution history.");
         testCaseRepository.deleteById(testCase.getId());
         return ResponseEntity.status(HttpStatus.OK).body(new CustomResponseMessage(new Date(), "Success", "Testcase Deleted Successfully!"));
     }

@@ -1,5 +1,7 @@
 package com.tcms.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import com.tcms.helper.pojo.CustomResponseMessage;
 import com.tcms.models.Projects;
 import com.tcms.repositories.ProjectRepository;
@@ -14,8 +16,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
 
+@PreAuthorize("@projectAccess.manager()")
 @RestController()
-@CrossOrigin()
 @RequestMapping("/project")
 public class ProjectController {
     private final String defaultSize = "1000";
@@ -61,6 +63,7 @@ public class ProjectController {
     }
 
     @GetMapping(path = "/id/{id}")
+    @PreAuthorize("@projectAccess.project(#p0)")
     public ResponseEntity<Object> getProjectById(@PathVariable int id) {
         Page<Projects> projects = projectRepository.findById(id, PageRequest.of(0, Integer.parseInt(defaultSize)));
         if (projects.isEmpty()) {
@@ -82,7 +85,7 @@ public class ProjectController {
         } catch (DataIntegrityViolationException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(new CustomResponseMessage(new Date(), "Duplicate Entry", "Project with same unique value already exists."));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 
@@ -101,7 +104,7 @@ public class ProjectController {
             projectRepository.save(project);
             return ResponseEntity.status(HttpStatus.OK).body(project);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 

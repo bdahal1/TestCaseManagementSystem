@@ -13,10 +13,10 @@ import org.springframework.web.context.request.WebRequest;
 public class TokenControllerAdvice {
 
     @ExceptionHandler(value = TokenRefreshException.class)
-    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ErrorMessageWithStatusCode handleTokenRefreshException(TokenRefreshException ex, WebRequest request) {
         return new ErrorMessageWithStatusCode(
-                HttpStatus.FORBIDDEN.value(),
+                HttpStatus.UNAUTHORIZED.value(),
                 new Date(),
                 ex.getMessage(),
                 request.getDescription(false));

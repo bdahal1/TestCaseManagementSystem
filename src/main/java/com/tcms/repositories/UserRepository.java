@@ -12,6 +12,8 @@ import java.util.List;
 @Repository
 public interface UserRepository extends PagingAndSortingRepository<Users, Integer>, JpaSpecificationExecutor<Users> {
 
+    List<Users> findDistinctByProjectsSet_IdAndIsActiveTrueOrderByFirstNameAsc(int projectId);
+
     Page<Users> findAll(Pageable pageable);
 
     Users findById(int id);

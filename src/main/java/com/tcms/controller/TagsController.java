@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Date;
 
 @RestController()
-@CrossOrigin()
 @RequestMapping("/tags")
 public class TagsController {
     private final String defaultSize = "1000";
@@ -67,7 +66,7 @@ public class TagsController {
         try {
             return ResponseEntity.status(HttpStatus.OK).body(tagService.saveTags(tag));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 
@@ -86,7 +85,7 @@ public class TagsController {
             tagService.saveTags(tag);
             return ResponseEntity.status(HttpStatus.OK).body(tag);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 

@@ -1,11 +1,12 @@
 package com.tcms.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import com.tcms.dto.*;
 import com.tcms.enums.ExecutionStatus;
 import com.tcms.helper.pojo.CustomResponseMessage;
 import com.tcms.models.*;
 import com.tcms.repositories.ProjectRepository;
-import com.tcms.repositories.TestCaseRepository;
 import com.tcms.repositories.TestExecutionRepository;
 import com.tcms.services.TestExecutionService;
 import org.springframework.data.domain.Page;
@@ -19,36 +20,28 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController()
-@CrossOrigin()
 @RequestMapping("/testExecutions")
 public class TestExecutionsController {
     private final String defaultSize = "1000";
     private final TestExecutionService testExecutionService;
     private final TestExecutionRepository testExecutionRepository;
     private final ProjectRepository projectRepository;
-    private final TestCaseRepository testCaseRepository;
 
-    public TestExecutionsController(TestExecutionService testExecutionService, TestExecutionRepository testExecutionRepository, ProjectRepository projectRepository, TestCaseRepository testCaseRepository) {
+    public TestExecutionsController(TestExecutionService testExecutionService, TestExecutionRepository testExecutionRepository, ProjectRepository projectRepository) {
         this.testExecutionService = testExecutionService;
         this.testExecutionRepository = testExecutionRepository;
         this.projectRepository = projectRepository;
-        this.testCaseRepository = testCaseRepository;
     }
 
     @PostMapping("/results")
-    public ResponseEntity<Object> addResult(@RequestBody TestResultRequestDTO request) {
-        if (request == null) {
-            return ResponseEntity.status(HttpStatus.OK).body("Record not found.\n");
-        }
-        try {
-            testExecutionService.addResultToTestCase(request);
-            return ResponseEntity.ok("Result added successfully.");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
-        }
+    @PreAuthorize("@projectAccess.result(#p0)")
+    public ResponseEntity<Object> addResult(@jakarta.validation.Valid @RequestBody TestResultRequestDTO request) {
+        testExecutionService.addResultToTestCase(request);
+        return ResponseEntity.ok("Result added successfully.");
     }
 
     @GetMapping("/project/{projectId}")
+    @PreAuthorize("@projectAccess.project(#p2)")
     public ResponseEntity<Object> getTestExecutions(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @PathVariable String projectId) {
         Pageable paging = PageRequest.of(page, size);
         Page<TestExecutions> testExecutionsPage = testExecutionRepository.findByProjectsIdAndExecutionStatus(Integer.parseInt(projectId), ExecutionStatus.IN_PROGRESS, paging);
@@ -60,6 +53,7 @@ public class TestExecutionsController {
 
     @GetMapping(path = "/name/{executionName}")
     @SuppressWarnings("Duplicates")
+    @PreAuthorize("@projectAccess.manager()")
     public ResponseEntity<Object> getTestExecutionsByName(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @PathVariable String executionName) {
         Pageable paging = PageRequest.of(page, size);
         Page<TestExecutions> testExecutionsPage = testExecutionRepository.findByExecutionNameContaining(executionName, paging);
@@ -71,6 +65,7 @@ public class TestExecutionsController {
     }
 
     @GetMapping(path = "/id/{id}")
+    @PreAuthorize("@projectAccess.execution(#p0)")
     public ResponseEntity<Object> getTestExecutionById(@PathVariable int id) {
         TestExecutions testExecutions = testExecutionRepository.findById(id);
         if (testExecutions == null) {
@@ -82,19 +77,14 @@ public class TestExecutionsController {
             Set<TestCaseWithResultDTO> testCaseDTOs = testExecutions.getTestCaseExecutions().stream()
                     .map(tce -> {
                         TestCase tc = tce.getTestCase();
+                        var snapshot=testExecutionService.getCaseSnapshot(tce);
                         Set<TestStepInfoDTO> testStepInfoDTOSet = new HashSet<>();
-                        for (TestSteps testSteps : tc.getTestStepsSet()) {
-                            TestStepInfoDTO testStepInfoDTO = new TestStepInfoDTO();
-                            if (tc.getTestType() == testSteps.getTestType()) {
-                                testStepInfoDTO.setTestStepData(testSteps.getTestStepData());
-                                testStepInfoDTO.setTestStepDesc(testSteps.getTestStepDesc());
-                                testStepInfoDTO.setStepOrder(testSteps.getTestStepOrder());
-                                testStepInfoDTO.setTestExpectedOutput(testSteps.getTestExpectedOutput());
-                                testStepInfoDTO.setTestType(testSteps.getTestType());
-                                testStepInfoDTOSet.add(testStepInfoDTO);
-                            }
+                        for (var step:snapshot.steps()) {
+                            TestStepInfoDTO dto=new TestStepInfoDTO();
+                            dto.setTestStepData(step.data()); dto.setTestStepDesc(step.instruction()); dto.setStepOrder(step.order());
+                            dto.setTestExpectedOutput(step.expected()); dto.setTestType(snapshot.type()); testStepInfoDTOSet.add(dto);
                         }
-                        return new TestCaseWithResultDTO(tc.getId(), tc.getTestName(),testStepInfoDTOSet, tce.getResultStatus(),tc.getTestType(), tce.getResultComment());
+                        return new TestCaseWithResultDTO(tc.getId(),snapshot.name(),testStepInfoDTOSet,tce.getResultStatus(),snapshot.type(),tce.getResultComment());
                     })
                     .collect(Collectors.toSet());
             testExecutionResponseDTO.setTestCases(testCaseDTOs);
@@ -104,7 +94,8 @@ public class TestExecutionsController {
 
     @PostMapping("")
     @SuppressWarnings("Duplicates")
-    public ResponseEntity<Object> saveTestExecution(@RequestBody TestExecutionDTO testExecutionDTO) {
+    @PreAuthorize("@projectAccess.project(#p0.projectId)")
+    public ResponseEntity<Object> saveTestExecution(@jakarta.validation.Valid @RequestBody TestExecutionDTO testExecutionDTO) {
         if (testExecutionDTO == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Test Folder Info Not Found inside body.\n");
         }
@@ -119,102 +110,30 @@ public class TestExecutionsController {
             testExecutions.setProjects(projects);
             return ResponseEntity.status(HttpStatus.OK).body(testExecutionService.saveTestExecution(testExecutions));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 
     @PostMapping("/{executionId}/addCases")
     @SuppressWarnings("Duplicates")
+    @PreAuthorize("@projectAccess.links(#p1, #p0, true)")
     public ResponseEntity<Object> saveTestCasesToExecution(@RequestBody Map<String, List<Integer>> body, @PathVariable String executionId) {
-        List<Integer> testCaseIds = body.get("testCaseIds");
-        if (testCaseIds == null || executionId == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Test case IDs or execution ID not provided.");
-        }
-        try {
-            Set<TestCase> testCaseSet = new HashSet<>();
-            for (Integer i : testCaseIds) {
-                TestCase testCase = testCaseRepository.findById(i);
-                if (testCase == null) {
-                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Test case with ID " + i + " not found.");
-                }
-                testCaseSet.add(testCase);
-            }
-            TestExecutions testExecutions = testExecutionRepository.findById(Integer.parseInt(executionId));
-
-            if (testExecutions == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Test execution not found.");
-            }
-            Set<TestCaseExecutions> currentLinks = testExecutions.getTestCaseExecutions();
-            if (currentLinks == null) {
-                currentLinks = new HashSet<>();
-                testExecutions.setTestCaseExecutions(currentLinks);
-            }
-            for (TestCase testCase : testCaseSet) {
-                boolean alreadyLinked = currentLinks.stream()
-                        .anyMatch(link -> link.getTestCase().getId().equals(testCase.getId()));
-
-                if (!alreadyLinked) {
-                    TestCaseExecutions tce = new TestCaseExecutions();
-                    tce.setTestExecutions(testExecutions);
-                    tce.setTestCase(testCase);
-                    tce.setResultComment(null);
-                    tce.setResultStatus(null);
-                    currentLinks.add(tce);
-                }
-            }
-            testExecutionService.saveTestExecution(testExecutions);
-            return ResponseEntity.status(HttpStatus.OK).body(testExecutions);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new CustomResponseMessage(new Date(), "Error", e.getMessage()));
-        }
+        return ResponseEntity.ok(testExecutionService.addCases(Integer.parseInt(executionId), body.get("testCaseIds")));
     }
 
     @PostMapping("/{executionId}/removeCases")
     @SuppressWarnings("Duplicates")
+    @PreAuthorize("@projectAccess.links(#p1, #p0, true)")
     public ResponseEntity<Object> removeTestCasesFromExecution(
             @RequestBody Map<String, List<Integer>> body,
             @PathVariable String executionId) {
 
-        List<Integer> testCaseIds = body.get("testCaseIds");
-        if (testCaseIds == null || executionId == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Test case id list or executionId not found.");
-        }
-        try {
-            TestExecutions testExecutions = testExecutionRepository.findById(Integer.parseInt(executionId));
-            if (testExecutions == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("Test execution not found.");
-            }
-            Set<TestCaseExecutions> existingLinks = testExecutions.getTestCaseExecutions();
-            if (existingLinks == null || existingLinks.isEmpty()) {
-                return ResponseEntity.ok(testExecutions); // nothing to remove
-            }
-
-            // Collect links to remove
-            Set<TestCaseExecutions> toRemove = existingLinks.stream()
-                    .filter(link -> testCaseIds.contains(link.getTestCase().getId()))
-                    .collect(Collectors.toSet());
-
-            // Remove them from parent's collection and break references
-            for (TestCaseExecutions link : toRemove) {
-                existingLinks.remove(link);
-                link.setTestExecutions(null);
-                link.setTestCase(null);
-                link.setResultComment(null);
-                link.setResultStatus(null);
-            }
-            testExecutionService.saveTestExecution(testExecutions);
-            return ResponseEntity.ok(testExecutions);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new CustomResponseMessage(new Date(), "Error", e.getLocalizedMessage()));
-        }
+        return ResponseEntity.ok(testExecutionService.removeCases(Integer.parseInt(executionId), body.get("testCaseIds")));
     }
 
     @PutMapping("/{executionId}")
     @SuppressWarnings("Duplicates")
+    @PreAuthorize("@projectAccess.manageExecution(#p1)")
     public ResponseEntity<Object> editTestExecution(@RequestBody TestExecutionDTO testExecutionDTO, @PathVariable int executionId) {
         if (testExecutionDTO == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Test Execution Info Not Found inside body.\n");
@@ -228,12 +147,13 @@ public class TestExecutionsController {
             testExecutionService.saveTestExecution(testExecutions);
             return ResponseEntity.status(HttpStatus.OK).body(testExecutions);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 
     @DeleteMapping("/{executionId}")
     @SuppressWarnings("Duplicates")
+    @PreAuthorize("@projectAccess.manageExecution(#p0)")
     public ResponseEntity<Object> deleteTestExecution(@PathVariable String executionId) {
         if (executionId == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Execution Id not found for delete operation.\n");

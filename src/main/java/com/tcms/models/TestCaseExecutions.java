@@ -34,6 +34,22 @@ public class TestCaseExecutions {
     @Column(name = "result_status")
     private TestResult resultStatus;
 
-    @Column(name = "result_comment")
+    @Column(name = "result_comment", length=4000)
     private String resultComment;
+
+    @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="assigned_user_id") @JsonIgnore
+    private Users assignee;
+    @Lob @Column(length=1048576) @JsonIgnore
+    private String caseSnapshot;
+    @Lob @Column(length=10000)
+    private String actualResult;
+    @Column(length=2000)
+    private String defectUrl;
+    private Long resultRevision = 0L;
+    private java.time.Instant recordedAt;
+    private String recordedBy;
+    @OneToMany(mappedBy="caseExecution", cascade=CascadeType.ALL, orphanRemoval=true) @JsonIgnore
+    private java.util.List<ExecutionResultHistory> history = new java.util.ArrayList<>();
+    @OneToMany(mappedBy="caseExecution", cascade=CascadeType.ALL, orphanRemoval=true) @JsonIgnore
+    private java.util.List<ExecutionEvidence> evidence = new java.util.ArrayList<>();
 }

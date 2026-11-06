@@ -188,7 +188,7 @@ const DashboardLayout: React.FC = () => {
         ...(projectId ? [
             { label: "Test Cases", icon: <FolderIcon />, path: `/dashboard/project/${projectId}/test-cases` },
             { label: "Test Folders", icon: <FolderIcon />, path: `/dashboard/project/${projectId}/test-folders` },
-            { label: "Test Executions", icon: <PlayCircleFilledIcon />, path: `/dashboard/project/${projectId}/test-executions` }
+            { label: "Test Plans & Runs", icon: <PlayCircleFilledIcon />, path: `/dashboard/project/${projectId}/test-plans` }
         ] : []),
     ];
 

@@ -1,6 +1,6 @@
 package com.tcms.authentication.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.tcms.authentication.service.CustomUserDetailService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -33,39 +33,27 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws ServletException, IOException {
         final String requestTokenHeader = request.getHeader("Authorization");
-        String username = null;
-        String jwtToken = null;
-        // JWT Token is in the form "Bearer token". Remove Bearer word and get only the Token
-        if (requestTokenHeader != null && requestTokenHeader.startsWith("Bearer ")) {
-            jwtToken = requestTokenHeader.substring(7);
+        if (requestTokenHeader != null && requestTokenHeader.startsWith("Bearer ")
+                && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
-                username = jwtTokenUtil.getUsernameFromToken(jwtToken);
-            } catch (IllegalArgumentException e) {
-                logger.error("Unable to get JWT Token");
-            } catch (Exception e) {
-                logger.error("JWT Token has expired");
-                ObjectMapper mapper = new ObjectMapper();
-                Map<String, Object> errorDetails = new HashMap<>();
-                errorDetails.put("message", "JWT Token has expired");
-                response.setStatus(HttpStatus.FORBIDDEN.value());
+                String jwtToken = requestTokenHeader.substring(7);
+                String username = jwtTokenUtil.getUsernameFromToken(jwtToken);
+                UserDetails user = customUserDetailService.loadUserByUsername(username);
+                if (!user.isEnabled() || !user.isAccountNonLocked() || !user.isAccountNonExpired()
+                        || !user.isCredentialsNonExpired() || !jwtTokenUtil.validateToken(jwtToken, user)) {
+                    throw new org.springframework.security.authentication.BadCredentialsException("Invalid session");
+                }
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            } catch (io.jsonwebtoken.JwtException | IllegalArgumentException
+                     | org.springframework.security.core.AuthenticationException e) {
+                SecurityContextHolder.clearContext();
+                response.setStatus(HttpStatus.UNAUTHORIZED.value());
                 response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                mapper.writeValue(response.getWriter(), errorDetails);
-            }
-        } else {
-            logger.error("JWT Token does not begin with Bearer String");
-        }
-        //Once we get the token validate it.
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.customUserDetailService.loadUserByUsername(username);
-            // if token is valid configure Spring Security to manually set authentication
-            if (jwtTokenUtil.validateToken(jwtToken, userDetails)) {
-                UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
-                usernamePasswordAuthenticationToken
-                        .setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                // After setting the Authentication in the context, we specify
-                // that the current user is authenticated. So it passes the Spring Security Configurations successfully.
-                SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
+                tools.jackson.databind.json.JsonMapper.builder().build().writeValue(response.getWriter(), Map.of("message", "Session is invalid or expired"));
+                return;
             }
         }
         chain.doFilter(request, response);

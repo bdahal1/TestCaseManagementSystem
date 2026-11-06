@@ -46,7 +46,7 @@ public class TestCaseService {
     public ResponseEntity<Object> saveTestCase(TestCaseInfoDTO testCaseInfoDTO) {
         TestCase testCase = new TestCase();
         testCase.setTestName(testCaseInfoDTO.getTestName());
-        Users user = userRepository.findById(testCaseInfoDTO.getUserId());
+        Users user = userRepository.findByUserName(org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName());
         String fullName = user.getFirstName() + " " + user.getLastName();
         testCase.setTestCreatedBy(fullName);
         testCase.setTestCreatedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
@@ -78,7 +78,7 @@ public class TestCaseService {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Testcase Not Found in database.\n");
         }
         testCaseEdit.setTestName(testCaseInfoDTO.getTestName() == null ? testCaseEdit.getTestName() : testCaseInfoDTO.getTestName());
-        Users user = userRepository.findById(testCaseInfoDTO.getUserId());
+        Users user = userRepository.findByUserName(org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName());
         String fullName = user.getFirstName() + " " + user.getLastName();
         testCaseEdit.setTestModifiedBy(fullName);
         testCaseEdit.setTestType(testCaseInfoDTO.getTestType());

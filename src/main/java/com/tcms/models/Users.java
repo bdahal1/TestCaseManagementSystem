@@ -32,6 +32,7 @@ public class Users {
     private String userName;
 
     @Column(name = "u_password", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     @Column(name = "u_is_active", nullable = false)

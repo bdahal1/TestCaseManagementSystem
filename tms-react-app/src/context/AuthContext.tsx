@@ -27,11 +27,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const storedToken = localStorage.getItem('accessToken');
         const storedUser = localStorage.getItem('user');
 
-        if (storedToken && storedUser) {
-            setToken(storedToken);
-            setUser(JSON.parse(storedUser));
+        try {
+            if (storedToken && storedUser) {
+                const parsedUser = JSON.parse(storedUser);
+                if (!parsedUser || !Array.isArray(parsedUser.roleList)) {
+                    throw new Error('Invalid stored session');
+                }
+                setToken(storedToken);
+                setUser(parsedUser);
+            }
+        } catch {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('user');
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     }, []);
 
     const login = (newToken: string, newUser: User) => {

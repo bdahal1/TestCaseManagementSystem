@@ -48,7 +48,7 @@ public class TestStepService {
 
     @SuppressWarnings("Duplicates")
     public TestSteps saveTestSteps(TestStepInfoDTO testStepInfoDTO) {
-        Users user = userRepository.findById(testStepInfoDTO.getUserId());
+        Users user = userRepository.findByUserName(org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName());
         String fullName = user.getFirstName() + " " + user.getLastName();
         TestSteps testSteps = new TestSteps();
         testSteps.setTestCase(testCaseRepository.findById(testStepInfoDTO.getTestCaseId()));
@@ -68,7 +68,7 @@ public class TestStepService {
 
     @SuppressWarnings("Duplicates")
     public TestSteps editTestSteps(TestStepInfoDTO testStepInfoDTO, int testStepId) {
-        Users user = userRepository.findById(testStepInfoDTO.getUserId());
+        Users user = userRepository.findByUserName(org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName());
         String fullName = user.getFirstName() + " " + user.getLastName();
         TestSteps testSteps = testStepsRepository.findById(testStepId);
         if (testSteps == null) {

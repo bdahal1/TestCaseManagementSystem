@@ -5,3 +5,9 @@
 TestCaseManagementSystem.iml
 
 
+
+.env
+.env.*
+!.env.example
+.DS_Store
+/logs/

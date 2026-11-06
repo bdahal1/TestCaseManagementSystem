@@ -22,6 +22,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 
+@org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 @Configuration
 public class SecurityConfig {
     private final CustomUserDetailService customUserDetailService;
@@ -41,33 +42,19 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.cors(Customizer.withDefaults()).csrf().disable()// Disable preventing POST method
-                .headers().frameOptions().disable();// Disable preventing frame for H2 console
-
-        http.csrf()
-                .disable()
+        http.cors(Customizer.withDefaults())
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(AUTH_WHITELIST).permitAll()
-                        .requestMatchers("/validate").authenticated()
-                        .requestMatchers("/users", "/users/*", "/roles", "/roles/*", "/department", "/department/*", "/projects", "/projects/*").hasRole("QAManager")
-                        .requestMatchers("/users/**", "/roles/**", "/department/**", "/projects/**","/testExecutions/**","/testFolders/**").authenticated()
+                        .requestMatchers("/roles/**", "/department/**").hasAnyRole("QAManager", "ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
-                .httpBasic(Customizer.withDefaults())
-                .exceptionHandling().authenticationEntryPoint(jwtAuthenticationEntryPoint).and().sessionManagement()
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                .and().userDetailsService(customUserDetailService);
-        http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
-        http.logout()
-                .logoutUrl("/logout") // Define the logout endpoint
-                .logoutSuccessHandler((request, response, authentication) -> {
-                    // Custom success handler (optional)
-                    response.setStatus(HttpServletResponse.SC_OK);
-                    response.getWriter().write("Logout successful!");
-                })
-                .invalidateHttpSession(true) // Invalidate session
-                .clearAuthentication(true) // Clear authentication
-                .deleteCookies("JSESSIONID"); // Delete session cookie (if applicable)
+                .exceptionHandling(errors -> errors.authenticationEntryPoint(jwtAuthenticationEntryPoint))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .userDetailsService(customUserDetailService)
+                .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class)
+                .logout(logout -> logout.logoutUrl("/logout")
+                        .logoutSuccessHandler((request, response, authentication) -> response.setStatus(HttpServletResponse.SC_OK)));
 
         return http.build();
     }

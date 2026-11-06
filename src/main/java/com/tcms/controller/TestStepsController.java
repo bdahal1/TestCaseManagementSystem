@@ -1,5 +1,7 @@
 package com.tcms.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import com.tcms.dto.TestStepInfoDTO;
 import com.tcms.dto.TestStepOrderDTO;
 import com.tcms.enums.TestTypes;
@@ -21,7 +23,6 @@ import java.util.Date;
 import java.util.List;
 
 @RestController()
-@CrossOrigin()
 @RequestMapping("/testSteps")
 public class TestStepsController {
     private final String defaultSize = "1000";
@@ -37,6 +38,7 @@ public class TestStepsController {
     }
 
     @GetMapping("")
+    @PreAuthorize("@projectAccess.manager()")
     public ResponseEntity<Object> getTestStep(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size) {
         Pageable paging = PageRequest.of(page, size);
         Page<TestSteps> testStepsList = testStepsRepository.findAll(paging);
@@ -47,6 +49,7 @@ public class TestStepsController {
     }
 
     @GetMapping(path = "/id/{id}")
+    @PreAuthorize("@projectAccess.step(#p0)")
     public ResponseEntity<Object> getTestStepsById(@PathVariable int id) {
         TestSteps testSteps = testStepsRepository.findById(id);
         if (testSteps == null) {
@@ -57,6 +60,7 @@ public class TestStepsController {
     }
 
     @GetMapping(path = "/testCaseId/{id}")
+    @PreAuthorize("@projectAccess.testCase(#p2)")
     public ResponseEntity<Object> getTestStepsByTestCaseId(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @PathVariable int id, @RequestParam TestTypes type) {
         Pageable paging = PageRequest.of(page, size);
         TestCase testCase = testCaseRepository.findById(id);
@@ -69,6 +73,7 @@ public class TestStepsController {
     }
 
     @PostMapping("")
+    @PreAuthorize("@projectAccess.stepWrites(#p0)")
     public ResponseEntity<Object> saveTestSteps(@RequestBody List<TestStepInfoDTO> testStepInfoDTOList) {
         if (testStepInfoDTOList == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("TestSteps Info Not Found inside body.\n");
@@ -87,12 +92,13 @@ public class TestStepsController {
             testStepService.deleteAllTestSteps(existingList);
             return ResponseEntity.status(HttpStatus.OK).body(testStepsList);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 
     @PutMapping("/{testStepId}")
     @SuppressWarnings("Duplicates")
+    @PreAuthorize("@projectAccess.step(#p1) and @projectAccess.stepWrite(#p0)")
     public ResponseEntity<Object> editTestStep(@RequestBody TestStepInfoDTO testStepInfoDTO, @PathVariable int testStepId) {
         if (testStepInfoDTO == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("TestSteps Info Not Found inside body.\n");
@@ -107,12 +113,13 @@ public class TestStepsController {
             }
             return ResponseEntity.status(HttpStatus.OK).body(testSteps);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 
     @GetMapping("/order/{testCaseId}")
     @SuppressWarnings("Duplicates")
+    @PreAuthorize("@projectAccess.testCase(#p0)")
     public ResponseEntity<Object> orderTestSteps(@PathVariable int testCaseId) {
         TestCase testCase = testCaseRepository.findById(testCaseId);
         if (testCase == null) {
@@ -125,12 +132,13 @@ public class TestStepsController {
             }
             return ResponseEntity.status(HttpStatus.OK).body(testStepsList);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 
     @PutMapping("/updateOrder")
     @SuppressWarnings("Duplicates")
+    @PreAuthorize("@projectAccess.stepOrders(#p0)")
     public ResponseEntity<Object> editTestStepOrder(@RequestBody List<TestStepOrderDTO> testStepOrderDTO) {
         List<TestSteps> testStepsList = new ArrayList<>();
         try {
@@ -146,12 +154,13 @@ public class TestStepsController {
             this.orderTestSteps(testStepsList.get(0).getTestCase().getId());
             return ResponseEntity.status(HttpStatus.OK).body(testStepsRepository.findTestStepsByTestCaseAndTestTypeOrderByTestStepOrderAsc(testStepsList.get(0).getTestCase(),testStepsList.get(0).getTestType()));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 
     @DeleteMapping("/{testStepId}")
     @SuppressWarnings("Duplicates")
+    @PreAuthorize("@projectAccess.step(#p0)")
     public ResponseEntity<Object> deleteTestStep(@PathVariable String testStepId) {
         if (testStepId == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("testStepId not found for delete operation.\n");

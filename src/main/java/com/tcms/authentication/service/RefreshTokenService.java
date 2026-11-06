@@ -30,29 +30,16 @@ public class RefreshTokenService {
     }
 
 
+    @Transactional
     public RefreshToken createRefreshToken(UserDetails userDetails) {
-        RefreshToken token = null, refreshToken;
-        try {
-            token = refreshTokenRepository.findByUserName(userDetails.getUsername());
-        } catch (Exception e) {
-
+        RefreshToken token = refreshTokenRepository.findByUserName(userDetails.getUsername());
+        if (token == null) {
+            token = new RefreshToken();
+            token.setUserName(userDetails.getUsername());
         }
-        if (token != null) {
-            try {
-                refreshToken = verifyExpiration(token);
-            } catch (TokenRefreshException e) {
-                token.setExpiryDate(Instant.now().plusMillis(this.refreshTokenDurationMs));
-                token.setToken(UUID.randomUUID().toString());
-                refreshToken = token;
-            }
-        } else {
-            refreshToken = new RefreshToken();
-            refreshToken.setUserName(userDetails.getUsername());
-            refreshToken.setExpiryDate(Instant.now().plusMillis(this.refreshTokenDurationMs));
-            refreshToken.setToken(UUID.randomUUID().toString());
-        }
-        refreshToken = refreshTokenRepository.save(refreshToken);
-        return refreshToken;
+        token.setExpiryDate(Instant.now().plusMillis(refreshTokenDurationMs));
+        token.setToken(UUID.randomUUID().toString());
+        return refreshTokenRepository.save(token);
     }
 
     public RefreshToken verifyExpiration(RefreshToken token) throws TokenRefreshException {

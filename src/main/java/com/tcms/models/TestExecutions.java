@@ -33,6 +33,14 @@ public class TestExecutions {
     @Column(name = "execution_status", nullable = false)
     private ExecutionStatus executionStatus=ExecutionStatus.IN_PROGRESS;
 
+    // Nullable additions preserve existing executions when upgrading a database.
+    private Boolean releasePlan = false;
+    @Column(length=100) private String releaseName;
+    @Column(length=100) private String buildName;
+    @Column(length=100) private String environment;
+    private java.time.LocalDate dueDate;
+    @Column(length=4000) private String description;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", nullable = false)
     @JsonIgnore

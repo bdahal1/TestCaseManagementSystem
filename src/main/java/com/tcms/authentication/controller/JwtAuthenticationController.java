@@ -30,7 +30,6 @@ import java.util.stream.Collectors;
 
 
 @RestController
-@CrossOrigin
 @Lazy
 public class JwtAuthenticationController {
 
@@ -72,7 +71,7 @@ public class JwtAuthenticationController {
                 return ResponseEntity.status(HttpStatus.OK).body(new JwtResponse(responseBody));
             }
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new CustomResponseMessage(new Date(), "Login Issue : "+ Util.capitalizeWords(e.getMessage().replace("_"," ")), e.getMessage()));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new CustomResponseMessage(new Date(), "Login failed", "Invalid username or password."));
         }
     }
 
@@ -83,7 +82,11 @@ public class JwtAuthenticationController {
                 .map(refreshTokenService::verifyExpiration)
                 .map(RefreshToken::getUserName)
                 .map(user -> {
-                    String token = jwtTokenUtil.generateToken(customUserDetailService.loadUserByUsername(user));
+                    UserDetails details = customUserDetailService.loadUserByUsername(user);
+                    if (!details.isEnabled() || !details.isAccountNonLocked() || details.getAuthorities().isEmpty()) {
+                        throw new TokenRefreshException(requestRefreshToken, "Session is no longer valid");
+                    }
+                    String token = jwtTokenUtil.generateToken(details);
                     Users loggedInUser = userRepository.findByUserName(user);
                     return ResponseEntity.ok(new JwtResponse(new TokenRefreshResponse(token, requestRefreshToken, loggedInUser.getId(), loggedInUser.getRoleSet().stream().map(Roles::getRoleName).collect(Collectors.toList()), loggedInUser.getFirstName() + " " + loggedInUser.getLastName())));
                 })

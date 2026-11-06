@@ -1,5 +1,5 @@
 package com.tcms.enums;
 
 public enum ExecutionStatus {
-    IN_PROGRESS,CLOSED
+    IN_PROGRESS,CLOSED,DRAFT
 }

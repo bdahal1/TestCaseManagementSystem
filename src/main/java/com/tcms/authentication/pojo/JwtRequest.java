@@ -23,7 +23,7 @@ public class JwtRequest implements Serializable {
 	public String toString() {
 		return "JwtRequest{" +
 				"userName='" + userName + '\'' +
-				", password='" + password + '\'' +
+				", password='" + "[REDACTED]" + '\'' +
 				'}';
 	}
 }

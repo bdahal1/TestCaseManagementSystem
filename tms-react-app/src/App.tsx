@@ -5,7 +5,8 @@ import DashboardLayout from "./layouts/DashboardLayout";
 import ProjectList from "./pages/DashboardHome";
 import TestCaseComponent from "./components/testCases/TestCaseManager";
 import TestFolderComponent from "./components/testFolders/TestFolderManager";
-import TestExecutionComponent from "./components/testExecutions/TestExecutionManager";
+import TestPlans from "./components/testPlans/TestPlans";
+import TestPlanWorkspace from "./components/testPlans/TestPlanWorkspace";
 import AdminPage from "./pages/AdminPage";
 
 // Wrapper components to extract route params
@@ -21,7 +22,12 @@ const TestFolderRoute = () => {
 
 const TestExecutionRoute = () => {
     const { projectId } = useParams();
-    return projectId ? <TestExecutionComponent projId={Number(projectId)} /> : <Navigate to="/dashboard" />;
+    return projectId ? <TestPlans projectId={Number(projectId)} /> : <Navigate to="/dashboard" />;
+};
+
+const TestPlanRoute = () => {
+    const { projectId, planId } = useParams();
+    return projectId && planId ? <TestPlanWorkspace projectId={Number(projectId)} planId={Number(planId)} /> : <Navigate to="/dashboard" />;
 };
 
 function AppRoutes() {
@@ -50,6 +56,8 @@ function AppRoutes() {
                     <Route index element={<ProjectList />} />
                     <Route path="project/:projectId/test-cases" element={<TestCaseRoute />} />
                     <Route path="project/:projectId/test-folders" element={<TestFolderRoute />} />
+                    <Route path="project/:projectId/test-plans" element={<TestExecutionRoute />} />
+                    <Route path="project/:projectId/test-plans/:planId" element={<TestPlanRoute />} />
                     <Route path="project/:projectId/test-executions" element={<TestExecutionRoute />} />
                     <Route path="admin" element={<AdminPage />} />
                 </Route>

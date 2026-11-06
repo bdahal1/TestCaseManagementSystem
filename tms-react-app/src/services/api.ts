@@ -8,7 +8,8 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
     // Attach Access Token
     const token = localStorage.getItem("accessToken");
-    if (token) {
+    const isPublicAuth = /\/(login|refreshToken)$/.test(config.url ?? "");
+    if (token && !isPublicAuth) {
         config.headers.Authorization = `Bearer ${token}`;
     }
 
@@ -25,8 +26,6 @@ api.interceptors.request.use((config) => {
         config.headers['X-XSRF-TOKEN'] = csrfToken;
     }
 
-    // Debug logging
-    console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, config.headers);
 
     return config;
 });
@@ -36,7 +35,7 @@ api.interceptors.response.use(
     (error) => {
         const status = error.response?.status;
 
-        if (status === 403) {
+        if (status === 401) {
             // Dispatch a custom event so AuthContext can handle the cleanup and redirect smoothly
             window.dispatchEvent(new Event('auth:logout'));
         }

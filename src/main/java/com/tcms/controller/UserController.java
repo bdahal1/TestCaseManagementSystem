@@ -1,5 +1,7 @@
 package com.tcms.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import com.tcms.dto.UsersInfoDTO;
 import com.tcms.helper.pojo.CustomResponseMessage;
 import com.tcms.models.Users;
@@ -17,8 +19,8 @@ import java.util.Date;
 import java.util.List;
 
 
+@PreAuthorize("@projectAccess.manager()")
 @RestController()
-@CrossOrigin()
 @RequestMapping("/users")
 public class UserController {
     private final String defaultSize = "1000";
@@ -111,11 +113,14 @@ public class UserController {
 
     @GetMapping("/{userId}/projects")
     @SuppressWarnings("Duplicates")
+    @PreAuthorize("@projectAccess.ownUser(#p0)")
     public ResponseEntity<Object> getUserProjects(@PathVariable int userId) {
         if (userId == 0) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User Id Not Found inside body.\n");
         }
-        return ResponseEntity.status(HttpStatus.OK).body(this.userRepository.findById(userId).getProjectsSet());
+        Users user = userRepository.findById(userId);
+        if (user == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(user.getProjectsSet());
     }
 
     @DeleteMapping("/{userId}")

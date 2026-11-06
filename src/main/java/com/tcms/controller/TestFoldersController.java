@@ -1,5 +1,7 @@
 package com.tcms.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import com.tcms.dto.TestFolderDTO;
 import com.tcms.dto.TestFolderResponseDTO;
 import com.tcms.helper.pojo.CustomResponseMessage;
@@ -20,7 +22,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 
 @RestController()
-@CrossOrigin()
 @RequestMapping("/testFolders")
 public class TestFoldersController {
     private final String defaultSize = "1000";
@@ -37,6 +38,7 @@ public class TestFoldersController {
     }
 
     @GetMapping("/project/{projectId}")
+    @PreAuthorize("@projectAccess.project(#p2)")
     public ResponseEntity<Object> getTestFolders(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @PathVariable String projectId) {
         Pageable paging = PageRequest.of(page, size);
         Page<TestFolders> testFoldersList = testFolderRepository.findByProjectsId(Integer.parseInt(projectId), paging);
@@ -48,6 +50,7 @@ public class TestFoldersController {
 
     @GetMapping(path = "/name/{folderName}")
     @SuppressWarnings("Duplicates")
+    @PreAuthorize("@projectAccess.manager()")
     public ResponseEntity<Object> getTestFoldersByName(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = defaultSize) int size, @PathVariable String folderName) {
         Pageable paging = PageRequest.of(page, size);
         Page<TestFolders> testFoldersList = testFolderRepository.findByFolderNameContaining(folderName, paging);
@@ -59,6 +62,7 @@ public class TestFoldersController {
     }
 
     @GetMapping(path = "/id/{id}")
+    @PreAuthorize("@projectAccess.folder(#p0)")
     public ResponseEntity<Object> getTestFolderById(@PathVariable int id) {
         TestFolders testFolders = testFolderRepository.findById(id);
         if (testFolders == null) {
@@ -74,7 +78,8 @@ public class TestFoldersController {
 
     @PostMapping("")
     @SuppressWarnings("Duplicates")
-    public ResponseEntity<Object> saveTestFolder(@RequestBody TestFolderDTO testFolderDTO) {
+    @PreAuthorize("@projectAccess.project(#p0.projectId)")
+    public ResponseEntity<Object> saveTestFolder(@jakarta.validation.Valid @RequestBody TestFolderDTO testFolderDTO) {
         if (testFolderDTO == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Test Folder Info Not Found inside body.\n");
         }
@@ -89,12 +94,13 @@ public class TestFoldersController {
             testFolderService.saveTestFolder(testFolders);
             return ResponseEntity.status(HttpStatus.OK).body(testFolders);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 
     @PostMapping("/{folderId}/addCases")
     @SuppressWarnings("Duplicates")
+    @PreAuthorize("@projectAccess.links(#p1, #p0, false)")
     public ResponseEntity<Object> saveTestCasesToFolder(@RequestBody Map<String, List<Integer>> body, @PathVariable String folderId) {
         List<Integer> testCaseIds = body.get("testCaseIds");
         if (testCaseIds == null && folderId == null) {
@@ -115,12 +121,13 @@ public class TestFoldersController {
             testFolderService.saveTestFolder(testFolders);
             return ResponseEntity.status(HttpStatus.OK).body(testFolders);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 
     @PostMapping("/{folderId}/removeCases")
     @SuppressWarnings("Duplicates")
+    @PreAuthorize("@projectAccess.links(#p1, #p0, false)")
     public ResponseEntity<Object> removeTestCasesFromFolder(@RequestBody Map<String, List<Integer>> body, @PathVariable String folderId) {
         List<Integer> testCaseIds = body.get("testCaseIds");
         if (testCaseIds == null && folderId == null) {
@@ -141,12 +148,13 @@ public class TestFoldersController {
             testFolderService.saveTestFolder(testFolders);
             return ResponseEntity.status(HttpStatus.OK).body(testFolders);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 
     @PutMapping("/{folderId}")
     @SuppressWarnings("Duplicates")
+    @PreAuthorize("@projectAccess.folder(#p1)")
     public ResponseEntity<Object> editTestFolder(@RequestBody TestFolderDTO testFolderDTO, @PathVariable int folderId) {
         if (testFolderDTO == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Test folder Info Not Found inside body.\n");
@@ -160,12 +168,13 @@ public class TestFoldersController {
             testFolderService.saveTestFolder(testFolders);
             return ResponseEntity.status(HttpStatus.OK).body(testFolders);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 
     @DeleteMapping("/{folderId}")
     @SuppressWarnings("Duplicates")
+    @PreAuthorize("@projectAccess.folder(#p0)")
     public ResponseEntity<Object> deleteTestFolder(@PathVariable String folderId) {
         if (folderId == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Folder Id not found for delete operation.\n");

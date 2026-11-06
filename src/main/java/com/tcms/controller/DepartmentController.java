@@ -1,5 +1,7 @@
 package com.tcms.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import com.tcms.helper.pojo.CustomResponseMessage;
 import com.tcms.models.Department;
 import com.tcms.repositories.DepartmentRepository;
@@ -13,8 +15,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
 
+@PreAuthorize("@projectAccess.manager()")
 @RestController()
-@CrossOrigin()
 @RequestMapping("/department")
 public class DepartmentController {
 
@@ -68,7 +70,7 @@ public class DepartmentController {
             departmentRepository.save(department);
             return ResponseEntity.status(HttpStatus.OK).body(department);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 
@@ -87,7 +89,7 @@ public class DepartmentController {
             departmentRepository.save(departments);
             return ResponseEntity.status(HttpStatus.OK).body(departments);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 

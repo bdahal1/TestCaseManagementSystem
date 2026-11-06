@@ -36,7 +36,7 @@ public class CustomUserDetailService implements UserDetailsService {
                 throw new UsernameNotFoundException("User not found with username: " + username);
             }
             if (user.getRoleSet() == null || user.getRoleSet().isEmpty()) {
-                return new org.springframework.security.core.userdetails.User(user.getUserName(), user.getPassword(), new HashSet<>());
+                return new org.springframework.security.core.userdetails.User(user.getUserName(), user.getPassword(), Boolean.TRUE.equals(user.getIsActive()), true, true, true, new HashSet<>());
             }
             Set<GrantedAuthority> grantedAuthorities = user.getRoleSet().stream()
                     .map(userRoles -> {

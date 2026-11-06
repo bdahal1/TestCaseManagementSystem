@@ -40,14 +40,12 @@ public class UserService {
     public Page<Users> removePasswordFromList(Page<Users> usersList, Pageable pageable) {
         List<Users> tempList = new ArrayList<>();
         for (Users users : usersList) {
-            users.setPassword("");
             tempList.add(users);
         }
-        return new PageImpl<>(tempList, pageable, pageable.getPageSize());
+        return new PageImpl<>(tempList, pageable, usersList.getTotalElements());
     }
 
     public Users removePasswordForGivenUser(Users users) {
-        users.setPassword("");
         return users;
     }
 
@@ -76,13 +74,13 @@ public class UserService {
             saveUserOperation(user);
             return ResponseEntity.status(HttpStatus.OK).body(removePasswordForGivenUser(user));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 
     private Set<Projects> getListOfProjects(UsersInfoDTO usersInfoDTO) {
         Set<Projects> projectsSet = new HashSet<>();
-        List<Integer> idList = usersInfoDTO.getProjectsSet()
+        List<Integer> idList = (usersInfoDTO.getProjectsSet() == null ? Collections.<ProjectDTO>emptyList() : usersInfoDTO.getProjectsSet())
                 .stream()
                 .map(ProjectDTO::getId)
                 .toList();
@@ -112,7 +110,7 @@ public class UserService {
             saveUserOperation(user);
             return ResponseEntity.status(HttpStatus.OK).body(removePasswordForGivenUser(user));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CustomResponseMessage(new Date(), "Error", e.getCause().getLocalizedMessage()));
+            throw new IllegalStateException("Operation failed", e);
         }
     }
 

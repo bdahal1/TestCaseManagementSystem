@@ -155,33 +155,6 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
         }
     }, []);
 
-    const syncMissingTags = async (incomingTags: TagsSet[]): Promise<TagsSet[]> => {
-        const existingTagNames = new Set(tags.map(tag => tag.tagName.toLowerCase()));
-        const createdTags: TagsSet[] = [];
-
-        for (const tag of incomingTags) {
-            if (!existingTagNames.has(tag.tagName.toLowerCase())) {
-                try {
-                    const res = await api.post(API_URLS.TAGS, { tagName: tag.tagName });
-                    createdTags.push(res.data);
-                } catch (err) {
-                    console.error("Error creating tag:", err);
-                }
-            }
-        }
-
-        const updatedTagList = [...tags, ...createdTags];
-        const tagMap = new Map<string, TagsSet>();
-        updatedTagList.forEach(tag => tagMap.set(tag.tagName.toLowerCase(), tag));
-        const deduplicatedTagList = Array.from(tagMap.values());
-        setTags(deduplicatedTagList);
-        return incomingTags.map(tag => {
-            const found = Array.from(tagMap.values())
-                .find(t => t.tagName.toLowerCase() === tag.tagName.toLowerCase());
-            return found || tag;
-        });
-    };
-
     // Handlers
     const handleOpenDialog = async (testCase: TestCase | null, overrideTestType?: TestTypes) => {
         if (testCase) {
