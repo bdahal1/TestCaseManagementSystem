@@ -5,6 +5,8 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import api from '../../services/api';
+import GherkinView from '../gherkin/GherkinView';
+import { detailLabel, priorityColor } from '../testCases/caseDetails';
 import { type Evidence, type PlanDetail, type ResultStatus, errorMessage, resultColor, resultLabel } from './types';
 
 interface Props { open: boolean; detail: PlanDetail; initialCaseId?: number; onClose: () => void; onChanged: () => Promise<PlanDetail> }
@@ -108,14 +110,29 @@ export default function TestRunner({ open, detail, initialCaseId, onClose, onCha
                     {selected ? <>
                         <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap" sx={{ mb: 1 }}><Chip size="small" label={`#${selected.id}`} variant="outlined" /><Chip size="small" label={selected.type} variant="outlined" /><Typography variant="body2" color="text.secondary">Assigned to {selected.assignee?.name ?? 'nobody yet'}</Typography></Stack>
                         <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>{selected.name}</Typography>
+                        {selected.details && <Box sx={{ mb: 2 }}>
+                            <Stack direction="row" gap={1} flexWrap="wrap" sx={{ mb: 1 }}>
+                                {selected.details.priority && <Chip size="small" label={detailLabel(selected.details.priority)} color={priorityColor(selected.details.priority)} variant="outlined" />}
+                                {selected.details.component && <Chip size="small" label={selected.details.component} variant="outlined" />}
+                                {selected.details.estimatedMinutes != null && <Chip size="small" label={`Estimated ${selected.details.estimatedMinutes} min`} variant="outlined" />}
+                            </Stack>
+                            {selected.details.description && <Typography sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', mb: 1 }}>{selected.details.description}</Typography>}
+                            {selected.details.preconditions && <Paper variant="outlined" sx={{ p: 2, mb: 1 }}><Typography fontWeight={600}>Preconditions</Typography><Typography sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{selected.details.preconditions}</Typography></Paper>}
+                            {Object.entries(selected.details.customFields ?? {}).map(([key, value]) => <Typography key={key} variant="body2" sx={{ overflowWrap: 'anywhere' }}><strong>{key}:</strong> {value}</Typography>)}
+                        </Box>}
                         {!selected.canRecord && <Alert severity="info" sx={{ mb: 2 }}>{detail.plan.status === 'DRAFT' ? 'This plan is a draft. A manager must start it before results can be recorded.' : detail.plan.status === 'CLOSED' ? 'This plan is closed. Its results and evidence are available for review.' : 'You can review this case. Its assigned tester or a manager can record results.'}</Alert>}
-                        <Typography variant="h6" sx={{ mb: 1 }}>Test steps</Typography>
-                        {!selected.steps.length && <Typography color="text.secondary" sx={{ mb: 2 }}>No steps were defined when this case was added to the plan.</Typography>}
-                        {selected.steps.map((step, index) => <Paper key={index} variant="outlined" sx={{ p: 2, mb: 1.5 }}>
-                            <Typography fontWeight={600} sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{index + 1}. {step.instruction}</Typography>
-                            {step.data && <Typography variant="body2" sx={{ mt: 1, whiteSpace: 'pre-wrap' }}><strong>Test data:</strong> {step.data}</Typography>}
-                            <Typography variant="body2" sx={{ mt: 1, whiteSpace: 'pre-wrap' }}><strong>Expected:</strong> {step.expected}</Typography>
-                        </Paper>)}
+                        {selected.type === 'CUCUMBER_MANUAL' ? <>
+                            <Typography variant="h6" sx={{ mb: 1 }}>Behavior scenario</Typography>
+                            <GherkinView source={selected.steps.map(step => step.instruction).join('\n')} />
+                        </> : <>
+                            <Typography variant="h6" sx={{ mb: 1 }}>Test steps</Typography>
+                            {!selected.steps.length && <Typography color="text.secondary" sx={{ mb: 2 }}>No steps were defined when this case was added to the plan.</Typography>}
+                            {selected.steps.map((step, index) => <Paper key={index} variant="outlined" sx={{ p: 2, mb: 1.5 }}>
+                                <Typography fontWeight={600} sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{index + 1}. {step.instruction}</Typography>
+                                {step.data && <Typography variant="body2" sx={{ mt: 1, whiteSpace: 'pre-wrap' }}><strong>Test data:</strong> {step.data}</Typography>}
+                                <Typography variant="body2" sx={{ mt: 1, whiteSpace: 'pre-wrap' }}><strong>Expected:</strong> {step.expected}</Typography>
+                            </Paper>)}
+                        </>}
                         <Divider sx={{ my: 3 }} />
                         <Typography variant="h6" sx={{ mb: 2 }}>Record the outcome</Typography>
                         <Stack gap={2}>

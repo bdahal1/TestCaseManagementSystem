@@ -16,6 +16,10 @@ public interface TestStepsRepository extends PagingAndSortingRepository<TestStep
 
     Page<TestSteps> findAll(Pageable pageable);
 
+    @org.springframework.data.jpa.repository.Query("select s.testStepDesc from TestSteps s where s.testCase.projects.id = :projectId and s.testType = :type order by s.tsModifiedDate desc")
+    List<String> findRecentDocuments(@org.springframework.data.repository.query.Param("projectId") int projectId,
+            @org.springframework.data.repository.query.Param("type") TestTypes type, Pageable pageable);
+
     List<TestSteps> findTestStepsByTestCaseAndTestTypeOrderByTestStepOrderAsc(TestCase testCase, TestTypes testType);
 
     Page<TestSteps> findAllByTestCaseAndTestType(TestCase testCase, TestTypes testType, Pageable pageable);

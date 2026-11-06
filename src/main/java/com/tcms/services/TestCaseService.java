@@ -20,12 +20,38 @@ import java.util.*;
 @Service
 public class TestCaseService {
 
+    private void details(TestCase testCase, TestCaseInfoDTO request) {
+        if (request.getPriority()!=null) testCase.setPriority(request.getPriority());
+        if (request.getAutomationStatus()!=null) testCase.setAutomationStatus(request.getAutomationStatus());
+        if (request.getComponent()!=null) testCase.setComponent(request.getComponent().trim());
+        if (request.getDescription()!=null) testCase.setDescription(request.getDescription());
+        if (request.getPreconditions()!=null) testCase.setPreconditions(request.getPreconditions());
+        if (request.getEstimatedMinutes()!=null) testCase.setEstimatedMinutes(request.getEstimatedMinutes()==0 ? null : request.getEstimatedMinutes());
+        if (request.getCustomFields()!=null) {
+            var cleaned=new LinkedHashMap<String,String>();
+            request.getCustomFields().forEach((key,value) -> {
+                if (cleaned.put(key.trim(),value)!=null) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST,"Custom field names must be unique");
+            });
+            testCase.setCustomFields(cleaned);
+        }
+        if (request.getOwnerId()!=null) {
+            if (request.getOwnerId()==0) { testCase.setOwnerId(null); return; }
+            Users owner=userRepository.findById(request.getOwnerId().intValue());
+            if (owner==null || !Boolean.TRUE.equals(owner.getIsActive()) || owner.getProjectsSet()==null
+                    || owner.getProjectsSet().stream().noneMatch(p -> p.getId().equals(testCase.getProjects().getId())))
+                throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST,"Choose an active owner assigned to this project");
+            testCase.setOwnerId(owner.getId());
+        }
+    }
+
     public final TestCaseRepository testCaseRepository;
     public final ProjectRepository projectRepository;
     public final TagsRepository tagsRepository;
     public final UserRepository userRepository;
+    private final GherkinDocuments gherkinDocuments;
 
-    public TestCaseService(TestCaseRepository testCaseRepository, ProjectRepository projectRepository, TagsRepository tagsRepository, UserRepository userRepository) {
+    public TestCaseService(TestCaseRepository testCaseRepository, ProjectRepository projectRepository, TagsRepository tagsRepository, UserRepository userRepository, GherkinDocuments gherkinDocuments) {
+        this.gherkinDocuments=gherkinDocuments;
         this.testCaseRepository = testCaseRepository;
         this.projectRepository = projectRepository;
         this.tagsRepository = tagsRepository;
@@ -43,6 +69,7 @@ public class TestCaseService {
     }
 
     @SuppressWarnings("Duplicates")
+    @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<Object> saveTestCase(TestCaseInfoDTO testCaseInfoDTO) {
         TestCase testCase = new TestCase();
         testCase.setTestName(testCaseInfoDTO.getTestName());
@@ -67,11 +94,14 @@ public class TestCaseService {
         testCase.setProjects(project);
         testCase.setTestProjectId(project.getProjectInitials()+ "-" +(project.getIssueCounter() + 1));
         project.setIssueCounter(project.getIssueCounter() + 1);
+        details(testCase,testCaseInfoDTO);
+        if (testCaseInfoDTO.getGherkin()!=null) gherkinDocuments.replace(testCase,testCaseInfoDTO.getGherkin(),fullName);
         testCaseRepository.save(testCase);
         return ResponseEntity.status(HttpStatus.OK).body(testCase);
     }
 
     @SuppressWarnings("Duplicates")
+    @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<Object> editTestCase(TestCaseInfoDTO testCaseInfoDTO, int testCaseId) {
         TestCase testCaseEdit = testCaseRepository.findById(testCaseId);
         if (testCaseEdit == null) {
@@ -81,7 +111,7 @@ public class TestCaseService {
         Users user = userRepository.findByUserName(org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName());
         String fullName = user.getFirstName() + " " + user.getLastName();
         testCaseEdit.setTestModifiedBy(fullName);
-        testCaseEdit.setTestType(testCaseInfoDTO.getTestType());
+        testCaseEdit.setTestType(testCaseInfoDTO.getTestType()==null ? testCaseEdit.getTestType() : testCaseInfoDTO.getTestType());
         testCaseEdit.setTestModifiedDate(Util.parseTimestamp(Util.DATE_TIME_FORMAT.format(new Date())));
         if (testCaseInfoDTO.getSelectedTags() != null) {
             Set<Tags> tagsList = new HashSet<>();
@@ -93,6 +123,8 @@ public class TestCaseService {
             }
             testCaseEdit.setTagsSet(tagsList);
         }
+        details(testCaseEdit,testCaseInfoDTO);
+        if (testCaseInfoDTO.getGherkin()!=null) gherkinDocuments.replace(testCaseEdit,testCaseInfoDTO.getGherkin(),fullName);
         testCaseRepository.save(testCaseEdit);
         return ResponseEntity.status(HttpStatus.OK).body(testCaseEdit);
     }

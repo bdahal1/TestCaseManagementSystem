@@ -27,6 +27,7 @@ import java.util.List;
 public class TestCaseController {
     private final String defaultSize = "1000";
     private final TestCaseRepository testCaseRepository;
+    private final TestStepsRepository testStepsRepository;
     private final TestCaseService testCaseService;
 
     private final ProjectRepository projectRepository;
@@ -35,13 +36,24 @@ public class TestCaseController {
     private final TestCaseExecutionRepository testCaseExecutionRepository;
 
 
-    public TestCaseController(TestCaseRepository testCaseRepository, TestCaseService testCaseService, ProjectRepository projectRepository, TestFolderRepository testFolderRepository, TestExecutionRepository testExecutionRepository, TestCaseExecutionRepository testCaseExecutionRepository) {
+    public TestCaseController(TestCaseRepository testCaseRepository, TestCaseService testCaseService, ProjectRepository projectRepository, TestFolderRepository testFolderRepository, TestExecutionRepository testExecutionRepository, TestCaseExecutionRepository testCaseExecutionRepository, TestStepsRepository testStepsRepository) {
+        this.testStepsRepository=testStepsRepository;
         this.testCaseExecutionRepository=testCaseExecutionRepository;
         this.testCaseRepository = testCaseRepository;
         this.testCaseService = testCaseService;
         this.projectRepository = projectRepository;
         this.testFolderRepository = testFolderRepository;
         this.testExecutionRepository = testExecutionRepository;
+    }
+
+    @GetMapping("/gherkin-suggestions")
+    @PreAuthorize("@projectAccess.project(#p0)")
+    @org.springframework.transaction.annotation.Transactional(readOnly=true)
+    public java.util.List<String> gherkinSuggestions(@RequestParam int projectId) {
+        return testStepsRepository.findRecentDocuments(projectId,com.tcms.enums.TestTypes.CUCUMBER_MANUAL,PageRequest.of(0,100))
+                .stream().flatMap(String::lines).map(String::trim)
+                .filter(line -> line.matches("^(Given|When|Then|And|But|\\*)\\s+\\S.*"))
+                .distinct().limit(200).toList();
     }
 
     @GetMapping("")
@@ -129,7 +141,7 @@ public class TestCaseController {
     @PostMapping("")
     @SuppressWarnings("Duplicates")
     @PreAuthorize("@projectAccess.caseWrite(#p0)")
-    public ResponseEntity<Object> saveTestCase(@jakarta.validation.Valid @RequestBody TestCaseInfoDTO testCaseInfoDTO) {
+    public ResponseEntity<Object> saveTestCase(@org.springframework.validation.annotation.Validated({jakarta.validation.groups.Default.class,TestCaseInfoDTO.Create.class}) @RequestBody TestCaseInfoDTO testCaseInfoDTO) {
         if (testCaseInfoDTO == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Testcase Info Not Found inside body.\n");
         }
@@ -138,6 +150,8 @@ public class TestCaseController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Testcase Name Not Found inside body.\n");
             }
             return testCaseService.saveTestCase(testCaseInfoDTO);
+        } catch (org.springframework.web.server.ResponseStatusException e) {
+            throw e;
         } catch (Exception e) {
             throw new IllegalStateException("Operation failed", e);
         }
@@ -146,12 +160,14 @@ public class TestCaseController {
     @PutMapping("/{testCaseId}")
     @SuppressWarnings("Duplicates")
     @PreAuthorize("@projectAccess.testCase(#p1) and (#p0.projectId == null or @projectAccess.project(#p0.projectId))")
-    public ResponseEntity<Object> editTestCase(@RequestBody TestCaseInfoDTO testCaseInfoDTO, @PathVariable int testCaseId) {
+    public ResponseEntity<Object> editTestCase(@jakarta.validation.Valid @RequestBody TestCaseInfoDTO testCaseInfoDTO, @PathVariable int testCaseId) {
         if (testCaseInfoDTO == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Testcase Info Not Found inside body.\n");
         }
         try {
             return testCaseService.editTestCase(testCaseInfoDTO, testCaseId);
+        } catch (org.springframework.web.server.ResponseStatusException e) {
+            throw e;
         } catch (Exception e) {
             throw new IllegalStateException("Operation failed", e);
         }

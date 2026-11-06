@@ -14,8 +14,10 @@ describe('release plan creation', () => {
         const user = userEvent.setup(); const saved = vi.fn();
         vi.mocked(api.post).mockResolvedValue({ data: { id: 11 } });
         render(<PlanEditor open projectId={2} onClose={vi.fn()} onSaved={saved} />);
-        await user.type(screen.getByRole('textbox', { name: 'Plan name' }), 'Release 2.4 regression');
-        await user.type(screen.getByLabelText('Release'), '2.4');
+        await user.click(screen.getByRole('textbox', { name: 'Plan name' }));
+        await user.paste('Release 2.4 regression');
+        await user.click(screen.getByLabelText('Release'));
+        await user.paste('2.4');
         await user.click(screen.getByRole('combobox', { name: 'Test cases' }));
         await user.click(await screen.findByRole('option', { name: 'Sign in' }));
         await user.keyboard('{Escape}');

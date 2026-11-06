@@ -3,6 +3,8 @@ package com.tcms.models;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.tcms.enums.TestTypes;
+import com.tcms.enums.CasePriority;
+import com.tcms.enums.AutomationStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -47,8 +49,21 @@ public class TestCase {
     @Column(name = "tc_type", nullable = false)
     private TestTypes testType = TestTypes.MANUAL;
 
-    @OneToMany(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.PERSIST}, fetch = FetchType.LAZY, orphanRemoval = true)
-    @JoinTable(name = "case_steps", joinColumns = {@JoinColumn(name = "case_id", referencedColumnName = "tc_id")}, inverseJoinColumns = {@JoinColumn(name = "step_id", referencedColumnName = "ts_id")})
+    // Nullable columns allow existing libraries to adopt structured details gradually.
+    @Enumerated(EnumType.STRING) private CasePriority priority = CasePriority.MEDIUM;
+    @Enumerated(EnumType.STRING) private AutomationStatus automationStatus = AutomationStatus.NOT_AUTOMATED;
+    @Column(length=100) private String component;
+    private Integer ownerId;
+    private Integer estimatedMinutes;
+    @Lob @Column(length=10000) private String description;
+    @Lob @Column(length=10000) private String preconditions;
+    @ElementCollection
+    @CollectionTable(name="test_case_custom_fields", joinColumns=@JoinColumn(name="case_id"))
+    @MapKeyColumn(name="field_name", length=80)
+    @Column(name="field_value", length=1000)
+    private java.util.Map<String,String> customFields = new java.util.LinkedHashMap<>();
+
+    @OneToMany(mappedBy = "testCase", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private Set<TestSteps> testStepsSet;
 
     @ManyToOne(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.PERSIST}, fetch = FetchType.LAZY)

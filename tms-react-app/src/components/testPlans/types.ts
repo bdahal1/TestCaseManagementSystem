@@ -9,6 +9,7 @@ export interface PlanSummary extends Metadata {
 export interface Evidence { id: number; name: string; contentType: string; size: number; uploadedAt: string; uploadedBy: string }
 export interface Attempt { id: number; status: ResultStatus; comment: string | null; actualResult: string | null; defectUrl: string | null; recordedAt: string; recordedBy: string }
 export interface PlanCase {
+    details?: import('../testCases/caseDetails').CaseDetails | null;
     id: number; name: string; type: string; status: ResultStatus; comment: string | null; actualResult: string | null; defectUrl: string | null;
     revision: number; assignee: Person | null; recordedAt: string | null; recordedBy: string | null; canRecord: boolean;
     steps: { order: number; instruction: string; data: string | null; expected: string }[];

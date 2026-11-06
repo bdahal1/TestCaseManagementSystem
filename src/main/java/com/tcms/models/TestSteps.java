@@ -23,7 +23,8 @@ public class TestSteps {
     @Column(name = "ts_id", nullable = false)
     private Integer id;
 
-    @Column(name = "ts_step_desc", nullable = false)
+    @Lob
+    @Column(name = "ts_step_desc", nullable = false, length = 1048576)
     private String testStepDesc;
 
     @Column(name = "ts_test_data")

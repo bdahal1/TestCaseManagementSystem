@@ -4,7 +4,7 @@ Spring Boot API (Java 26, MySQL) with a React/TypeScript frontend.
 
 ## Run locally
 
-1. Install Java 26, Maven, Node.js 22, and MySQL. Create a `tcms` database.
+1. Install Java 26, Maven, Node.js 22, and MySQL. With nvm, run `nvm install` and `nvm use` from the repository root to select the version pinned in `.nvmrc`. Create a `tcms` database.
 2. Copy `.env.example` to `.env` in the repository root, set your database password, and replace the signing-key placeholder with the output of `openssl rand -hex 32`. Use plain `KEY=value` lines without shell quotes or `export`. Spring Boot loads this ignored local file automatically when the working directory is the repository root, including when launched from an IDE. Existing environment variables take precedence over `.env` values. If local settings have already been created, keep that file instead of replacing it.
 
    For deployment, set `DB_PASSWORD` and `JWT_SECRET` in the deployment environment. The local `.env` is optional, is excluded from Git, and is not bundled into the application JAR. Missing secrets still prevent startup when neither an environment variable nor a local value is present.
@@ -13,6 +13,8 @@ Spring Boot API (Java 26, MySQL) with a React/TypeScript frontend.
 4. In `tms-react-app`, run `npm ci`, then `npm run dev`. Set `VITE_API_BASE_URL=/dhtcms/api/v1` in `tms-react-app/.env.local` to use Vite's local API proxy.
 
 The legacy SQL dump in `Dumps` is optional sample data. Inspect it before importing into a disposable local database; do not import it into an existing environment.
+
+For IntelliJ npm run configurations, select the Node interpreter installed by `nvm install` (find its path with `nvm which`). On Apple Silicon, use the native ARM64 interpreter. After changing Node versions or architecture, run `npm ci --include=optional` in `tms-react-app` to reinstall native dependencies such as Rollup. The install checks for Node 22.12 or newer within the 22.x series; CI uses the same `.nvmrc` version.
 
 ## Verification
 
@@ -60,6 +62,33 @@ Cases added to a run retain a snapshot of their name, type, and steps. New resul
 Existing executions appear in the same overview. Old runs without snapshots continue to display their live case content until a snapshot is first captured; historical steps and result attempts from before this feature cannot be reconstructed. New plans enforce tester assignments; legacy executions retain their previous project-member permissions.
 
 The schema additions use the existing Hibernate update configuration on application restart. Verification uses an isolated H2 database rather than your local MySQL database. Versioned production database migrations remain separate work.
+
+## Cucumber Manual scenarios
+
+Choose **Cucumber Manual** when creating or editing a case. Write Given/When/Then steps directly, a Scenario, or a complete Feature. The editor provides colored keywords and tables, scenario and outline templates, syntax validation, and a formatted preview.
+
+New lines suggest the next keyword. **Ctrl+Space** or **Suggest step** opens suggestions, **Tab** accepts a suggestion, and **Esc** dismisses it. Existing Cucumber steps from the current project are also suggested. Use **Scenario outline** for parameterized cases, **Add Examples table** to insert sample rows, and **Format tables** to align columns.
+
+Cucumber Manual runs display the saved scenario and example tables. The Then steps express the expected outcome; there is no separate expected-result field for this type. Testers still record a result, observations, notes, and evidence. Conventional Manual cases retain their expected-result fields.
+
+Saving stores the scenario and case metadata together, preserving indentation and line breaks. Existing Cucumber step rows are combined when opened in the editor; plans retain their original snapshots when the library scenario changes.
+
+## Case details and reports
+
+Open **Case details** in the case editor to set priority, automation status, component, a project owner, estimated minutes per execution, description, preconditions, and up to 20 custom text fields. An owner maintains the library case; assigned testers perform individual runs. Owners must be active project members. Leave duration blank when unknown. Clear an optional field explicitly to remove its value; older API clients that omit details retain their existing values on edit.
+
+New run snapshots preserve these details along with the steps. The runner shows the saved description, preconditions, priority, component, estimate, and custom fields. Older snapshots remain readable and have no reconstructed historical metadata.
+
+Choose **Reports** in the project sidebar for outcomes, declared automation status, library priorities, daily result activity, latest case outcomes, plan comparisons, and active tester workload. Export all filtered case rows, plan comparisons, or daily activity as CSV.
+
+- Environment and release filters select plans, results, and workload. Current library counts always cover all project cases.
+- Execution totals count case memberships in active and closed plans; draft plans are excluded. The same case in two plans counts twice. Latest-case outcomes count each library case once.
+- Pass rate is `PASS / (PASS + FAIL)`; completion is `(PASS + FAIL + SKIPPED) / all case executions`. Undefined rates display a dash.
+- The date range applies only to daily activity, using inclusive UTC dates (up to 366 days). Activity counts saved attempts, including reruns and result resets. It does not measure unique cases or historical end-of-day pass rates.
+- Linked defects count distinct URLs without inferring whether those defects are open. Remaining effort uses estimates preserved in active run snapshots, with missing estimates shown separately. Actual elapsed testing time and requirements coverage are not measured.
+- A library case whose name, type, steps, or preserved details differ from its latest run snapshot is labeled **Library changed**. The old result remains available for review; the label does not imply the updated definition has passed. Metadata that was absent from older snapshots is not compared.
+
+The API is `GET /projectReports/{projectId}` with optional `environment`, `release`, `from`, and `to` filters. It requires access to the project.
 
 ## Remaining modernization work
 

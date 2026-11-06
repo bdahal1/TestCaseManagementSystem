@@ -11,6 +11,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface TestExecutionRepository extends PagingAndSortingRepository<TestExecutions, Integer>, JpaSpecificationExecutor<TestExecutions> {
 
+    java.util.List<TestExecutions> findByProjectsIdOrderByIdDesc(int projectId);
+
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @org.springframework.data.jpa.repository.Query("select e from TestExecutions e where e.id = :id")
     java.util.Optional<TestExecutions> findForUpdate(@org.springframework.data.repository.query.Param("id") int id);

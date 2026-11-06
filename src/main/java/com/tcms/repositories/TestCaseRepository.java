@@ -14,6 +14,8 @@ import java.util.Set;
 @Repository
 public interface TestCaseRepository extends PagingAndSortingRepository<TestCase, Integer>, JpaSpecificationExecutor<TestCase> {
 
+    List<TestCase> findByProjectsIdOrderByIdAsc(int projectId);
+
     Page<TestCase> findAll(Pageable pageable);
 
     Page<TestCase> findByProjectsIn(Set<Projects> projectsSet, Pageable pageable);

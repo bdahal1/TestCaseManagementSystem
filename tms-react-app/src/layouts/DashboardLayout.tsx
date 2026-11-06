@@ -24,6 +24,7 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import FolderIcon from '@mui/icons-material/Folder';
 import PlayCircleFilledIcon from '@mui/icons-material/PlayCircleFilled';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
@@ -188,7 +189,8 @@ const DashboardLayout: React.FC = () => {
         ...(projectId ? [
             { label: "Test Cases", icon: <FolderIcon />, path: `/dashboard/project/${projectId}/test-cases` },
             { label: "Test Folders", icon: <FolderIcon />, path: `/dashboard/project/${projectId}/test-folders` },
-            { label: "Test Plans & Runs", icon: <PlayCircleFilledIcon />, path: `/dashboard/project/${projectId}/test-plans` }
+            { label: "Test Plans & Runs", icon: <PlayCircleFilledIcon />, path: `/dashboard/project/${projectId}/test-plans` },
+            { label: "Reports", icon: <BarChartIcon />, path: `/dashboard/project/${projectId}/reports` }
         ] : []),
     ];
 

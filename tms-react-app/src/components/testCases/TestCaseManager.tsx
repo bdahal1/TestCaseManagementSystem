@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import {
     Alert,
     Autocomplete,
     Button,
     CircularProgress,
+    Chip,
     Dialog,
     DialogActions,
     DialogContent,
@@ -34,6 +35,12 @@ import { InputAdornment } from '@mui/material';
 import { TestTypes } from "../../types/TestCase.ts";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
+import { errorMessage } from "../testPlans/types";
+import type { Person } from "../testPlans/types";
+import CaseDetailsFields from './CaseDetailsFields';
+import { detailsDraft, detailsPayload, detailLabel, priorityColor, priorities, type CaseDetails } from './caseDetails';
+
+const GherkinEditor = lazy(() => import("../gherkin/GherkinEditor"));
 
 // Constants
 const API_URLS = {
@@ -70,9 +77,10 @@ interface TestStep {
     testStepData: string;
     testExpectedOutput: string;
     testType: TestTypes;
+    testStepOrder?: number;
 }
 
-interface TestCase {
+interface TestCase extends CaseDetails {
     id: number;
     testName: string;
     testProjectId: string;
@@ -105,6 +113,10 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
     const [formMode, setFormMode] = useState<"create" | "edit">("create");
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredTestCases, setFilteredTestCases] = useState<TestCase[]>([]);
+    const [caseDetails, setCaseDetails] = useState(() => detailsDraft());
+    const [owners, setOwners] = useState<Person[]>([]);
+    const [ownersError, setOwnersError] = useState('');
+    const [priorityFilter, setPriorityFilter] = useState('all');
 
     // Form state
     const [formData, setFormData] = useState({
@@ -115,6 +127,12 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
     });
 
     const [steps, setSteps] = useState<TestStep[]>([]);
+    const [gherkin, setGherkin] = useState('');
+    const [stepSuggestions, setStepSuggestions] = useState<string[]>([]);
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState('');
+    const [stepsLoading, setStepsLoading] = useState(false);
+    const drafts = useRef<Partial<Record<TestTypes, { steps: TestStep[]; gherkin: string }>>>({});
 
     // Memoized auth headers
 
@@ -157,8 +175,11 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
 
     // Handlers
     const handleOpenDialog = async (testCase: TestCase | null, overrideTestType?: TestTypes) => {
+        setSaveError('');
+        drafts.current = {};
         if (testCase) {
-            const effectiveType = overrideTestType || testCase.testType;
+            setCaseDetails(detailsDraft(testCase));
+            const effectiveType = overrideTestType || testCase.testType || TestTypes.MANUAL;
             setFormMode("edit");
             setSelectedTestCase(testCase);
             setFormData({
@@ -173,14 +194,19 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                 const response = await api.get(
                     `${API_URLS.TEST_STEPS}/testCaseId/${testCase.id}?type=${effectiveType}`
                 );
-                setSteps(response.data.testSteps);
+                const loaded: TestStep[] = response.data.testSteps ?? [];
+                setSteps(loaded);
+                setGherkin([...loaded].sort((a, b) => (a.testStepOrder ?? 0) - (b.testStepOrder ?? 0)).map(step => step.testStepDesc).join('\n'));
             } catch (err) {
-                setError("Failed to fetch steps.");
+                setSaveError("Could not load this test definition. Close and reopen it to retry.");
                 console.error("Error fetching steps:", err);
             }
         } else {
+            setCaseDetails(detailsDraft());
             setFormMode("create");
             setSteps([]);
+            setGherkin('');
+            setSelectedTags([]);
             setFormData({
                 testName: formData.testName,
                 testCaseId: 0,
@@ -189,6 +215,22 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
             });
         }
         setDialogOpen(true);
+    };
+
+    const handleTypeChange = async (next: TestTypes) => {
+        if (formData.testType) drafts.current[formData.testType] = { steps, gherkin };
+        handleFormChange('testType', next); setSaveError('');
+        const cached = drafts.current[next];
+        if (cached) { setSteps(cached.steps); setGherkin(cached.gherkin); return; }
+        setSteps([]); setGherkin('');
+        if (!selectedTestCase) return;
+        setStepsLoading(true);
+        try {
+            const { data } = await api.get(`${API_URLS.TEST_STEPS}/testCaseId/${selectedTestCase.id}?type=${next}`);
+            const loaded: TestStep[] = data.testSteps ?? [];
+            setSteps(loaded); setGherkin([...loaded].sort((a, b) => (a.testStepOrder ?? 0) - (b.testStepOrder ?? 0)).map(step => step.testStepDesc).join('\n'));
+        } catch (err) { setSaveError(errorMessage(err, 'Could not load this test definition. Switch back and retry.')); }
+        finally { setStepsLoading(false); }
     };
 
     const handleCloseDialog = () => {
@@ -203,13 +245,6 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
 
 
     // ...
-
-    // Validators
-    const validateGherkinStep = (stepDesc: string): boolean => {
-        const gherkinKeywords = ["Given", "When", "Then", "And", "But", "*"];
-        const firstWord = stepDesc.trim().split(" ")[0];
-        return gherkinKeywords.includes(firstWord);
-    };
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
@@ -229,37 +264,42 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
             return;
         }
 
-        // Gherkin Validation
+        if (saving || stepsLoading) return;
         if (formData.testType === TestTypes.CUCUMBER_MANUAL) {
-            const invalidSteps = steps.filter(step => !validateGherkinStep(step.testStepDesc));
-            if (invalidSteps.length > 0) {
-                showSnackbar(`Invalid Gherkin step(s) found. Steps must start with Given, When, Then, And, or But.`);
-                return;
-            }
+            const { validateGherkin } = await import('../gherkin/gherkinValidation');
+            const issue = validateGherkin(gherkin, formData.testName).issues[0];
+            if (issue) { setSaveError(`Line ${issue.line}: ${issue.message}`); return; }
         }
 
+        let extraDetails;
+        try { extraDetails = detailsPayload(caseDetails); }
+        catch (error) { setSaveError((error as Error).message); return; }
         const testPayload = {
+            ...extraDetails,
             testName: formData.testName,
             projectId: formData.projectId,
             userId: user?.userId,
             selectedTags: selectedTags.map(tag => tag.id),
-            testType: formData.testType
+            testType: formData.testType,
+            ...(formData.testType === TestTypes.CUCUMBER_MANUAL ? { gherkin } : {})
         };
 
+        setSaving(true); setSaveError('');
         try {
             let currentTestCaseId = formData.testCaseId;
 
             if (formMode === "edit" && selectedTestCase) {
                 await api.put(`${API_URLS.TESTCASE}/${selectedTestCase.id}`, testPayload);
                 currentTestCaseId = selectedTestCase.id;
-                showSnackbar("Test case updated successfully!");
             } else {
                 const response = await api.post(API_URLS.TESTCASE, testPayload);
                 currentTestCaseId = response.data.id;
-                showSnackbar("Test case created successfully!");
+                setFormData(previous => ({ ...previous, testCaseId: currentTestCaseId }));
+                setSelectedTestCase(response.data);
+                setFormMode('edit');
             }
 
-            if (steps.length) {
+            if (steps.length && formData.testType !== TestTypes.CUCUMBER_MANUAL) {
                 const testStepsPayload = steps.map((step, index) => ({
                     testStepDesc: step.testStepDesc.split('\n').map(line => line.trim()).join('\n'),
                     testExpectedOutput: step.testExpectedOutput,
@@ -274,11 +314,13 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
             }
 
             await fetchTestCases();
+            showSnackbar('Test case saved successfully!');
+            handleCloseDialog();
         } catch (err) {
-            showSnackbar("Failed to save test case or steps.");
+            setSaveError(errorMessage(err, 'Could not save the test case. Your draft is still here.'));
             console.error("Error saving test case:", err);
         } finally {
-            handleCloseDialog();
+            setSaving(false);
         }
     };
 
@@ -303,6 +345,8 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
         setSelectedTags([]);
         setSteps([]);
         setSelectedTestCase(null);
+        setGherkin(''); setSaveError(''); drafts.current = {};
+        setCaseDetails(detailsDraft());
     };
 
     const showSnackbar = (message: string) => {
@@ -335,6 +379,25 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
         setSteps(updatedSteps);
     };
 
+    useEffect(() => {
+        if (!formData.projectId) return;
+        let active = true;
+        setOwners([]); setOwnersError('');
+        api.get(`/testPlans/project/${formData.projectId}/testers`).then(({ data }) => { if (active) setOwners(Array.isArray(data) ? data : []); })
+            .catch(() => { if (active) setOwnersError('Could not load project owners. Reopen the case to retry.'); });
+        return () => { active = false; };
+    }, [formData.projectId]);
+
+    useEffect(() => {
+        if (!dialogOpen || formData.testType !== TestTypes.CUCUMBER_MANUAL || !formData.projectId) return;
+        let active = true;
+        setStepSuggestions([]);
+        api.get('/testCase/gherkin-suggestions', { params: { projectId: formData.projectId } })
+            .then(({ data }) => { if (active) setStepSuggestions(Array.isArray(data) ? data : []); })
+            .catch(() => { /* Keyword suggestions remain available if project suggestions cannot load. */ });
+        return () => { active = false; };
+    }, [dialogOpen, formData.testType, formData.projectId]);
+
     // Effects
     useEffect(() => {
         if (projId) {
@@ -350,8 +413,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
     }, [projects]);
 
     useEffect(() => {
-        if ((formData.testType === TestTypes.CUCUMBER_MANUAL ||
-            formData.testType === TestTypes.CUCUMBER_AUTOMATION) &&
+        if (formData.testType === TestTypes.CUCUMBER_AUTOMATION &&
             steps.length === 0) {
             addStep();
         }
@@ -360,12 +422,14 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
     useEffect(() => {
         const lowerCaseQuery = searchQuery.toLowerCase();
         const filtered = testCases.filter(tc =>
+            (priorityFilter === 'all' || (tc.priority ?? 'MEDIUM') === priorityFilter) && (
             tc.testName.toLowerCase().includes(lowerCaseQuery) ||
+            (tc.component ?? '').toLowerCase().includes(lowerCaseQuery) ||
             tc.testProjectId.toLowerCase().includes(lowerCaseQuery) ||
-            tc.tagsSet.some(tag => tag.tagName.toLowerCase().includes(lowerCaseQuery))
+            (tc.tagsSet ?? []).some(tag => tag.tagName.toLowerCase().includes(lowerCaseQuery)))
         );
         setFilteredTestCases(filtered);
-    }, [searchQuery, testCases]);
+    }, [searchQuery, testCases, priorityFilter]);
 
     // Render
     if (!projId) return <div>Please select a project.</div>;
@@ -374,7 +438,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
 
     return (
         <Box sx={{ padding: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 3 }}>
                 <TextField
                     placeholder="Search test cases..."
                     variant="outlined"
@@ -390,6 +454,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                         ),
                     }}
                 />
+                <TextField select size="small" label="Filter by priority" value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} sx={{ minWidth: 160 }}><MenuItem value="all">All priorities</MenuItem>{priorities.map(p => <MenuItem key={p} value={p}>{detailLabel(p)}</MenuItem>)}</TextField>
                 <Button
                     variant="contained"
                     color="primary"
@@ -408,6 +473,8 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                             <TableCell>Test-ID</TableCell>
                             <TableCell>Name</TableCell>
                             <TableCell>Project</TableCell>
+                            <TableCell>Priority / Component</TableCell>
+                            <TableCell>Automation</TableCell>
                             <TableCell>Tags</TableCell>
                             <TableCell>Created By</TableCell>
                             <TableCell>Actions</TableCell>
@@ -427,6 +494,8 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                                     </Link>
                                 </TableCell>
                                 <TableCell>{tc.projects.projectName}</TableCell>
+                                <TableCell><Chip size="small" label={detailLabel(tc.priority ?? 'MEDIUM')} color={priorityColor(tc.priority ?? 'MEDIUM')} variant="outlined" />{tc.component && <Box sx={{ mt: 0.5, fontSize: 12, color: 'text.secondary' }}>{tc.component}</Box>}</TableCell>
+                                <TableCell>{detailLabel(tc.automationStatus ?? 'NOT_AUTOMATED')}</TableCell>
                                 <TableCell>{tc.tagsSet.map(t => t.tagName).join(", ")}</TableCell>
                                 <TableCell>{tc.testCreatedBy}</TableCell>
                                 <TableCell>
@@ -445,16 +514,17 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
 
             <Dialog
                 open={dialogOpen}
-                onClose={handleCloseDialog}
+                onClose={saving ? undefined : handleCloseDialog}
                 fullWidth
-                maxWidth="md"
+                maxWidth={formData.testType === TestTypes.CUCUMBER_MANUAL ? "lg" : "md"}
                 PaperProps={{ sx: { borderRadius: '20px', p: 1 } }}
             >
                 <DialogTitle sx={{ fontWeight: 700, fontSize: '1.5rem', pb: 1 }}>
                     {formMode === "create" ? "New Test Case" : "Edit Test Case"}
                 </DialogTitle>
                 <DialogContent sx={{ p: 3, pt: 1, display: "flex", flexDirection: "column", gap: 3 }}>
-                    <Box component="form" sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {saveError && <Alert severity="error">{saveError}</Alert>}
+                    <Box component="form" sx={{ mt: 1, display: 'grid', gridTemplateColumns: formData.testType === TestTypes.CUCUMBER_MANUAL ? { xs: '1fr', sm: '1fr 1fr' } : '1fr', gap: 2 }}>
                         {projects.length > 1 ? (
                             <FormControl fullWidth>
                                 <InputLabel>Project</InputLabel>
@@ -559,12 +629,8 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                         />
 
                         <FormControl fullWidth required>
-                            <InputLabel>Test Type</InputLabel>
-                            <Select value={formData.testType} onChange={(e) => {
-                                const selectedValue = e.target.value as TestTypes;
-                                handleFormChange("testType", selectedValue);
-                                handleOpenDialog(selectedTestCase, selectedValue).then();
-                            }} label="Test Type" variant="outlined">
+                            <InputLabel id="test-case-type-label">Test Type</InputLabel>
+                            <Select labelId="test-case-type-label" id="test-case-type" value={formData.testType} disabled={saving || stepsLoading} onChange={(e) => void handleTypeChange(e.target.value as TestTypes)} label="Test Type" variant="outlined">
                                 {TEST_TYPE_OPTIONS.map((type) => (
                                     <MenuItem key={type.value} value={type.value}>
                                         {type.label}
@@ -574,7 +640,9 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                         </FormControl>
                     </Box>
 
-                    <Box sx={{ mt: 1, p: 2, backgroundColor: 'background.default', borderRadius: 3 }}>
+                    <CaseDetailsFields value={caseDetails} onChange={setCaseDetails} owners={owners} ownersError={ownersError} disabled={saving} />
+
+                    <Box sx={{ mt: 1, p: formData.testType === TestTypes.CUCUMBER_MANUAL ? 0 : 2, backgroundColor: 'background.default', borderRadius: 3 }}>
                         {formData.testType === TestTypes.MANUAL && (
                             <>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -633,25 +701,9 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                         )}
 
                         {formData.testType === TestTypes.CUCUMBER_MANUAL && (
-                            <>
-                                <Box sx={{ display: "grid", gridTemplateColumns: "1fr", gap: 2, mb: 2 }}>
-                                    {steps.map((step, index) => (
-                                        <Box key={index}>
-                                            <TextField
-                                                label="Cucumber Gherkin Steps"
-                                                placeholder="Given I am on the login page..."
-                                                value={step.testStepDesc}
-                                                onChange={(e) => handleStepChange(e.target.value, index, "testStepDesc")}
-                                                fullWidth
-                                                multiline
-                                                minRows={3}
-                                                variant="outlined"
-                                                sx={{ backgroundColor: 'background.paper' }}
-                                            />
-                                        </Box>
-                                    ))}
-                                </Box>
-                            </>
+                            <Suspense fallback={<CircularProgress aria-label="Loading Gherkin editor" />}>
+                                {stepsLoading ? <CircularProgress aria-label="Loading scenario" /> : <GherkinEditor value={gherkin} onChange={setGherkin} title={formData.testName} suggestions={stepSuggestions} disabled={saving} />}
+                            </Suspense>
                         )}
 
                         {formData.testType === TestTypes.CUCUMBER_AUTOMATION && (
@@ -719,16 +771,17 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                     </Box>
                 </DialogContent>
                 <DialogActions sx={{ p: 3, pt: 1 }}>
-                    <Button onClick={handleCloseDialog} variant="text" color="inherit" sx={{ borderRadius: '10px' }}>
+                    <Button disabled={saving} onClick={handleCloseDialog} variant="text" color="inherit" sx={{ borderRadius: '10px' }}>
                         Cancel
                     </Button>
                     <Button
                         variant="contained"
                         onClick={handleSubmit}
+                        disabled={saving || stepsLoading}
                         color="primary"
                         sx={{ borderRadius: '10px', px: 3 }}
                     >
-                        {formMode === "create" ? "Create Case" : "Save Changes"}
+                        {saving ? "Saving…" : formMode === "create" ? "Create Case" : "Save Changes"}
                     </Button>
                 </DialogActions>
             </Dialog>

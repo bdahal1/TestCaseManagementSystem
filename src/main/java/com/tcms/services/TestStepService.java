@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 
 @Service
+@org.springframework.transaction.annotation.Transactional
 public class TestStepService {
     public final UserRepository userRepository;
     public final TestCaseRepository testCaseRepository;
@@ -54,7 +55,7 @@ public class TestStepService {
         testSteps.setTestCase(testCaseRepository.findById(testStepInfoDTO.getTestCaseId()));
         testSteps.setTestStepData(testStepInfoDTO.getTestStepData());
         testSteps.setTestStepDesc(testStepInfoDTO.getTestStepDesc());
-        testSteps.setTestExpectedOutput(testStepInfoDTO.getTestExpectedOutput());
+        testSteps.setTestExpectedOutput(testStepInfoDTO.getTestType()==com.tcms.enums.TestTypes.CUCUMBER_MANUAL ? "" : testStepInfoDTO.getTestExpectedOutput());
         TestSteps newOrder = testStepsRepository.findFirstByTestCaseOrderByTestStepOrderDesc(testCaseRepository.findById(testStepInfoDTO.getTestCaseId()));
         testSteps.setTestStepOrder(newOrder == null ? 1 : newOrder.getTestStepOrder() + 1);
         testSteps.setTsCreatedBy(fullName);
@@ -77,7 +78,7 @@ public class TestStepService {
         testSteps.setTestCase(testSteps.getTestCase());
         testSteps.setTestStepData(testStepInfoDTO.getTestStepData() == null ? testSteps.getTestRemarks() : testStepInfoDTO.getTestStepData());
         testSteps.setTestStepDesc(testStepInfoDTO.getTestStepDesc() == null ? testSteps.getTestStepDesc() : testStepInfoDTO.getTestStepDesc());
-        testSteps.setTestExpectedOutput(testStepInfoDTO.getTestExpectedOutput() == null ? testSteps.getTestExpectedOutput() : testStepInfoDTO.getTestExpectedOutput());
+        testSteps.setTestExpectedOutput(testStepInfoDTO.getTestType()==com.tcms.enums.TestTypes.CUCUMBER_MANUAL ? "" : testStepInfoDTO.getTestExpectedOutput() == null ? testSteps.getTestExpectedOutput() : testStepInfoDTO.getTestExpectedOutput());
         testSteps.setTestStepOrder(testSteps.getTestStepOrder());
         testSteps.setTsCreatedBy(testSteps.getTsCreatedBy());
         testSteps.setTsCreatedDate(testSteps.getTsCreatedDate());

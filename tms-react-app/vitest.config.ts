@@ -9,5 +9,8 @@ export default defineConfig({
         environment: 'jsdom',
         setupFiles: './src/test/setup.ts',
         css: false,
+        // Keep interactive MUI tests stable on shared CI runners.
+        maxWorkers: 2,
+        testTimeout: 15000,
     },
 });

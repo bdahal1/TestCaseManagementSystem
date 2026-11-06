@@ -104,7 +104,7 @@ public class TestStepsController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("TestSteps Info Not Found inside body.\n");
         }
         try {
-            if (testStepInfoDTO.getTestStepDesc() == null || testStepInfoDTO.getTestCaseId() == 0 || testStepInfoDTO.getTestExpectedOutput() == null) {
+            if (testStepInfoDTO.getTestStepDesc() == null || testStepInfoDTO.getTestCaseId() == 0 || (testStepInfoDTO.getTestType()!=TestTypes.CUCUMBER_MANUAL && testStepInfoDTO.getTestExpectedOutput() == null)) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("TestStep required info Not Found inside body.\n" + testStepInfoDTO);
             }
             TestSteps testSteps = testStepService.editTestSteps(testStepInfoDTO, testStepId);

@@ -9,14 +9,16 @@ public final class PlanResponses {
     private PlanResponses() {}
     public record Person(int id, String name) {}
     public record Step(Integer order, String instruction, String data, String expected) {}
-    public record Snapshot(String name, TestTypes type, List<Step> steps) {}
+    public record CaseDetails(CasePriority priority, AutomationStatus automationStatus, String component, Integer ownerId,
+                              Integer estimatedMinutes, String description, String preconditions, Map<String,String> customFields) {}
+    public record Snapshot(String name, TestTypes type, List<Step> steps, CaseDetails details) {}
     public record Evidence(int id, String name, String contentType, long size, Instant uploadedAt, String uploadedBy) {}
     public record Attempt(int id, TestResult status, String comment, String actualResult, String defectUrl,
                           Instant recordedAt, String recordedBy) {}
     public record Case(int id, String name, TestTypes type, List<Step> steps, TestResult status,
                        String comment, String actualResult, String defectUrl, long revision,
                        Person assignee, Instant recordedAt, String recordedBy, boolean canRecord,
-                       List<Evidence> evidence, List<Attempt> history) {}
+                       List<Evidence> evidence, List<Attempt> history, CaseDetails details) {}
     public record Summary(int id, int projectId, String name, String release, String build, String environment, LocalDate dueDate,
                           ExecutionStatus status, String description, int total, int completed,
                           int assignedToMe, int unassigned, Map<TestResult, Long> results) {}

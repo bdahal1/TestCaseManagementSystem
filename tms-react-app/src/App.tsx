@@ -8,6 +8,12 @@ import TestFolderComponent from "./components/testFolders/TestFolderManager";
 import TestPlans from "./components/testPlans/TestPlans";
 import TestPlanWorkspace from "./components/testPlans/TestPlanWorkspace";
 import AdminPage from "./pages/AdminPage";
+import ProjectReports from './components/reports/ProjectReports';
+
+const ProjectReportsRoute = () => {
+    const { projectId } = useParams();
+    return projectId ? <ProjectReports projectId={Number(projectId)} /> : <Navigate to="/dashboard" />;
+};
 
 // Wrapper components to extract route params
 const TestCaseRoute = () => {
@@ -58,6 +64,7 @@ function AppRoutes() {
                     <Route path="project/:projectId/test-folders" element={<TestFolderRoute />} />
                     <Route path="project/:projectId/test-plans" element={<TestExecutionRoute />} />
                     <Route path="project/:projectId/test-plans/:planId" element={<TestPlanRoute />} />
+                    <Route path="project/:projectId/reports" element={<ProjectReportsRoute />} />
                     <Route path="project/:projectId/test-executions" element={<TestExecutionRoute />} />
                     <Route path="admin" element={<AdminPage />} />
                 </Route>

@@ -27,7 +27,8 @@ describe('guided test runner', () => {
         render(<Harness />);
         await user.click(screen.getByRole('combobox', { name: 'Result' }));
         await user.click(screen.getByRole('option', { name: 'Pass' }));
-        await user.type(screen.getByLabelText('Actual result'), 'Dashboard visible');
+        await user.click(screen.getByLabelText('Actual result'));
+        await user.paste('Dashboard visible');
         await user.click(screen.getByRole('button', { name: 'Save & next' }));
         await waitFor(() => expect(api.post).toHaveBeenCalledWith('/testPlans/10/cases/1/results', expect.objectContaining({ status: 'PASS', actualResult: 'Dashboard visible', expectedRevision: 0 })));
         expect(await screen.findByRole('heading', { name: 'Case 2' })).toBeInTheDocument();
@@ -36,7 +37,8 @@ describe('guided test runner', () => {
         const user = userEvent.setup();
         vi.mocked(api.post).mockRejectedValue({ response: { data: { description: 'This result changed. Reload before saving your result.' } } });
         render(<TestRunner open detail={fixture()} onClose={() => undefined} onChanged={vi.fn()} />);
-        await user.type(screen.getByLabelText('Actual result'), 'My unsaved observation');
+        await user.click(screen.getByLabelText('Actual result'));
+        await user.paste('My unsaved observation');
         await user.click(screen.getByRole('button', { name: 'Save & next' }));
         expect(await screen.findByText('This result changed. Reload before saving your result.')).toBeInTheDocument();
         expect(screen.getByLabelText('Actual result')).toHaveValue('My unsaved observation');
@@ -45,7 +47,8 @@ describe('guided test runner', () => {
     it('requires an explicit discard when closing an unsaved result', async () => {
         const user = userEvent.setup(); const close = vi.fn();
         render(<TestRunner open detail={fixture()} onClose={close} onChanged={vi.fn()} />);
-        await user.type(screen.getByLabelText('Notes or reason'), 'Investigating');
+        await user.click(screen.getByLabelText('Notes or reason'));
+        await user.paste('Investigating');
         await user.click(screen.getByRole('button', { name: 'Close runner' }));
         expect(close).not.toHaveBeenCalled();
         await user.click(screen.getByRole('button', { name: 'Discard & close' }));
@@ -67,11 +70,27 @@ describe('guided test runner', () => {
             }} />;
         }
         render(<Harness />);
-        await user.type(screen.getByLabelText('Actual result'), 'Failure details being drafted');
+        await user.click(screen.getByLabelText('Actual result'));
+        await user.paste('Failure details being drafted');
         const input = screen.getByLabelText('Attach evidence file') as HTMLInputElement;
         await user.upload(input, new File(['png'], 'failure.png', { type: 'image/png' }));
         await screen.findByRole('button', { name: /^failure\.png/ });
         expect(screen.getByLabelText('Actual result')).toHaveValue('Failure details being drafted');
         expect(api.post).toHaveBeenCalledWith('/testPlans/10/cases/1/evidence', expect.any(FormData));
+    });
+    it('renders Cucumber Manual as a scenario without separate expected-result fields', () => {
+        const detail = fixture();
+        detail.cases[0].type = 'CUCUMBER_MANUAL';
+        detail.cases[0].steps = [{ order: 1, instruction: 'Given I am signed in\nWhen I open my account\nThen I see my details', data: 'Legacy data', expected: 'Legacy expected output' }];
+        render(<TestRunner open detail={detail} onClose={() => undefined} onChanged={vi.fn()} />);
+        expect(screen.getByRole('heading', { name: 'Behavior scenario' })).toBeInTheDocument();
+        expect(screen.getByText('Then')).toBeInTheDocument();
+        expect(screen.queryByText('Expected:')).not.toBeInTheDocument();
+        expect(screen.queryByText('Legacy expected output')).not.toBeInTheDocument();
+        expect(screen.getByLabelText('Actual result')).toBeInTheDocument();
+    });
+    it('keeps expected results visible for conventional manual cases', () => {
+        render(<TestRunner open detail={fixture()} onClose={() => undefined} onChanged={vi.fn()} />);
+        expect(screen.getByText('Expected:')).toBeInTheDocument();
     });
 });

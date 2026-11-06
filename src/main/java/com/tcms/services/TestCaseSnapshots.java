@@ -17,7 +17,8 @@ public class TestCaseSnapshots {
                 .sorted(Comparator.comparing(TestSteps::getTestStepOrder, Comparator.nullsLast(Integer::compareTo))
                         .thenComparing(TestSteps::getId, Comparator.nullsLast(Integer::compareTo)))
                 .map(s -> new Step(s.getTestStepOrder(),s.getTestStepDesc(),s.getTestStepData(),s.getTestExpectedOutput())).toList();
-        return new Snapshot(tc.getTestName(),tc.getTestType(),steps);
+        return new Snapshot(tc.getTestName(),tc.getTestType(),steps,new CaseDetails(tc.getPriority(),tc.getAutomationStatus(),tc.getComponent(),tc.getOwnerId(),
+                tc.getEstimatedMinutes(),tc.getDescription(),tc.getPreconditions(),tc.getCustomFields()==null ? Map.of() : new LinkedHashMap<>(tc.getCustomFields())));
     }
     public void capture(TestCaseExecutions link) {
         if (link.getCaseSnapshot()!=null) return;
@@ -28,5 +29,10 @@ public class TestCaseSnapshots {
         if (link.getCaseSnapshot()==null) return live(link.getTestCase());
         try { return mapper.readValue(link.getCaseSnapshot(),Snapshot.class); }
         catch (JacksonException e) { throw new IllegalStateException("Unable to read preserved test case",e); }
+    }
+    public boolean definitionChanged(TestCaseExecutions link) {
+        Snapshot saved=read(link), current=live(link.getTestCase());
+        return !Objects.equals(saved.name(),current.name()) || saved.type()!=current.type() || !Objects.equals(saved.steps(),current.steps())
+                || saved.details()!=null && !Objects.equals(saved.details(),current.details());
     }
 }

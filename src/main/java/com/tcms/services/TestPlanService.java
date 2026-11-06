@@ -84,7 +84,7 @@ public class TestPlanService {
                             .map(h -> new Attempt(h.getId(),h.getStatus(),h.getComment(),h.getActualResult(),h.getDefectUrl(),h.getRecordedAt(),h.getRecordedBy())).toList();
                     return new PlanResponses.Case(link.getTestCase().getId(),saved.name(),saved.type(),saved.steps(),result(link),link.getResultComment(),
                             link.getActualResult(),link.getDefectUrl(),revision(link),person(link.getAssignee()),link.getRecordedAt(),link.getRecordedBy(),
-                            policy.canRecord(link),files,history);
+                            policy.canRecord(link),files,history,saved.details());
                 }).toList();
         return new Detail(summary(plan),cases);
     }

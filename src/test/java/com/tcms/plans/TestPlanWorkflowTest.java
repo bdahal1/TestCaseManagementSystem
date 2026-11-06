@@ -63,7 +63,7 @@ class TestPlanWorkflowTest {
         c.setTestCreatedBy("QA"); c.setTestModifiedBy("QA"); c.setTestCreatedDate(new Timestamp(System.currentTimeMillis())); c.setTestModifiedDate(c.getTestCreatedDate());
         TestSteps step=new TestSteps(); step.setTestStepDesc("Enter valid credentials"); step.setTestExpectedOutput("Dashboard opens"); step.setTestStepOrder(1);
         step.setTsCreatedBy("QA"); step.setTsModifiedBy("QA"); step.setTsCreatedDate(c.getTestCreatedDate()); step.setTsModifiedDate(c.getTestCreatedDate());
-        c.setTestStepsSet(new HashSet<>(Set.of(step))); return cases.save(c);
+        step.setTestCase(c); c.setTestStepsSet(new HashSet<>(Set.of(step))); return cases.save(c);
     }
     String token(Users user) { return "Bearer "+tokens.generateToken(details.loadUserByUsername(user.getUserName())); }
     void asManager() { SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(manager.getUserName(),null,List.of(new SimpleGrantedAuthority("ROLE_QAManager")))); }
@@ -199,5 +199,14 @@ class TestPlanWorkflowTest {
         mvc.perform(post("/login").contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(Map.of("userName",tester.getUserName(),"password","workflow-test-password"))))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test void gherkinSuggestionsAreScopedToProjectMembership() throws Exception {
+        tc.setTestType(TestTypes.CUCUMBER_MANUAL); tc.getTestStepsSet().iterator().next().setTestType(TestTypes.CUCUMBER_MANUAL);
+        tc.getTestStepsSet().iterator().next().setTestStepDesc("Given I am signed out\nWhen I sign in\nThen I see my dashboard"); cases.save(tc);
+        mvc.perform(get("/testCase/gherkin-suggestions").param("projectId",project.getId().toString()).header("Authorization",testerToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0]").value("Given I am signed out"));
+        mvc.perform(get("/testCase/gherkin-suggestions").param("projectId",project.getId().toString()).header("Authorization",outsiderToken))
+                .andExpect(status().isForbidden());
     }
 }
