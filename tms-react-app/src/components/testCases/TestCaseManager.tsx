@@ -41,7 +41,9 @@ import CaseDetailsFields from './CaseDetailsFields';
 import { detailsDraft, detailsPayload, detailLabel, priorityColor, priorities, type CaseDetails } from './caseDetails';
 import AutomationStepBuilder from "../automation/AutomationStepBuilder";
 import ProjectLocatorsDialog from "../automation/ProjectLocatorsDialog";
+import AutomationImportDialog from "../automation/AutomationImportDialog";
 import DownloadIcon from "@mui/icons-material/Download";
+import FileUploadIcon from "@mui/icons-material/FileUpload";
 import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
 import type { AutomationStepModel } from "../automation/types";
 
@@ -139,6 +141,7 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
     const [stepsLoading, setStepsLoading] = useState(false);
     const drafts = useRef<Partial<Record<TestTypes, { steps: TestStep[]; gherkin: string }>>>({});
     const [locatorsDialogOpen, setLocatorsDialogOpen] = useState(false);
+    const [importDialogOpen, setImportDialogOpen] = useState(false);
 
     const getAutomationStepModels = (stepsList: TestStep[]): AutomationStepModel[] => {
         return stepsList.map((s, idx) => {
@@ -569,6 +572,16 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                         Export Automation
                     </Button>
                     <Button
+                        variant="outlined"
+                        color="primary"
+                        onClick={() => setImportDialogOpen(true)}
+                        startIcon={<FileUploadIcon />}
+                        sx={{ borderRadius: '10px' }}
+                        id="import-automation-btn"
+                    >
+                        Import Automation
+                    </Button>
+                    <Button
                         variant="contained"
                         color="primary"
                         onClick={() => handleOpenDialog(null)}
@@ -859,6 +872,16 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                 open={locatorsDialogOpen}
                 projectId={Number(projId)}
                 onClose={() => setLocatorsDialogOpen(false)}
+            />
+
+            <AutomationImportDialog
+                open={importDialogOpen}
+                projectId={Number(projId)}
+                onClose={() => setImportDialogOpen(false)}
+                onImportSuccess={() => {
+                    fetchTestCases();
+                    showSnackbar("Automation test cases imported successfully!");
+                }}
             />
         </Box>
     );

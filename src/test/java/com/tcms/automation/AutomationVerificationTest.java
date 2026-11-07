@@ -344,7 +344,7 @@ public class AutomationVerificationTest {
         steps.add(AutomationStepModel.builder()
                 .order(2)
                 .template(AutomationTemplate.ENTER_TEXT)
-                .locatorValue("#username")
+                .locatorValue("${usernameLocator}")
                 .textValue("${user}")
                 .build());
         steps.add(AutomationStepModel.builder()
@@ -357,6 +357,7 @@ public class AutomationVerificationTest {
         Map<String, String> variables = new HashMap<>();
         variables.put("appUrl", baseUrl + "/demo/login");
         variables.put("user", "admin");
+        variables.put("usernameLocator", "#username");
         variables.put("super_secret_pw", "secret");
 
         AutomationTestDefinition def = AutomationTestDefinition.builder()
@@ -689,11 +690,12 @@ public class AutomationVerificationTest {
         });
         standaloneTarget.start();
         String url="http://127.0.0.1:"+standaloneTarget.getAddress().getPort()+"/login";
+        ProjectVariable locatorVariable=new ProjectVariable(); locatorVariable.setProject(project); locatorVariable.setVariableKey("submitLocator"); locatorVariable.setVariableValue("#login-btn"); variableRepository.save(locatorVariable);
         List<Integer> ids=new ArrayList<>();
         for (TestTypes type : List.of(TestTypes.CUCUMBER_AUTOMATION,TestTypes.KEYWORD_DRIVEN)) {
             TestCase tc=createTestCase(project,type,"{\"order\":1,\"keyword\":\"Given\",\"template\":\"OPEN_PAGE\",\"textValue\":\""+url+"\"}");
             TestSteps step=new TestSteps(); step.setTestCase(tc); step.setTestType(type); step.setTestStepOrder(2); step.setTestStepDesc("Verify login form"); step.setTestExpectedOutput("");
-            step.setTestStepData("{\"order\":2,\"keyword\":\"Then\",\"template\":\"VERIFY_TEXT_EQUALS\",\"locatorValue\":\"#login-btn\",\"textValue\":\"Sign In\"}");
+            step.setTestStepData("{\"order\":2,\"keyword\":\"Then\",\"template\":\"VERIFY_TEXT_EQUALS\",\"locatorValue\":\"${submitLocator}\",\"textValue\":\"Sign In\"}");
             step.setTsCreatedDate(tc.getTestCreatedDate()); step.setTsModifiedDate(tc.getTestCreatedDate()); step.setTsCreatedBy("QA"); step.setTsModifiedBy("QA");
             tc.getTestStepsSet().add(step); testCaseRepository.save(tc); entityManager.flush(); ids.add(tc.getId());
         }

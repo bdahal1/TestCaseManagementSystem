@@ -70,3 +70,71 @@ export const TEMPLATE_LABELS: Record<AutomationTemplate, string> = {
 };
 
 export const CUCUMBER_KEYWORDS = ['Given', 'When', 'Then', 'And', 'But'] as const;
+
+export type ImportAction = 'CREATE_NEW' | 'REPLACE_EXISTING';
+
+export interface ImportStepPreview {
+    order: number;
+    sourceLine?: number;
+    keyword?: string;
+    rawText?: string;
+    template?: AutomationTemplate;
+    locatorType?: LocatorType;
+    locatorValue?: string;
+    textValue?: string;
+    stateValue?: ElementState;
+    mapped: boolean;
+    unsupportedSyntax?: string;
+    validationError?: string;
+}
+
+export interface ImportCasePreview {
+    name: string;
+    testType?: string;
+    sourceLine?: number;
+    steps: ImportStepPreview[];
+    conflict: boolean;
+    existingCaseId?: number;
+    existingCaseProjectId?: string;
+    existingCaseName?: string;
+    action: ImportAction;
+    unsupportedSyntax?: string;
+    validationError?: string;
+    unmappedCount: number;
+    errorCount: number;
+}
+
+export interface ImportPreviewResponse {
+    fileName: string;
+    fileType: 'FEATURE' | 'KEYWORD_JSON';
+    cases: ImportCasePreview[];
+    hasErrors: boolean;
+    canSave: boolean;
+    globalErrors: string[];
+    totalCases: number;
+    totalSteps: number;
+}
+
+export interface ImportCaseSaveItem {
+    action: ImportAction;
+    targetCaseId?: number;
+    caseName: string;
+    testType: 'CUCUMBER_AUTOMATION' | 'KEYWORD_DRIVEN';
+    steps: AutomationStepModel[];
+}
+
+export interface ImportSaveRequest {
+    cases: ImportCaseSaveItem[];
+}
+
+export interface ImportSaveResponse {
+    createdCount: number;
+    replacedCount: number;
+    savedCases: Array<{
+        id: number;
+        testProjectId: string;
+        name: string;
+        testType: string;
+        action: string;
+    }>;
+}

@@ -437,12 +437,12 @@ public class StandaloneDriver implements AutoCloseable {
     }
 
     public Locator resolveLocator(String raw) {
-        String resolved = raw.trim();
+        String resolved = resolveVariables(raw).trim();
         String type = "CSS";
         if (locators.containsKey(resolved)) {
             var def = locators.get(resolved);
             type = def.getOrDefault("type", "CSS");
-            resolved = def.getOrDefault("value", resolved);
+            resolved = resolveVariables(def.getOrDefault("value", resolved));
         } else if (resolved.startsWith("css=")) {
             type = "CSS"; resolved = resolved.substring(4);
         } else if (resolved.startsWith("xpath=")) {

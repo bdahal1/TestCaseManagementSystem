@@ -116,14 +116,14 @@ public class AutomationBrowserDriver implements AutoCloseable {
         if (rawLocator == null || rawLocator.isBlank()) {
             throw new IllegalArgumentException("Target locator is empty");
         }
-        String resolved = rawLocator.trim();
+        String resolved = resolveVariables(rawLocator).trim();
         LocatorType type = null;
 
         // Check project named locators
         if (locators.containsKey(resolved)) {
             var def = locators.get(resolved);
             type = def.getType();
-            resolved = def.getValue();
+            resolved = resolveVariables(def.getValue());
             log("Resolved named locator '" + rawLocator + "' to " + type + "='" + resolved + "'");
         }
 

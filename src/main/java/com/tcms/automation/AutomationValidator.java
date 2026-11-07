@@ -39,6 +39,7 @@ public class AutomationValidator {
 
         for (int i = 0; i < steps.size(); i++) {
             AutomationStepModel step = steps.get(i);
+            if (step == null) { result.addError("Step " + (i + 1) + ": Step is required"); continue; }
             int stepNum = step.getOrder() > 0 ? step.getOrder() : (i + 1);
             if (step.getTemplate() == null) {
                 result.addError("Step " + stepNum + ": Automation template must be selected");
@@ -90,6 +91,8 @@ public class AutomationValidator {
             return;
         }
         loc = loc.trim();
+        // A variable locator is resolved against this project's values by the worker at runtime.
+        if (java.util.regex.Pattern.compile("\\$\\{[a-zA-Z0-9_.-]+\\}").matcher(loc).find()) return;
         LocatorType type = step.getLocatorType();
 
         // If explicitly NAMED or if matches standard named element pattern (e.g. Login.Username)
