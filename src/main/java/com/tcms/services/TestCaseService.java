@@ -29,9 +29,13 @@ public class TestCaseService {
         if (request.getEstimatedMinutes()!=null) testCase.setEstimatedMinutes(request.getEstimatedMinutes()==0 ? null : request.getEstimatedMinutes());
         if (request.getCustomFields()!=null) {
             var cleaned=new LinkedHashMap<String,String>();
-            request.getCustomFields().forEach((key,value) -> {
-                if (cleaned.put(key.trim(),value)!=null) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST,"Custom field names must be unique");
-            });
+            for (Map.Entry<String, String> field : request.getCustomFields().entrySet()) {
+                String fieldName = field.getKey().trim();
+                if (cleaned.containsKey(fieldName)) {
+                    throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST,"Custom field names must be unique");
+                }
+                cleaned.put(fieldName, field.getValue());
+            }
             testCase.setCustomFields(cleaned);
         }
         if (request.getOwnerId()!=null) {

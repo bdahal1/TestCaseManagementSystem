@@ -4,10 +4,12 @@ import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import api from '../../services/api';
 import GherkinView from '../gherkin/GherkinView';
 import { detailLabel, priorityColor } from '../testCases/caseDetails';
 import { type Evidence, type PlanDetail, type ResultStatus, errorMessage, resultColor, resultLabel } from './types';
+import AutomationRunDialog from '../automation/AutomationRunDialog';
 
 interface Props { open: boolean; detail: PlanDetail; initialCaseId?: number; onClose: () => void; onChanged: () => Promise<PlanDetail> }
 const results: ResultStatus[] = ['PASS', 'FAIL', 'BLOCKED', 'SKIPPED', 'NOT_RUN'];
@@ -26,6 +28,7 @@ export default function TestRunner({ open, detail, initialCaseId, onClose, onCha
     const [notice, setNotice] = useState('');
     const [preview, setPreview] = useState<{ name: string; url: string } | null>(null);
     const [leaving, setLeaving] = useState(false);
+    const [autoRunOpen, setAutoRunOpen] = useState(false);
     useEffect(() => {
         if (open) { setSelectedId(initialCaseId ?? detail.cases.find(tc => tc.canRecord && ['NOT_RUN', 'BLOCKED'].includes(tc.status))?.id ?? detail.cases[0]?.id); setLeaving(false); setNotice(''); }
         // The case is chosen once when the runner opens; refreshes must preserve the current case.
@@ -108,7 +111,23 @@ export default function TestRunner({ open, detail, initialCaseId, onClose, onCha
                     {error && <Alert severity="error" sx={{ mb: 2 }} action={<Button color="inherit" onClick={() => void reload()} disabled={saving}>Reload latest</Button>}>{error}</Alert>}
                     {leaving && <Alert severity="warning" sx={{ mb: 2 }} action={<Button color="inherit" onClick={onClose}>Discard & close</Button>}>Your result has unsaved changes.</Alert>}
                     {selected ? <>
-                        <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap" sx={{ mb: 1 }}><Chip size="small" label={`#${selected.id}`} variant="outlined" /><Chip size="small" label={selected.type} variant="outlined" /><Typography variant="body2" color="text.secondary">Assigned to {selected.assignee?.name ?? 'nobody yet'}</Typography></Stack>
+                        <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap" sx={{ mb: 1 }}>
+                            <Chip size="small" label={`#${selected.id}`} variant="outlined" />
+                            <Chip size="small" label={selected.type} variant="outlined" />
+                            <Typography variant="body2" color="text.secondary">Assigned to {selected.assignee?.name ?? 'nobody yet'}</Typography>
+                            {(selected.type === 'CUCUMBER_AUTOMATION' || selected.type === 'KEYWORD_DRIVEN') && detail.plan.status === 'IN_PROGRESS' && selected.canRecord && (
+                                <Button
+                                    variant="contained"
+                                    color="success"
+                                    size="small"
+                                    startIcon={<PlayArrowIcon />}
+                                    onClick={() => setAutoRunOpen(true)}
+                                    sx={{ ml: 'auto', borderRadius: '8px' }}
+                                >
+                                    Run Browser Test
+                                </Button>
+                            )}
+                        </Stack>
                         <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>{selected.name}</Typography>
                         {selected.details && <Box sx={{ mb: 2 }}>
                             <Stack direction="row" gap={1} flexWrap="wrap" sx={{ mb: 1 }}>
@@ -167,5 +186,18 @@ export default function TestRunner({ open, detail, initialCaseId, onClose, onCha
             </DialogActions>
         </Dialog>
         <Dialog open={!!preview} onClose={() => setPreview(null)} maxWidth="lg" fullWidth><DialogTitle>{preview?.name}</DialogTitle><DialogContent>{preview && <Box component="img" src={preview.url} alt={preview.name} sx={{ width: '100%', objectFit: 'contain' }} />}</DialogContent><DialogActions><Button onClick={() => setPreview(null)}>Close preview</Button></DialogActions></Dialog>
+        {selected && (
+            <AutomationRunDialog
+                open={autoRunOpen}
+                planId={detail.plan.id}
+                caseId={selected.id}
+                caseName={selected.name}
+                testType={selected.type}
+                onClose={() => setAutoRunOpen(false)}
+                onFinished={async () => {
+                    await onChanged();
+                }}
+            />
+        )}
     </>;
 }

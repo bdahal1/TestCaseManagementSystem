@@ -16,8 +16,7 @@ public class RefreshToken {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "ref_id")
-    @NonNull
-    private int id;
+    private Integer id;
     @Column(name = "username")
     @NonNull
     private String userName;

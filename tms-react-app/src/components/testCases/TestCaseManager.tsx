@@ -39,6 +39,11 @@ import { errorMessage } from "../testPlans/types";
 import type { Person } from "../testPlans/types";
 import CaseDetailsFields from './CaseDetailsFields';
 import { detailsDraft, detailsPayload, detailLabel, priorityColor, priorities, type CaseDetails } from './caseDetails';
+import AutomationStepBuilder from "../automation/AutomationStepBuilder";
+import ProjectLocatorsDialog from "../automation/ProjectLocatorsDialog";
+import DownloadIcon from "@mui/icons-material/Download";
+import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
+import type { AutomationStepModel } from "../automation/types";
 
 const GherkinEditor = lazy(() => import("../gherkin/GherkinEditor"));
 
@@ -133,6 +138,95 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
     const [saveError, setSaveError] = useState('');
     const [stepsLoading, setStepsLoading] = useState(false);
     const drafts = useRef<Partial<Record<TestTypes, { steps: TestStep[]; gherkin: string }>>>({});
+    const [locatorsDialogOpen, setLocatorsDialogOpen] = useState(false);
+
+    const getAutomationStepModels = (stepsList: TestStep[]): AutomationStepModel[] => {
+        return stepsList.map((s, idx) => {
+            if (s.testStepData) {
+                try {
+                    const parsed = JSON.parse(s.testStepData);
+                    if (parsed && parsed.template) {
+                        return { ...parsed, order: idx + 1 };
+                    }
+                } catch (ignored) {}
+            }
+            return {
+                order: idx + 1,
+                keyword: idx === 0 ? 'Given' : idx === 1 ? 'When' : 'Then',
+                template: 'OPEN_PAGE',
+                locatorValue: '',
+                textValue: s.testStepDesc || '',
+                stateValue: 'VISIBLE'
+            };
+        });
+    };
+
+    const formatStepDescription = (m: AutomationStepModel, isCucumber: boolean): string => {
+        const kw = m.keyword || 'When';
+        const loc = m.locatorValue || '';
+        const val = m.textValue || '';
+        const state = (m.stateValue || 'VISIBLE').toLowerCase();
+
+        if (isCucumber) {
+            switch (m.template) {
+                case 'OPEN_PAGE': return `${kw} open page "${val}"`;
+                case 'ENTER_TEXT': return `${kw} enter text "${val}" into "${loc}"`;
+                case 'CLICK_ELEMENT': return `${kw} click element "${loc}"`;
+                case 'VERIFY_TEXT_EQUALS': return `${kw} verify text of "${loc}" equals "${val}"`;
+                case 'VERIFY_TEXT_CONTAINS': return `${kw} verify text of "${loc}" contains "${val}"`;
+                case 'VERIFY_ELEMENT_STATE': return `${kw} verify element "${loc}" is ${state}`;
+            }
+        } else {
+            switch (m.template) {
+                case 'OPEN_PAGE': return `Open page "${val}"`;
+                case 'ENTER_TEXT': return `Enter text "${val}" into "${loc}"`;
+                case 'CLICK_ELEMENT': return `Click element "${loc}"`;
+                case 'VERIFY_TEXT_EQUALS': return `Verify text of "${loc}" equals "${val}"`;
+                case 'VERIFY_TEXT_CONTAINS': return `Verify text of "${loc}" contains "${val}"`;
+                case 'VERIFY_ELEMENT_STATE': return `Verify element "${loc}" is ${state}`;
+            }
+        }
+        return '';
+    };
+
+    const handleAutomationStepsChange = (models: AutomationStepModel[]) => {
+        const isCucumber = formData.testType === TestTypes.CUCUMBER_AUTOMATION;
+        const nextSteps: TestStep[] = models.map((m, idx) => ({
+            id: steps[idx]?.id || 0,
+            testStepOrder: idx + 1,
+            testType: formData.testType as TestTypes,
+            testStepData: JSON.stringify(m),
+            testStepDesc: formatStepDescription(m, isCucumber),
+            testExpectedOutput: m.template === 'VERIFY_TEXT_EQUALS' || m.template === 'VERIFY_TEXT_CONTAINS' ? (m.textValue || '') : (m.stateValue || '')
+        }));
+        setSteps(nextSteps);
+    };
+
+    const handleDownloadAutomationProject = async () => {
+        try {
+            const runnableCases = testCases.filter(tc =>
+                tc.testType === TestTypes.CUCUMBER_AUTOMATION || tc.testType === TestTypes.KEYWORD_DRIVEN
+            );
+            if (runnableCases.length === 0) {
+                showSnackbar("No Cucumber Automation or Keyword Driven cases found to export.");
+                return;
+            }
+            const caseIds = runnableCases.map(c => c.id);
+            const response = await api.post(`/automation/projects/${projId}/export`, { caseIds }, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/zip' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `automation-project-${projId}.zip`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            showSnackbar(`Downloaded standalone automation project (${caseIds.length} cases).`);
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || 'Failed to download automation project';
+            showSnackbar(msg);
+        }
+    };
 
     // Memoized auth headers
 
@@ -455,15 +549,35 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                     }}
                 />
                 <TextField select size="small" label="Filter by priority" value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} sx={{ minWidth: 160 }}><MenuItem value="all">All priorities</MenuItem>{priorities.map(p => <MenuItem key={p} value={p}>{detailLabel(p)}</MenuItem>)}</TextField>
-                <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => handleOpenDialog(null)}
-                    startIcon={<AddIcon />}
-                    sx={{ borderRadius: '10px', px: 3 }}
-                >
-                    Add Test Case
-                </Button>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <Button
+                        variant="outlined"
+                        color="secondary"
+                        onClick={() => setLocatorsDialogOpen(true)}
+                        startIcon={<SettingsSuggestIcon />}
+                        sx={{ borderRadius: '10px' }}
+                    >
+                        Manage Locators
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        color="primary"
+                        onClick={handleDownloadAutomationProject}
+                        startIcon={<DownloadIcon />}
+                        sx={{ borderRadius: '10px' }}
+                    >
+                        Export Automation
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => handleOpenDialog(null)}
+                        startIcon={<AddIcon />}
+                        sx={{ borderRadius: '10px', px: 3 }}
+                    >
+                        Add Test Case
+                    </Button>
+                </Box>
             </Box>
 
             <TableContainer component={Paper}>
@@ -706,67 +820,15 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                             </Suspense>
                         )}
 
-                        {formData.testType === TestTypes.CUCUMBER_AUTOMATION && (
-                            <>
-                                <Box sx={{ display: "grid", gridTemplateColumns: "1fr", gap: 2, mb: 2 }}>
-                                    {steps.map((step, index) => (
-                                        <Box key={index}>
-                                            <TextField
-                                                label="Automation Script ID / Reference"
-                                                placeholder="e.g., test_login.feature:12"
-                                                value={step.testStepDesc}
-                                                onChange={(e) => handleStepChange(e.target.value, index, "testStepDesc")}
-                                                fullWidth
-                                                multiline
-                                                minRows={6}
-                                                variant="outlined"
-                                                sx={{ backgroundColor: 'background.paper', fontFamily: 'monospace' }}
-                                            />
-                                        </Box>
-                                    ))}
-                                </Box>
-                            </>
-                        )}
-
-                        {formData.testType === TestTypes.KEYWORD_DRIVEN && (
-                            <>
-                                <Box sx={{ fontWeight: "700", mb: 2, color: 'text.secondary' }}>Keyword Driven Actions</Box>
-                                {steps.map((step, index) => (
-                                    <Paper key={index} elevation={0} sx={{
-                                        p: 2, mb: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2,
-                                        display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 2
-                                    }}>
-                                        <TextField
-                                            label={`Action ${index + 1}`}
-                                            value={step.testStepDesc}
-                                            onChange={(e) => handleStepChange(e.target.value, index, "testStepDesc")}
-                                            fullWidth
-                                            multiline
-                                            minRows={2}
-                                        />
-                                        <TextField
-                                            label="Target"
-                                            value={step.testStepData}
-                                            onChange={(e) => handleStepChange(e.target.value, index, "testStepData")}
-                                            fullWidth
-                                            multiline
-                                            minRows={2}
-                                        />
-                                        <TextField
-                                            label="Value"
-                                            value={step.testExpectedOutput}
-                                            onChange={(e) => handleStepChange(e.target.value, index, "testExpectedOutput")}
-                                            fullWidth
-                                            multiline
-                                            minRows={2}
-                                        />
-                                        <IconButton onClick={() => removeStep(index)} color="error">
-                                            <DeleteIcon />
-                                        </IconButton>
-                                    </Paper>
-                                ))}
-                                <Button onClick={addStep} variant="outlined">+ Add Action</Button>
-                            </>
+                        {(formData.testType === TestTypes.CUCUMBER_AUTOMATION || formData.testType === TestTypes.KEYWORD_DRIVEN) && (
+                            <AutomationStepBuilder
+                                mode={formData.testType}
+                                steps={getAutomationStepModels(steps)}
+                                projectId={formData.projectId}
+                                scenarioTitle={formData.testName}
+                                onChange={handleAutomationStepsChange}
+                                disabled={saving || stepsLoading}
+                            />
                         )}
                     </Box>
                 </DialogContent>
@@ -792,6 +854,12 @@ const TestCaseComponent: React.FC<TestCaseComponentProps> = ({ projId }) => {
                     {snackbarMessage}
                 </Alert>
             </Snackbar>
+
+            <ProjectLocatorsDialog
+                open={locatorsDialogOpen}
+                projectId={Number(projId)}
+                onClose={() => setLocatorsDialogOpen(false)}
+            />
         </Box>
     );
 };

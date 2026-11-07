@@ -55,7 +55,7 @@ public class TestStepService {
         testSteps.setTestCase(testCaseRepository.findById(testStepInfoDTO.getTestCaseId()));
         testSteps.setTestStepData(testStepInfoDTO.getTestStepData());
         testSteps.setTestStepDesc(testStepInfoDTO.getTestStepDesc());
-        testSteps.setTestExpectedOutput(testStepInfoDTO.getTestType()==com.tcms.enums.TestTypes.CUCUMBER_MANUAL ? "" : testStepInfoDTO.getTestExpectedOutput());
+        testSteps.setTestExpectedOutput(testStepInfoDTO.getTestExpectedOutput() == null ? "" : testStepInfoDTO.getTestExpectedOutput());
         TestSteps newOrder = testStepsRepository.findFirstByTestCaseOrderByTestStepOrderDesc(testCaseRepository.findById(testStepInfoDTO.getTestCaseId()));
         testSteps.setTestStepOrder(newOrder == null ? 1 : newOrder.getTestStepOrder() + 1);
         testSteps.setTsCreatedBy(fullName);

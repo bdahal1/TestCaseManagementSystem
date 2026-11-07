@@ -93,3 +93,31 @@ The API is `GET /projectReports/{projectId}` with optional `environment`, `relea
 ## Remaining modernization work
 
 This hardening pass retains the existing database schema and API paths. Before a production rollout, add reviewed, versioned database migrations (the current configuration still uses `ddl-auto=update`), extend immutable snapshots to a full case-revision system, and maintain dependency updates. The backend uses the stable Spring Boot 4.1.2 release, Jackson 3, and JDK 26.
+
+
+## Browser automation workers and downloads
+
+Cucumber Automation and Keyword Driven cases support the built-in browser templates. Create an active test plan, assign the case, and choose **Run automation**. Only one pending job per case is allowed; cancel it before starting a replacement. Results from expired claims, superseded runs, changed case results, or closed plans are discarded. Existing pending jobs created before the lease checks were introduced should be cancelled and queued again.
+
+The worker API is disabled until the backend has both of these environment variables:
+
+```bash
+export AUTOMATION_WORKER_TOKEN="$(openssl rand -hex 32)"
+export AUTOMATION_WORKER_PROJECT_ID="123" # use the actual project ID
+./scripts/backend.sh spring-boot:run
+```
+
+Keep the generated token private. The worker must receive the same token through `AUTOMATION_WORKER_TOKEN`; it can claim jobs only for that configured project. This setup supports one project per backend worker credential. Restart the backend and workers together when rotating it. Use HTTPS when workers connect over a network.
+
+In a separate terminal, set that same token and the backend address, install Chromium once, then start the worker:
+
+```bash
+export AUTOMATION_WORKER_TOKEN="<the same private token>"
+export TMS_URL="http://localhost:8080/dhtcms/api/v1"
+./scripts/backend.sh compile exec:java -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="install chromium"
+./scripts/worker.sh
+```
+
+Project secrets are masked in the UI and API without changing the stored values. Workers receive the configured runtime values for their project, so run workers only on trusted machines. Diagnostic text is redacted on ingestion; screenshots may still show application content.
+
+**Download automation project** creates an independent Java 26 Maven project with feature files, keyword definitions, named locators, framework source, and working Maven wrappers for macOS/Linux and Windows. Extract the ZIP and follow its README. Set local values in `src/test/resources/config.properties`; secret values are replaced with placeholders in the export, and this local configuration is excluded from Git. The downloaded project requires the target application, Java, and Chromium, but does not require a running TMS server. The wrapper downloads Maven on first use.

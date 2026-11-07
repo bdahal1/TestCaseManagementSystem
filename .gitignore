@@ -3,8 +3,10 @@
 /.idea/*.*
 /target/
 TestCaseManagementSystem.iml
-
-
+/.vscode/
+/.vscode/*.*
+/.github/
+/.github/*.*
 
 .env
 .env.*

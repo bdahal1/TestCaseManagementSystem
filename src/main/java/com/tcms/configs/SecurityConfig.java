@@ -31,7 +31,7 @@ public class SecurityConfig {
     private final JwtRequestFilter jwtRequestFilter;
 
     private static final String[] AUTH_WHITELIST = {
-            "/login", "/refreshToken", "/logout"
+            "/login", "/refreshToken", "/logout", "/automation/worker/**", "/demo/**"
     };
 
     public SecurityConfig(CustomUserDetailService customUserDetailService, JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint, JwtRequestFilter jwtRequestFilter) {

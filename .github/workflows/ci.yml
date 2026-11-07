@@ -10,6 +10,8 @@ jobs:
           distribution: temurin
           java-version: '26'
           cache: maven
+      - name: Install Chromium for browser automation tests
+        run: mvn --batch-mode test-compile exec:java -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="install --with-deps chromium"
       - run: mvn --batch-mode verify
   frontend:
     runs-on: ubuntu-latest

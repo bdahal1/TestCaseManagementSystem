@@ -74,6 +74,28 @@ export default function TestPlanWorkspace({ projectId, planId }: { projectId: nu
     const visible = detail.cases.filter(tc => (scope !== 'mine' || String(tc.assignee?.id) === String(user?.userId)) && tc.name.toLowerCase().includes(query.toLowerCase()));
     const percentage = plan.total ? Math.round(plan.completed / plan.total * 100) : 0;
     const startRunner = (id?: number) => { setInitialCase(id); setRunner(true); };
+    const exportAutomation = async () => {
+        if (!detail) return;
+        const runnable = detail.cases.filter(tc => tc.type === 'CUCUMBER_AUTOMATION' || tc.type === 'KEYWORD_DRIVEN');
+        if (!runnable.length) return;
+        setBusy(true); setError('');
+        try {
+            const response = await api.post(`/automation/projects/${projectId}/export`, { caseIds: runnable.map(c => c.id) }, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/zip' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `plan-${planId}-automation.zip`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            setNotice(`Downloaded automation project for ${runnable.length} cases.`);
+        } catch (e) {
+            setError(errorMessage(e, 'Could not export automation project.'));
+        } finally {
+            setBusy(false);
+        }
+    };
     return <Box sx={{ py: 3 }}>
         <Button startIcon={<ArrowBackIcon />} sx={{ mb: 2 }} onClick={() => navigate(`/dashboard/project/${projectId}/test-plans`)}>All test plans</Button>
         <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" gap={2} sx={{ mb: 3 }}>
@@ -81,6 +103,9 @@ export default function TestPlanWorkspace({ projectId, planId }: { projectId: nu
                 <Typography color="text.secondary" sx={{ mt: 1 }}>{[plan.release, plan.build, plan.environment, plan.dueDate ? `Due ${plan.dueDate}` : ''].filter(Boolean).join(' · ') || 'No release details set'}</Typography></Box>
             <Stack direction="row" gap={1} flexWrap="wrap" alignItems="center">
                 {editable && <Button onClick={() => setEditing(true)} disabled={busy}>Edit plan</Button>}
+                {detail.cases.some(tc => tc.type === 'CUCUMBER_AUTOMATION' || tc.type === 'KEYWORD_DRIVEN') && (
+                    <Button variant="outlined" onClick={() => void exportAutomation()} disabled={busy}>Export Automation</Button>
+                )}
                 {manager && plan.status === 'DRAFT' && <Button variant="contained" onClick={() => void action('start')} disabled={busy || !plan.total || plan.unassigned > 0}>Start plan</Button>}
                 {manager && plan.status === 'IN_PROGRESS' && <Button variant="outlined" onClick={() => setClosing(true)} disabled={busy || !plan.total || plan.completed < plan.total}>Close plan</Button>}
                 {manager && plan.status === 'CLOSED' && <Button variant="outlined" onClick={() => void action('reopen')} disabled={busy}>Reopen plan</Button>}
