@@ -46,6 +46,7 @@ public class ProjectLocatorService {
         if (request.getLocatorType() == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Locator type is required");
         if (request.getLocatorValue() == null || request.getLocatorValue().trim().isEmpty())
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Locator value is required");
+        validateStrategy(request.getLocatorType(), request.getLocatorValue().trim());
 
         if (repository.existsByProjectIdAndLocatorName(projectId, name)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Locator '" + name + "' already exists in this project");
@@ -85,9 +86,18 @@ public class ProjectLocatorService {
         if (request.getDescription() != null) {
             locator.setDescription(request.getDescription());
         }
+        validateStrategy(locator.getLocatorType(), locator.getLocatorValue());
         locator.setModifiedBy(policy.currentName());
         locator.setModifiedDate(Timestamp.from(Instant.now()));
         return repository.save(locator);
+    }
+
+    private void validateStrategy(LocatorType type, String value) {
+        if (type == null || type == LocatorType.NAMED)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose a concrete locator strategy");
+        if (LocatorType.prefixedType(value) == type) value = value.substring(type.prefix().length() + 1);
+        String error = type.validationError(value);
+        if (error != null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, error);
     }
 
     public void deleteLocator(int id) {

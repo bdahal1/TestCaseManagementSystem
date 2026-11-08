@@ -6,7 +6,12 @@ public enum AutomationTemplate {
     CLICK_ELEMENT("Click element"),
     VERIFY_TEXT_EQUALS("Verify text equals"),
     VERIFY_TEXT_CONTAINS("Verify text contains"),
-    VERIFY_ELEMENT_STATE("Verify element visible or hidden");
+    VERIFY_ELEMENT_STATE("Verify element visible or hidden"),
+    SELECT_OPTION("Select option"),
+    SET_CHECKBOX("Set checkbox"),
+    PRESS_KEY("Press key"),
+    VERIFY_URL("Verify URL"),
+    VERIFY_ATTRIBUTE("Verify attribute");
 
     private final String displayName;
 

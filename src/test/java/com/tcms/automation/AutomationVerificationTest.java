@@ -240,7 +240,15 @@ public class AutomationVerificationTest {
                 .executionConfig(Map.of("stepTimeoutMs", "3000", "headless", "true"))
                 .build();
 
-        AutomationExecutionResult result = cucumberRunner.execute(def);
+        List<String> progress = new ArrayList<>();
+        List<byte[]> frames = new ArrayList<>();
+        AutomationExecutionResult result = cucumberRunner.execute(def, () -> false, (index, state, completed, driver) -> {
+            progress.add(index + ":" + state + ":" + completed.size());
+            if (index == 0 && state.equals("PASSED")) frames.add(driver.takePreviewScreenshot());
+        });
+        assertThat(progress).hasSize(12).startsWith("0:RUNNING:0", "0:PASSED:1").endsWith("5:PASSED:6");
+        assertThat(frames).hasSize(1);
+        assertThat(frames.getFirst()).hasSizeGreaterThan(100);
 
         assertThat(result.getStatus()).isEqualTo(JobStatus.COMPLETED);
         assertThat(result.getStepResults()).hasSize(6);
@@ -264,7 +272,10 @@ public class AutomationVerificationTest {
                 .executionConfig(Map.of("stepTimeoutMs", "3000", "headless", "true"))
                 .build();
 
-        AutomationExecutionResult result = keywordRunner.execute(def);
+        List<String> progress = new ArrayList<>();
+        AutomationExecutionResult result = keywordRunner.execute(def, () -> false, (index, state, completed, driver) ->
+                progress.add(index + ":" + state + ":" + completed.size()));
+        assertThat(progress).hasSize(12).startsWith("0:RUNNING:0", "0:PASSED:1").endsWith("5:PASSED:6");
 
         assertThat(result.getStatus()).isEqualTo(JobStatus.COMPLETED);
         assertThat(result.getStepResults()).hasSize(6);
@@ -375,6 +386,168 @@ public class AutomationVerificationTest {
         assertThat(result.getStatus()).isEqualTo(JobStatus.COMPLETED);
         assertThat(result.getDiagnosticLogs()).doesNotContain("secret");
         assertThat(result.getDiagnosticLogs()).contains("[REDACTED]");
+    }
+
+    @Test
+    @DisplayName("Verify actual browser execution of all five new templates in Cucumber Automation mode against demo app")
+    void testCucumberAutomationExtendedControls() {
+        String baseUrl = "http://localhost:" + port;
+        List<AutomationStepModel> steps = new ArrayList<>();
+        int order = 1;
+
+        steps.add(AutomationStepModel.builder().order(order++).keyword("Given").template(AutomationTemplate.OPEN_PAGE)
+                .textValue(baseUrl + "/demo/extended").build());
+
+        steps.add(AutomationStepModel.builder().order(order++).keyword("When").template(AutomationTemplate.SELECT_OPTION)
+                .locatorType(LocatorType.CSS).locatorValue("#framework-select").textValue("Playwright").selectBy(OptionSelectBy.LABEL).build());
+        steps.add(AutomationStepModel.builder().order(order++).keyword("Then").template(AutomationTemplate.VERIFY_TEXT_EQUALS)
+                .locatorType(LocatorType.CSS).locatorValue("#selected-framework").textValue("Playwright").build());
+
+        steps.add(AutomationStepModel.builder().order(order++).keyword("When").template(AutomationTemplate.SELECT_OPTION)
+                .locatorType(LocatorType.CSS).locatorValue("#framework-select").textValue("cyp").selectBy(OptionSelectBy.VALUE).build());
+        steps.add(AutomationStepModel.builder().order(order++).keyword("Then").template(AutomationTemplate.VERIFY_TEXT_EQUALS)
+                .locatorType(LocatorType.CSS).locatorValue("#selected-framework").textValue("Cypress").build());
+
+        steps.add(AutomationStepModel.builder().order(order++).keyword("When").template(AutomationTemplate.SET_CHECKBOX)
+                .locatorType(LocatorType.CSS).locatorValue("#subscribe-checkbox").checkedValue(true).build());
+        steps.add(AutomationStepModel.builder().order(order++).keyword("Then").template(AutomationTemplate.VERIFY_TEXT_EQUALS)
+                .locatorType(LocatorType.CSS).locatorValue("#checkbox-status").textValue("Checked").build());
+
+        steps.add(AutomationStepModel.builder().order(order++).keyword("When").template(AutomationTemplate.SET_CHECKBOX)
+                .locatorType(LocatorType.CSS).locatorValue("#subscribe-checkbox").checkedValue(true).build());
+        steps.add(AutomationStepModel.builder().order(order++).keyword("Then").template(AutomationTemplate.VERIFY_TEXT_EQUALS)
+                .locatorType(LocatorType.CSS).locatorValue("#checkbox-status").textValue("Checked").build());
+
+        steps.add(AutomationStepModel.builder().order(order++).keyword("When").template(AutomationTemplate.SET_CHECKBOX)
+                .locatorType(LocatorType.CSS).locatorValue("#subscribe-checkbox").checkedValue(false).build());
+        steps.add(AutomationStepModel.builder().order(order++).keyword("Then").template(AutomationTemplate.VERIFY_TEXT_EQUALS)
+                .locatorType(LocatorType.CSS).locatorValue("#checkbox-status").textValue("Unchecked").build());
+
+        steps.add(AutomationStepModel.builder().order(order++).keyword("When").template(AutomationTemplate.ENTER_TEXT)
+                .locatorType(LocatorType.CSS).locatorValue("#keyboard-input").textValue("Playwright keyboard test").build());
+        steps.add(AutomationStepModel.builder().order(order++).keyword("When").template(AutomationTemplate.PRESS_KEY)
+                .locatorType(LocatorType.CSS).locatorValue("#keyboard-input").keyValue("Enter").build());
+        steps.add(AutomationStepModel.builder().order(order++).keyword("Then").template(AutomationTemplate.VERIFY_TEXT_EQUALS)
+                .locatorType(LocatorType.CSS).locatorValue("#submitted-query").textValue("Playwright keyboard test").build());
+        steps.add(AutomationStepModel.builder().order(order++).keyword("Then").template(AutomationTemplate.VERIFY_TEXT_EQUALS)
+                .locatorType(LocatorType.CSS).locatorValue("#last-key").textValue("Enter").build());
+
+        steps.add(AutomationStepModel.builder().order(order++).keyword("Then").template(AutomationTemplate.VERIFY_ATTRIBUTE)
+                .locatorType(LocatorType.CSS).locatorValue("#action-btn").attributeName("data-status").textValue("ready").build());
+        steps.add(AutomationStepModel.builder().order(order++).keyword("Then").template(AutomationTemplate.VERIFY_ATTRIBUTE)
+                .locatorType(LocatorType.CSS).locatorValue("#action-btn").attributeName("data-empty").textValue("").build());
+
+        steps.add(AutomationStepModel.builder().order(order++).keyword("Then").template(AutomationTemplate.VERIFY_URL)
+                .urlComparison(UrlComparison.EQUALS).textValue(baseUrl + "/demo/extended").build());
+        steps.add(AutomationStepModel.builder().order(order++).keyword("Then").template(AutomationTemplate.VERIFY_URL)
+                .urlComparison(UrlComparison.CONTAINS).textValue("/demo/extended").build());
+
+        steps.add(AutomationStepModel.builder().order(order++).keyword("When").template(AutomationTemplate.CLICK_ELEMENT)
+                .locatorType(LocatorType.CSS).locatorValue("#nav-login-link").build());
+        steps.add(AutomationStepModel.builder().order(order++).keyword("Then").template(AutomationTemplate.VERIFY_URL)
+                .urlComparison(UrlComparison.CONTAINS).textValue("/demo/login").build());
+
+        AutomationTestDefinition def = AutomationTestDefinition.builder()
+                .caseId(201)
+                .caseName("Extended Controls Cucumber Scenario")
+                .testType(TestTypes.CUCUMBER_AUTOMATION)
+                .steps(steps)
+                .executionConfig(Map.of("stepTimeoutMs", "4000", "headless", "true"))
+                .build();
+
+        AutomationExecutionResult result = cucumberRunner.execute(def);
+
+        assertThat(result.getStatus()).isEqualTo(JobStatus.COMPLETED);
+        assertThat(result.getStepResults()).hasSize(steps.size());
+        assertThat(result.getStepResults()).allMatch(AutomationExecutionResult.StepResult::isPassed);
+        assertThat(result.getFailureScreenshot()).isNull();
+    }
+
+    @Test
+    @DisplayName("Verify actual browser execution of all five new templates in Keyword Driven mode against demo app")
+    void testKeywordDrivenExtendedControls() {
+        String baseUrl = "http://localhost:" + port;
+        List<AutomationStepModel> steps = new ArrayList<>();
+        int order = 1;
+
+        steps.add(AutomationStepModel.builder().order(order++).template(AutomationTemplate.OPEN_PAGE)
+                .textValue(baseUrl + "/demo/extended").build());
+        steps.add(AutomationStepModel.builder().order(order++).template(AutomationTemplate.SELECT_OPTION)
+                .locatorType(LocatorType.CSS).locatorValue("#framework-select").textValue("Playwright").selectBy(OptionSelectBy.LABEL).build());
+        steps.add(AutomationStepModel.builder().order(order++).template(AutomationTemplate.VERIFY_TEXT_EQUALS)
+                .locatorType(LocatorType.CSS).locatorValue("#selected-framework").textValue("Playwright").build());
+        steps.add(AutomationStepModel.builder().order(order++).template(AutomationTemplate.SET_CHECKBOX)
+                .locatorType(LocatorType.CSS).locatorValue("#subscribe-checkbox").checkedValue(true).build());
+        steps.add(AutomationStepModel.builder().order(order++).template(AutomationTemplate.VERIFY_TEXT_EQUALS)
+                .locatorType(LocatorType.CSS).locatorValue("#checkbox-status").textValue("Checked").build());
+        steps.add(AutomationStepModel.builder().order(order++).template(AutomationTemplate.ENTER_TEXT)
+                .locatorType(LocatorType.CSS).locatorValue("#keyboard-input").textValue("Keyword press").build());
+        steps.add(AutomationStepModel.builder().order(order++).template(AutomationTemplate.PRESS_KEY)
+                .locatorType(LocatorType.CSS).locatorValue("#keyboard-input").keyValue("Enter").build());
+        steps.add(AutomationStepModel.builder().order(order++).template(AutomationTemplate.VERIFY_TEXT_EQUALS)
+                .locatorType(LocatorType.CSS).locatorValue("#submitted-query").textValue("Keyword press").build());
+        steps.add(AutomationStepModel.builder().order(order++).template(AutomationTemplate.VERIFY_ATTRIBUTE)
+                .locatorType(LocatorType.CSS).locatorValue("#action-btn").attributeName("data-status").textValue("ready").build());
+        steps.add(AutomationStepModel.builder().order(order++).template(AutomationTemplate.VERIFY_URL)
+                .urlComparison(UrlComparison.CONTAINS).textValue("/demo/extended").build());
+
+        AutomationTestDefinition def = AutomationTestDefinition.builder()
+                .caseId(202)
+                .caseName("Extended Controls Keyword Scenario")
+                .testType(TestTypes.KEYWORD_DRIVEN)
+                .steps(steps)
+                .executionConfig(Map.of("stepTimeoutMs", "4000", "headless", "true"))
+                .build();
+
+        AutomationExecutionResult result = keywordRunner.execute(def);
+
+        assertThat(result.getStatus()).isEqualTo(JobStatus.COMPLETED);
+        assertThat(result.getStepResults()).hasSize(steps.size());
+        assertThat(result.getStepResults()).allMatch(AutomationExecutionResult.StepResult::isPassed);
+        assertThat(result.getFailureScreenshot()).isNull();
+    }
+
+    @Test
+    @DisplayName("Verify genuine assertion failures and validation errors for the five new templates")
+    void testExtendedAssertionFailuresAndValidation() {
+        String baseUrl = "http://localhost:" + port;
+
+        // 1. Missing attribute distinguishes from empty attribute value
+        List<AutomationStepModel> missingAttrSteps = List.of(
+                AutomationStepModel.builder().order(1).template(AutomationTemplate.OPEN_PAGE).textValue(baseUrl + "/demo/extended").build(),
+                AutomationStepModel.builder().order(2).template(AutomationTemplate.VERIFY_ATTRIBUTE)
+                        .locatorType(LocatorType.CSS).locatorValue("#action-btn").attributeName("data-nonexistent").textValue("any").build()
+        );
+        AutomationExecutionResult missingAttrRes = keywordRunner.execute(AutomationTestDefinition.builder()
+                .caseId(203).caseName("Missing Attribute Test").testType(TestTypes.KEYWORD_DRIVEN).steps(missingAttrSteps)
+                .executionConfig(Map.of("stepTimeoutMs", "1000", "headless", "true")).build());
+        assertThat(missingAttrRes.getStatus()).isEqualTo(JobStatus.FAILED);
+        assertThat(missingAttrRes.getErrorMessage()).contains("does not have attribute 'data-nonexistent'");
+        assertThat(missingAttrRes.getFailureScreenshot()).isNotNull();
+
+        // 2. Mismatched URL assertion failure
+        List<AutomationStepModel> urlFailSteps = List.of(
+                AutomationStepModel.builder().order(1).template(AutomationTemplate.OPEN_PAGE).textValue(baseUrl + "/demo/extended").build(),
+                AutomationStepModel.builder().order(2).template(AutomationTemplate.VERIFY_URL)
+                        .urlComparison(UrlComparison.EQUALS).textValue(baseUrl + "/wrong-path").build()
+        );
+        AutomationExecutionResult urlFailRes = keywordRunner.execute(AutomationTestDefinition.builder()
+                .caseId(204).caseName("URL Mismatch Test").testType(TestTypes.KEYWORD_DRIVEN).steps(urlFailSteps)
+                .executionConfig(Map.of("stepTimeoutMs", "1000", "headless", "true")).build());
+        assertThat(urlFailRes.getStatus()).isEqualTo(JobStatus.FAILED);
+        assertThat(urlFailRes.getErrorMessage()).contains("URL verification failed");
+
+        // 3. Unsupported key validation error
+        List<AutomationStepModel> badKeySteps = List.of(
+                AutomationStepModel.builder().order(1).template(AutomationTemplate.OPEN_PAGE).textValue(baseUrl + "/demo/extended").build(),
+                AutomationStepModel.builder().order(2).template(AutomationTemplate.PRESS_KEY)
+                        .locatorType(LocatorType.CSS).locatorValue("#keyboard-input").keyValue("InvalidKeyXYZ").build()
+        );
+        AutomationExecutionResult badKeyRes = keywordRunner.execute(AutomationTestDefinition.builder()
+                .caseId(205).caseName("Bad Key Test").testType(TestTypes.KEYWORD_DRIVEN).steps(badKeySteps)
+                .executionConfig(Map.of("stepTimeoutMs", "1000", "headless", "true")).build());
+        assertThat(badKeyRes.getStatus()).isEqualTo(JobStatus.FAILED);
+        assertThat(badKeyRes.getErrorMessage()).contains("Unsupported key 'InvalidKeyXYZ'");
     }
 
     @Test
@@ -536,6 +709,150 @@ public class AutomationVerificationTest {
                 ex -> assertThat(ex.getStatusCode().value()).isEqualTo(code));
     }
 
+    @Autowired private AutomationJobPreviewRepository previewRepository;
+
+    @Test
+    void previewIsProjectProtectedRedactedAndDoesNotRecordResults() throws Exception {
+        AutomationJob job = queuedJob("http://localhost/preview-private-value");
+        var definition = mapper.readValue(job.getTestDefinition(), AutomationTestDefinition.class);
+        definition.setVariables(Map.of("PASSWORD", "preview-private-value")); definition.setSecretKeys(Set.of("PASSWORD"));
+        job.setTestDefinition(mapper.writeValueAsString(definition));
+        var claim = jobService.pollNextJob(project.getId(), "preview-worker").orElseThrow();
+        jobService.updateProgress(job.getId(), project.getId(), "preview-worker", claim.leaseToken(),
+                new AutomationProgress(1, 0, "RUNNING", List.of(), null));
+        var view = jobService.getPreview(job.getId(), 0);
+        assertThat(mapper.writeValueAsString(view)).contains("[REDACTED]").doesNotContain("preview-private-value");
+        long revision = ((Number) view.get("sequence")).longValue();
+        assertThat(jobService.getPreview(job.getId(), revision)).isNull();
+        assertThat(job.getCaseExecution().getResultStatus()).isEqualTo(TestResult.NOT_RUN);
+        assertThat(job.getCaseExecution().getHistory()).isEmpty();
+        mvc.perform(get("/automation/jobs/" + job.getId() + "/preview").header("Authorization", outsiderToken))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/automation/jobs/" + job.getId() + "/preview").header("Authorization", managerToken))
+                .andExpect(status().isOk()).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Cache-Control", "no-store"));
+    }
+
+    @Test
+    void previewRejectsWrongExpiredAndCancelledClaimsAndResetsOnReclaim() {
+        AutomationJob job = queuedJob();
+        var first = jobService.pollNextJob(project.getId(), "preview-worker").orElseThrow();
+        var initial = new AutomationProgress(5, 0, "RUNNING", List.of(), null);
+        expectHttp(403, () -> jobService.updateProgress(job.getId(), project.getId(), "other-worker", first.leaseToken(), initial));
+        expectHttp(404, () -> jobService.updateProgress(job.getId(), foreignProject.getId(), "preview-worker", first.leaseToken(), initial));
+        jobService.updateProgress(job.getId(), project.getId(), "preview-worker", first.leaseToken(), initial);
+        long firstRevision = ((Number) jobService.getPreview(job.getId(), 0).get("sequence")).longValue();
+        job.setLeaseExpiration(java.time.Instant.now().minusSeconds(1)); jobRepository.flush();
+        assertThat(jobService.getPreview(job.getId(), 0)).isNull();
+        expectHttp(409, () -> jobService.updateProgress(job.getId(), project.getId(), "preview-worker", first.leaseToken(), initial));
+        var second = jobService.pollNextJob(project.getId(), "preview-worker").orElseThrow();
+        assertThat(jobService.getPreview(job.getId(), 0)).isNull();
+        expectHttp(403, () -> jobService.updateProgress(job.getId(), project.getId(), "preview-worker", first.leaseToken(), initial));
+        jobService.updateProgress(job.getId(), project.getId(), "preview-worker", second.leaseToken(), new AutomationProgress(1, 0, "RUNNING", List.of(), null));
+        assertThat(((Number) jobService.getPreview(job.getId(), firstRevision).get("sequence")).longValue()).isGreaterThan(firstRevision);
+        jobService.cancelJob(job.getId());
+        assertThat(previewRepository.existsById(job.getId())).isFalse();
+        expectHttp(409, () -> jobService.updateProgress(job.getId(), project.getId(), "preview-worker", second.leaseToken(), initial));
+    }
+
+    @Test
+    void previewValidatesPayloadsIgnoresOlderFramesAndExpires() {
+        AutomationJob job = queuedJob();
+        var claim = jobService.pollNextJob(project.getId(), "preview-worker").orElseThrow();
+        java.util.function.Consumer<AutomationProgress> send = progress -> jobService.updateProgress(job.getId(), project.getId(), "preview-worker", claim.leaseToken(), progress);
+        expectHttp(400, () -> send.accept(new AutomationProgress(1, 5, "RUNNING", List.of(), null)));
+        expectHttp(400, () -> send.accept(new AutomationProgress(1, 0, "PASSED", List.of(), null)));
+        expectHttp(400, () -> send.accept(new AutomationProgress(1, 0, "RUNNING", List.of(), new byte[600000])));
+        expectHttp(400, () -> send.accept(new AutomationProgress(1, 0, "RUNNING", List.of(), "not an image".getBytes())));
+        send.accept(new AutomationProgress(2, 0, "PASSED", passedResult().getStepResults(), null));
+        var view = jobService.getPreview(job.getId(), 0);
+        send.accept(new AutomationProgress(1, 0, "RUNNING", List.of(), null));
+        assertThat(jobService.getPreview(job.getId(), 0)).isEqualTo(view);
+        jobService.completeJob(job.getId(), project.getId(), "preview-worker", claim.leaseToken(), passedResult());
+        assertThat(jobService.getPreview(job.getId(), 0)).isNotNull(); // Fast runs retain the last frame briefly.
+        previewRepository.findById(job.getId()).orElseThrow().setUpdatedAt(java.time.Instant.now().minusSeconds(901));
+        entityManager.flush();
+        assertThat(jobService.getPreview(job.getId(), 0)).isNull();
+        previewRepository.deleteExpired(java.time.Instant.now().minusSeconds(900));
+        entityManager.clear();
+        assertThat(previewRepository.existsById(job.getId())).isFalse();
+    }
+
+    @Test
+    void previewWorkerEndpointRequiresTokenAndLease() throws Exception {
+        AutomationJob job = queuedJob();
+        var claim = jobService.pollNextJob(project.getId(), "preview-worker").orElseThrow();
+        String token = "preview-worker-token-with-at-least-32-characters";
+        environment.getPropertySources().addFirst(new org.springframework.core.env.MapPropertySource("automation-worker-regression", Map.of(
+                "automation.worker.token", token, "automation.worker.project-id", project.getId())));
+        String path = "/automation/worker/jobs/" + job.getId() + "/progress";
+        String body = mapper.writeValueAsString(new AutomationProgress(1, 0, "RUNNING", List.of(), null));
+        mvc.perform(post(path).param("workerId", "preview-worker").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post(path).param("workerId", "preview-worker").header("X-Worker-Token", token).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isForbidden());
+        mvc.perform(post(path).param("workerId", "preview-worker").header("X-Worker-Token", token).header("X-Job-Lease", claim.leaseToken())
+                        .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk());
+    }
+
+    @Test
+    void previewMasksFormValuesAndPreviewFailuresDoNotFailTests() throws Exception {
+        var definition = AutomationTestDefinition.builder().variables(Map.of("PASSWORD", "preview-private-value"))
+                .secretKeys(Set.of("PASSWORD")).build();
+        try (var driver = new AutomationBrowserDriver(definition)) {
+            driver.init(true);
+            driver.getPage().setContent("<input id='name'><input id='password' type='password'><p>preview-private-value</p>");
+            driver.getPage().locator("#name").fill("name-value");
+            driver.getPage().locator("#password").fill("preview-private-value");
+            byte[] frame = driver.takePreviewScreenshot();
+            assertThat(frame).hasSizeGreaterThan(100);
+            var image = javax.imageio.ImageIO.read(new ByteArrayInputStream(frame));
+            for (String id : List.of("#name", "#password", "p")) {
+                var bounds = driver.getPage().locator(id).boundingBox();
+                var color = new java.awt.Color(image.getRGB((int) (bounds.x + bounds.width / 2), (int) (bounds.y + bounds.height / 2)));
+                assertThat(color.getRed()).isGreaterThan(200);
+                assertThat(color.getBlue()).isGreaterThan(200);
+                assertThat(color.getGreen()).isLessThan(80);
+            }
+            assertThat(driver.getPage().locator("#password").inputValue()).isEqualTo("preview-private-value");
+        }
+        var run = AutomationTestDefinition.builder().caseName("Optional preview")
+                .steps(List.of(AutomationStepModel.builder().order(1).template(AutomationTemplate.OPEN_PAGE)
+                        .textValue("http://localhost:" + port + "/demo/login").build())).build();
+        var result = keywordRunner.execute(run, () -> false, (index, state, steps, driver) -> { throw new IllegalStateException("Preview offline"); });
+        assertThat(result.getStatus()).isEqualTo(JobStatus.COMPLETED);
+    }
+
+    @Test
+    void navigationContinuesWhenAnUnrelatedImageHasNotFinished() throws Exception {
+        var release = new java.util.concurrent.CountDownLatch(1);
+        var server = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+        var requests = java.util.concurrent.Executors.newCachedThreadPool();
+        server.setExecutor(requests);
+        server.createContext("/page", exchange -> {
+            byte[] html = "<p id='ready'>Ready</p><img src='/slow-image'>".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "text/html");
+            exchange.sendResponseHeaders(200, html.length);
+            exchange.getResponseBody().write(html); exchange.close();
+        });
+        server.createContext("/slow-image", exchange -> {
+            try {
+                exchange.sendResponseHeaders(200, 1000);
+                exchange.getResponseBody().write(1); exchange.getResponseBody().flush();
+                release.await(10, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (InterruptedException error) { Thread.currentThread().interrupt(); }
+            finally { exchange.close(); }
+        });
+        server.start();
+        try (var driver = new AutomationBrowserDriver(AutomationTestDefinition.builder()
+                .executionConfig(Map.of("stepTimeoutMs", "1000", "navigationTimeoutMs", "3000")).build())) {
+            driver.init(true);
+            long start = System.nanoTime();
+            driver.openPage("http://127.0.0.1:" + server.getAddress().getPort() + "/page");
+            driver.verifyTextEquals("#ready", "Ready");
+            assertThat(java.time.Duration.ofNanos(System.nanoTime() - start)).isLessThan(java.time.Duration.ofSeconds(3));
+        } finally { release.countDown(); server.stop(0); requests.shutdownNow(); }
+    }
+
     @Test
     void secretsAreMaskedWithoutChangingStoredValues() throws Exception {
         authenticateManager();
@@ -671,6 +988,10 @@ public class AutomationVerificationTest {
         var worker=new com.tcms.automation.worker.AutomationWorkerMain("http://localhost:"+port,token,"real-worker",true,100);
         assertThat(worker.pollAndExecute()).isTrue();
         transactions.executeWithoutResult(status -> {
+            authenticateManager();
+            var preview = jobService.getPreview(real.getId(), 0);
+            assertThat(preview).isNotNull();
+            assertThat((byte[]) preview.get("screenshot")).hasSizeGreaterThan(100);
             var job=jobRepository.findById(real.getId()).orElseThrow();
             assertThat(job.getJobStatus()).isEqualTo(JobStatus.COMPLETED);
             assertThat(job.getCaseExecution().getResultStatus()).isEqualTo(TestResult.PASS);
@@ -682,8 +1003,14 @@ public class AutomationVerificationTest {
     void downloadedProjectRunsBothFormatsAndRejectsWrongExpectations() throws Exception {
         // The exported project targets a separate application, without using any TMS API.
         standaloneTarget=com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1",0),0);
+        String optionLabel="Option \"B\" \\ path";
         standaloneTarget.createContext("/login", exchange -> {
-            byte[] html="<html><body><button id='login-btn'>Sign In</button></body></html>".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            byte[] html=("<html><body>"
+                    + "<select id='opts'><option value='a'>OptionA</option><option value='b'>"+optionLabel+"</option></select>"
+                    + "<input type='checkbox' id='agree-box'/>"
+                    + "<input type='text' id='txt'/>"
+                    + "<button id='login-btn' data-status='ready'>Sign In</button>"
+                    + "</body></html>").getBytes(java.nio.charset.StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type","text/html; charset=UTF-8");
             exchange.sendResponseHeaders(200,html.length);
             try (var output=exchange.getResponseBody()) { output.write(html); }
@@ -694,10 +1021,39 @@ public class AutomationVerificationTest {
         List<Integer> ids=new ArrayList<>();
         for (TestTypes type : List.of(TestTypes.CUCUMBER_AUTOMATION,TestTypes.KEYWORD_DRIVEN)) {
             TestCase tc=createTestCase(project,type,"{\"order\":1,\"keyword\":\"Given\",\"template\":\"OPEN_PAGE\",\"textValue\":\""+url+"\"}");
-            TestSteps step=new TestSteps(); step.setTestCase(tc); step.setTestType(type); step.setTestStepOrder(2); step.setTestStepDesc("Verify login form"); step.setTestExpectedOutput("");
-            step.setTestStepData("{\"order\":2,\"keyword\":\"Then\",\"template\":\"VERIFY_TEXT_EQUALS\",\"locatorValue\":\"${submitLocator}\",\"textValue\":\"Sign In\"}");
-            step.setTsCreatedDate(tc.getTestCreatedDate()); step.setTsModifiedDate(tc.getTestCreatedDate()); step.setTsCreatedBy("QA"); step.setTsModifiedBy("QA");
-            tc.getTestStepsSet().add(step); testCaseRepository.save(tc); entityManager.flush(); ids.add(tc.getId());
+
+            TestSteps step2=new TestSteps(); step2.setTestCase(tc); step2.setTestType(type); step2.setTestStepOrder(2); step2.setTestStepDesc("Select Option"); step2.setTestExpectedOutput("");
+            step2.setTestStepData(mapper.writeValueAsString(AutomationStepModel.builder().order(2).keyword("When")
+                    .template(AutomationTemplate.SELECT_OPTION).selectBy(OptionSelectBy.LABEL).locatorValue("#opts").textValue(optionLabel).build()));
+            step2.setTsCreatedDate(tc.getTestCreatedDate()); step2.setTsModifiedDate(tc.getTestCreatedDate()); step2.setTsCreatedBy("QA"); step2.setTsModifiedBy("QA");
+            tc.getTestStepsSet().add(step2);
+
+            TestSteps step3=new TestSteps(); step3.setTestCase(tc); step3.setTestType(type); step3.setTestStepOrder(3); step3.setTestStepDesc("Check Box"); step3.setTestExpectedOutput("");
+            step3.setTestStepData("{\"order\":3,\"keyword\":\"When\",\"template\":\"SET_CHECKBOX\",\"checkedValue\":true,\"locatorValue\":\"#agree-box\"}");
+            step3.setTsCreatedDate(tc.getTestCreatedDate()); step3.setTsModifiedDate(tc.getTestCreatedDate()); step3.setTsCreatedBy("QA"); step3.setTsModifiedBy("QA");
+            tc.getTestStepsSet().add(step3);
+
+            TestSteps step4=new TestSteps(); step4.setTestCase(tc); step4.setTestType(type); step4.setTestStepOrder(4); step4.setTestStepDesc("Press Enter"); step4.setTestExpectedOutput("");
+            step4.setTestStepData("{\"order\":4,\"keyword\":\"When\",\"template\":\"PRESS_KEY\",\"keyValue\":\"enter\",\"locatorValue\":\"#txt\"}");
+            step4.setTsCreatedDate(tc.getTestCreatedDate()); step4.setTsModifiedDate(tc.getTestCreatedDate()); step4.setTsCreatedBy("QA"); step4.setTsModifiedBy("QA");
+            tc.getTestStepsSet().add(step4);
+
+            TestSteps step5=new TestSteps(); step5.setTestCase(tc); step5.setTestType(type); step5.setTestStepOrder(5); step5.setTestStepDesc("Verify URL"); step5.setTestExpectedOutput("");
+            step5.setTestStepData("{\"order\":5,\"keyword\":\"Then\",\"template\":\"VERIFY_URL\",\"urlComparison\":\"CONTAINS\",\"textValue\":\"/login\"}");
+            step5.setTsCreatedDate(tc.getTestCreatedDate()); step5.setTsModifiedDate(tc.getTestCreatedDate()); step5.setTsCreatedBy("QA"); step5.setTsModifiedBy("QA");
+            tc.getTestStepsSet().add(step5);
+
+            TestSteps step6=new TestSteps(); step6.setTestCase(tc); step6.setTestType(type); step6.setTestStepOrder(6); step6.setTestStepDesc("Verify Attribute"); step6.setTestExpectedOutput("");
+            step6.setTestStepData("{\"order\":6,\"keyword\":\"Then\",\"template\":\"VERIFY_ATTRIBUTE\",\"attributeName\":\"data-status\",\"locatorValue\":\"${submitLocator}\",\"textValue\":\"ready\"}");
+            step6.setTsCreatedDate(tc.getTestCreatedDate()); step6.setTsModifiedDate(tc.getTestCreatedDate()); step6.setTsCreatedBy("QA"); step6.setTsModifiedBy("QA");
+            tc.getTestStepsSet().add(step6);
+
+            TestSteps step7=new TestSteps(); step7.setTestCase(tc); step7.setTestType(type); step7.setTestStepOrder(7); step7.setTestStepDesc("Verify login form"); step7.setTestExpectedOutput("");
+            step7.setTestStepData("{\"order\":7,\"keyword\":\"Then\",\"template\":\"VERIFY_TEXT_EQUALS\",\"locatorValue\":\"${submitLocator}\",\"textValue\":\"Sign In\"}");
+            step7.setTsCreatedDate(tc.getTestCreatedDate()); step7.setTsModifiedDate(tc.getTestCreatedDate()); step7.setTsCreatedBy("QA"); step7.setTsModifiedBy("QA");
+            tc.getTestStepsSet().add(step7);
+
+            testCaseRepository.save(tc); entityManager.flush(); ids.add(tc.getId());
         }
         java.nio.file.Path folder=java.nio.file.Files.createTempDirectory("tcms-standalone-regression-");
         byte[] bytes=exportService.exportProjectZip(project.getId(),ids);

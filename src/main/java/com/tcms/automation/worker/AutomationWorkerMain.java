@@ -45,8 +45,9 @@ public class AutomationWorkerMain {
     }
 
     public static void main(String[] args) {
-        String tmsUrl = System.getenv("TMS_URL") != null ? System.getenv("TMS_URL") : "http://localhost:8080/dhtcms/api/v1";
-        String token = System.getenv("AUTOMATION_WORKER_TOKEN");
+        var localSettings = java.nio.file.Path.of(".env");
+        String tmsUrl = setting("TMS_URL", System.getenv(), localSettings, "http://localhost:8080/dhtcms/api/v1");
+        String token = setting("AUTOMATION_WORKER_TOKEN", System.getenv(), localSettings, null);
         String workerId = "worker-" + UUID.randomUUID().toString().substring(0, 8);
         boolean oneShot = false;
         int pollInterval = 2000;
@@ -66,6 +67,19 @@ public class AutomationWorkerMain {
 
         AutomationWorkerMain worker = new AutomationWorkerMain(tmsUrl, token, workerId, oneShot, pollInterval);
         worker.run();
+    }
+
+    /** Match the backend's optional local properties file without evaluating shell commands. */
+    static String setting(String name, Map<String, String> environment, java.nio.file.Path file, String fallback) {
+        if (environment.containsKey(name)) return environment.get(name);
+        if (!java.nio.file.Files.exists(file)) return fallback;
+        var properties = new java.util.Properties();
+        try (var reader = java.nio.file.Files.newBufferedReader(file)) {
+            properties.load(reader);
+            return properties.getProperty(name, fallback);
+        } catch (java.io.IOException | IllegalArgumentException error) {
+            throw new IllegalStateException("Cannot read local worker settings from .env");
+        }
     }
 
     public void run() {
@@ -128,11 +142,17 @@ public class AutomationWorkerMain {
             }, 15, 15, TimeUnit.SECONDS);
 
             AutomationExecutionResult result;
+            var sequence = new java.util.concurrent.atomic.AtomicLong();
+            AutomationProgressListener progress = (index, status, results, driver) -> {
+                if (leaseLost.get()) return;
+                byte[] frame = "RUNNING".equals(status) ? null : driver.takePreviewScreenshot();
+                sendProgress(jobId, leaseToken, new AutomationProgress(sequence.incrementAndGet(), index, status, results, frame), leaseLost);
+            };
             try {
                 if (testType == TestTypes.CUCUMBER_AUTOMATION) {
-                    result = cucumberRunner.execute(definition, leaseLost::get);
+                    result = cucumberRunner.execute(definition, leaseLost::get, progress);
                 } else {
-                    result = keywordRunner.execute(definition, leaseLost::get);
+                    result = keywordRunner.execute(definition, leaseLost::get, progress);
                 }
             } finally {
                 // Let an in-flight heartbeat finish; interrupting it would falsely mark this completed run as lost.
@@ -161,6 +181,22 @@ public class AutomationWorkerMain {
                     .build();
             return httpClient.send(req, HttpResponse.BodyHandlers.discarding()).statusCode() == 200;
         } catch (Exception ignored) { return false; }
+    }
+
+    private void sendProgress(Long jobId, String leaseToken, AutomationProgress progress,
+                              java.util.concurrent.atomic.AtomicBoolean leaseLost) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(tmsUrl + "/automation/worker/jobs/" + jobId + "/progress?workerId=" + workerId))
+                    .header("X-Job-Lease", leaseToken).header("X-Worker-Token", workerToken)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(progress)))
+                    .timeout(Duration.ofSeconds(2)).build();
+            int status = httpClient.send(request, HttpResponse.BodyHandlers.discarding()).statusCode();
+            if (status == 403 || status == 409) leaseLost.set(true);
+        } catch (Exception ignored) {
+            // Preview is best effort. Heartbeats and final result submission remain authoritative.
+        }
     }
 
     private void submitResult(Long jobId, String leaseToken, AutomationExecutionResult result) {

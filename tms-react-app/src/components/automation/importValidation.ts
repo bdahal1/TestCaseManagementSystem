@@ -1,4 +1,5 @@
 import type { ImportPreviewResponse, ImportStepPreview, LocatorType, ProjectLocator } from './types';
+import { SUPPORTED_KEY_OPTIONS } from './types';
 
 const variableReference = /\$\{[a-zA-Z0-9_.-]+\}/;
 
@@ -18,19 +19,52 @@ export function inferImportLocatorType(value: string | undefined, locators: Proj
 
 function stepError(step: ImportStepPreview, locators: ProjectLocator[]): string | undefined {
     if (!step.template) return 'Map this step to an automation template';
-    if (step.locatorValue?.includes('[REDACTED]') || step.textValue?.includes('[REDACTED]'))
+    if (step.locatorValue?.includes('[REDACTED]') || step.textValue?.includes('[REDACTED]')
+        || step.keyValue?.includes('[REDACTED]') || step.attributeName?.includes('[REDACTED]'))
         return 'Replace masked values with a project variable reference such as ${PASSWORD}';
-    if (step.template !== 'OPEN_PAGE') {
+
+    if (step.template !== 'OPEN_PAGE' && step.template !== 'VERIFY_URL') {
         const locator = step.locatorValue?.trim();
         if (!locator) return 'Target locator is required';
         const type = step.locatorType ?? inferImportLocatorType(locator, locators);
         if (!variableReference.test(locator) && type === 'NAMED' && !locators.some((entry) => entry.locatorName === locator))
             return `Reusable named locator '${locator}' is not defined in this project`;
     }
-    if (step.template === 'VERIFY_ELEMENT_STATE') {
-        if (!step.stateValue) return 'Choose Visible or Hidden';
-    } else if (step.template !== 'CLICK_ELEMENT' && !step.textValue?.trim()) {
-        return step.template === 'OPEN_PAGE' ? 'Page URL is required' : 'Text value is required';
+
+    switch (step.template) {
+        case 'OPEN_PAGE':
+            if (!step.textValue?.trim()) return 'Page URL is required';
+            break;
+        case 'ENTER_TEXT':
+        case 'VERIFY_TEXT_EQUALS':
+        case 'VERIFY_TEXT_CONTAINS':
+            if (!step.textValue?.trim()) return 'Text value is required';
+            break;
+        case 'VERIFY_ELEMENT_STATE':
+            if (!step.stateValue) return 'Choose Visible or Hidden';
+            break;
+        case 'SELECT_OPTION':
+            if (!step.textValue?.trim()) return 'Option label or value is required';
+            break;
+        case 'SET_CHECKBOX':
+            if (step.checkedValue === undefined || step.checkedValue === null) return 'Choose Checked or Unchecked';
+            break;
+        case 'PRESS_KEY': {
+            if (!step.keyValue?.trim()) return 'Key is required';
+            const key = step.keyValue.trim();
+            const isSupported = SUPPORTED_KEY_OPTIONS.some((k) => k.toLowerCase() === key.toLowerCase()) || key.length === 1;
+            if (!variableReference.test(key) && !isSupported) return `Unsupported key '${key}'. Supported: ${SUPPORTED_KEY_OPTIONS.join(', ')}`;
+            break;
+        }
+        case 'VERIFY_URL':
+            if (!step.textValue?.trim()) return 'Expected URL is required';
+            break;
+        case 'VERIFY_ATTRIBUTE':
+            if (!step.attributeName?.trim()) return 'Attribute name is required';
+            if (step.textValue === undefined || step.textValue === null) return 'Expected attribute value is required';
+            break;
+        case 'CLICK_ELEMENT':
+            break;
     }
     return undefined;
 }

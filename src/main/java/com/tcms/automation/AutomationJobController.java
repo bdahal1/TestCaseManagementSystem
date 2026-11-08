@@ -60,6 +60,7 @@ public class AutomationJobController {
         resp.put("errorMessage", job.getErrorMessage());
         resp.put("stepResults", stepResults);
         resp.put("diagnosticLogs", job.getDiagnosticLogs());
+        resp.put("failureEvidenceId", job.getFailureEvidenceId());
         return ResponseEntity.ok(resp);
     }
 
@@ -73,6 +74,14 @@ public class AutomationJobController {
             return ResponseEntity.noContent().build();
         }
         return getJobStatus(jobOpt.get().getId());
+    }
+
+    @GetMapping("/{jobId}/preview")
+    public ResponseEntity<Map<String, Object>> getPreview(@PathVariable Long jobId,
+                                                         @RequestParam(defaultValue = "0") long afterSequence) {
+        var preview = jobService.getPreview(jobId, afterSequence);
+        return ResponseEntity.status(preview == null ? HttpStatus.NO_CONTENT : HttpStatus.OK)
+                .header("Cache-Control", "no-store").body(preview);
     }
 
     @PostMapping("/{jobId}/cancel")

@@ -19,6 +19,11 @@ public class AutomationKeywordRunner {
     }
 
     public AutomationExecutionResult execute(AutomationTestDefinition definition, java.util.function.BooleanSupplier cancelled) {
+        return execute(definition, cancelled, AutomationProgressListener.NONE);
+    }
+
+    public AutomationExecutionResult execute(AutomationTestDefinition definition, java.util.function.BooleanSupplier cancelled,
+                                             AutomationProgressListener progress) {
         long startTime = System.currentTimeMillis();
         List<AutomationExecutionResult.StepResult> stepResults = new ArrayList<>();
         byte[] failureScreenshot = null;
@@ -44,6 +49,8 @@ public class AutomationKeywordRunner {
             }
 
             for (AutomationStepModel step : definition.getSteps()) {
+                int index = stepResults.size();
+                AutomationProgressListener.publish(progress, index, "RUNNING", stepResults, driver);
                 long stepStart = System.currentTimeMillis();
                 String desc = serializer.toKeywordDescription(step);
                 String keyword = step.getKeyword() != null ? step.getKeyword() : "";
@@ -59,6 +66,7 @@ public class AutomationKeywordRunner {
                             .passed(true)
                             .durationMs(stepDuration)
                             .build());
+                    AutomationProgressListener.publish(progress, index, "PASSED", stepResults, driver);
                 } catch (AssertionError | Exception e) {
                     long stepDuration = System.currentTimeMillis() - stepStart;
                     failureScreenshot = driver.takeScreenshot();
@@ -75,6 +83,7 @@ public class AutomationKeywordRunner {
                             .build());
 
                     finalStatus = JobStatus.FAILED;
+                    AutomationProgressListener.publish(progress, index, "FAILED", stepResults, driver);
                     break;
                 }
             }
@@ -100,13 +109,19 @@ public class AutomationKeywordRunner {
         if (step.getTemplate() == null) {
             throw new IllegalArgumentException("Automation template is required");
         }
+        String locator = serializer.locatorReference(step);
         switch (step.getTemplate()) {
             case OPEN_PAGE -> driver.openPage(step.getTextValue());
-            case ENTER_TEXT -> driver.enterText(step.getLocatorValue(), step.getTextValue());
-            case CLICK_ELEMENT -> driver.clickElement(step.getLocatorValue());
-            case VERIFY_TEXT_EQUALS -> driver.verifyTextEquals(step.getLocatorValue(), step.getTextValue());
-            case VERIFY_TEXT_CONTAINS -> driver.verifyTextContains(step.getLocatorValue(), step.getTextValue());
-            case VERIFY_ELEMENT_STATE -> driver.verifyElementState(step.getLocatorValue(), step.getStateValue());
+            case ENTER_TEXT -> driver.enterText(locator, step.getTextValue());
+            case CLICK_ELEMENT -> driver.clickElement(locator);
+            case VERIFY_TEXT_EQUALS -> driver.verifyTextEquals(locator, step.getTextValue());
+            case VERIFY_TEXT_CONTAINS -> driver.verifyTextContains(locator, step.getTextValue());
+            case VERIFY_ELEMENT_STATE -> driver.verifyElementState(locator, step.getStateValue());
+            case SELECT_OPTION -> driver.selectOption(locator, step.getTextValue(), step.getSelectBy());
+            case SET_CHECKBOX -> driver.setCheckbox(locator, Boolean.TRUE.equals(step.getCheckedValue()));
+            case PRESS_KEY -> driver.pressKey(locator, step.getKeyValue());
+            case VERIFY_URL -> driver.verifyUrl(step.getTextValue(), step.getUrlComparison());
+            case VERIFY_ATTRIBUTE -> driver.verifyAttribute(locator, step.getAttributeName(), step.getTextValue());
         }
     }
 }

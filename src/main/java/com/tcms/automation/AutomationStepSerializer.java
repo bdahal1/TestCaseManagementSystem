@@ -55,25 +55,36 @@ public class AutomationStepSerializer {
     public String toGherkinStep(AutomationStepModel step) {
         if (step == null || step.getTemplate() == null) return "";
         String keyword = (step.getKeyword() == null || step.getKeyword().isBlank()) ? "When" : step.getKeyword().trim();
-        String loc = step.getLocatorValue() == null ? "" : step.getLocatorValue();
+        String loc = locatorReference(step);
+        if (loc == null) loc = "";
         String val = step.getTextValue() == null ? "" : step.getTextValue();
         String state = step.getStateValue() == null ? "visible" : step.getStateValue().name().toLowerCase();
+        String key = step.getKeyValue() == null ? "" : step.getKeyValue();
+        String attr = step.getAttributeName() == null ? "" : step.getAttributeName();
 
         return switch (step.getTemplate()) {
-            case OPEN_PAGE -> keyword + " open page \"" + val + "\"";
-            case ENTER_TEXT -> keyword + " enter text \"" + val + "\" into \"" + loc + "\"";
-            case CLICK_ELEMENT -> keyword + " click element \"" + loc + "\"";
-            case VERIFY_TEXT_EQUALS -> keyword + " verify text of \"" + loc + "\" equals \"" + val + "\"";
-            case VERIFY_TEXT_CONTAINS -> keyword + " verify text of \"" + loc + "\" contains \"" + val + "\"";
-            case VERIFY_ELEMENT_STATE -> keyword + " verify element \"" + loc + "\" is " + state;
+            case OPEN_PAGE -> keyword + " open page \"" + escapeGherkin(val) + "\"";
+            case ENTER_TEXT -> keyword + " enter text \"" + escapeGherkin(val) + "\" into \"" + escapeGherkin(loc) + "\"";
+            case CLICK_ELEMENT -> keyword + " click element \"" + escapeGherkin(loc) + "\"";
+            case VERIFY_TEXT_EQUALS -> keyword + " verify text of \"" + escapeGherkin(loc) + "\" equals \"" + escapeGherkin(val) + "\"";
+            case VERIFY_TEXT_CONTAINS -> keyword + " verify text of \"" + escapeGherkin(loc) + "\" contains \"" + escapeGherkin(val) + "\"";
+            case VERIFY_ELEMENT_STATE -> keyword + " verify element \"" + escapeGherkin(loc) + "\" is " + state;
+            case SELECT_OPTION -> keyword + " select option \"" + escapeGherkin(val) + "\" by " + (step.getSelectBy() == OptionSelectBy.VALUE ? "value" : "label") + " in \"" + escapeGherkin(loc) + "\"";
+            case SET_CHECKBOX -> keyword + " set checkbox \"" + escapeGherkin(loc) + "\" to " + (Boolean.TRUE.equals(step.getCheckedValue()) ? "checked" : "unchecked");
+            case PRESS_KEY -> keyword + " press key \"" + escapeGherkin(key) + "\" on \"" + escapeGherkin(loc) + "\"";
+            case VERIFY_URL -> keyword + " verify url " + (step.getUrlComparison() == UrlComparison.CONTAINS ? "contains" : "equals") + " \"" + escapeGherkin(val) + "\"";
+            case VERIFY_ATTRIBUTE -> keyword + " verify attribute \"" + escapeGherkin(attr) + "\" of \"" + escapeGherkin(loc) + "\" equals \"" + escapeGherkin(val) + "\"";
         };
     }
 
     public String toKeywordDescription(AutomationStepModel step) {
         if (step == null || step.getTemplate() == null) return "";
-        String loc = step.getLocatorValue() == null ? "" : step.getLocatorValue();
+        String loc = locatorReference(step);
+        if (loc == null) loc = "";
         String val = step.getTextValue() == null ? "" : step.getTextValue();
         String state = step.getStateValue() == null ? "visible" : step.getStateValue().name().toLowerCase();
+        String key = step.getKeyValue() == null ? "" : step.getKeyValue();
+        String attr = step.getAttributeName() == null ? "" : step.getAttributeName();
 
         return switch (step.getTemplate()) {
             case OPEN_PAGE -> "Open page \"" + val + "\"";
@@ -82,7 +93,18 @@ public class AutomationStepSerializer {
             case VERIFY_TEXT_EQUALS -> "Verify text of \"" + loc + "\" equals \"" + val + "\"";
             case VERIFY_TEXT_CONTAINS -> "Verify text of \"" + loc + "\" contains \"" + val + "\"";
             case VERIFY_ELEMENT_STATE -> "Verify element \"" + loc + "\" is " + state;
+            case SELECT_OPTION -> "Select option \"" + val + "\" by " + (step.getSelectBy() == OptionSelectBy.VALUE ? "value" : "label") + " in \"" + loc + "\"";
+            case SET_CHECKBOX -> "Set checkbox \"" + loc + "\" to " + (Boolean.TRUE.equals(step.getCheckedValue()) ? "checked" : "unchecked");
+            case PRESS_KEY -> "Press key \"" + key + "\" on \"" + loc + "\"";
+            case VERIFY_URL -> "Verify url " + (step.getUrlComparison() == UrlComparison.CONTAINS ? "contains" : "equals") + " \"" + val + "\"";
+            case VERIFY_ATTRIBUTE -> "Verify attribute \"" + attr + "\" of \"" + loc + "\" equals \"" + val + "\"";
         };
+    }
+
+    private String escapeGherkin(String input) { return GherkinStrings.escape(input); }
+
+    public String locatorReference(AutomationStepModel step) {
+        return LocatorType.reference(step.getLocatorType(), step.getLocatorValue());
     }
 
     public String toGherkinScenario(String scenarioName, List<AutomationStepModel> steps) {

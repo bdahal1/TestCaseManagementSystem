@@ -46,8 +46,11 @@ import {
     type ImportSaveRequest,
     type ImportSaveResponse,
     type ImportStepPreview,
+    type OptionSelectBy,
     type ProjectLocator,
+    type UrlComparison,
     CUCUMBER_KEYWORDS,
+    SUPPORTED_KEY_OPTIONS,
     TEMPLATE_LABELS,
 } from './types';
 
@@ -174,6 +177,11 @@ export default function AutomationImportDialog({
         const nextStep: ImportStepPreview = { ...curStep, ...patch };
         if ('locatorValue' in patch) nextStep.locatorType = inferImportLocatorType(patch.locatorValue, projectLocators);
         if (patch.template === 'VERIFY_ELEMENT_STATE' && !nextStep.stateValue) nextStep.stateValue = 'VISIBLE';
+        if (patch.template === 'SELECT_OPTION' && !nextStep.selectBy) nextStep.selectBy = 'LABEL';
+        if (patch.template === 'SET_CHECKBOX' && nextStep.checkedValue === undefined) nextStep.checkedValue = true;
+        if (patch.template === 'PRESS_KEY' && !nextStep.keyValue) nextStep.keyValue = 'Enter';
+        if (patch.template === 'VERIFY_URL' && !nextStep.urlComparison) nextStep.urlComparison = 'EQUALS';
+        if (patch.template === 'VERIFY_ATTRIBUTE' && !nextStep.attributeName) nextStep.attributeName = 'id';
         updatedSteps[stepIndex] = nextStep;
         updatedCases[caseIndex] = { ...updatedCases[caseIndex], steps: updatedSteps };
         setPreviewData(validateImportPreview({ ...previewData, cases: updatedCases }, projectLocators));
@@ -207,6 +215,11 @@ export default function AutomationImportDialog({
                         locatorValue: s.locatorValue,
                         textValue: s.textValue,
                         stateValue: s.stateValue,
+                        selectBy: s.selectBy,
+                        checkedValue: s.checkedValue,
+                        keyValue: s.keyValue,
+                        urlComparison: s.urlComparison,
+                        attributeName: s.attributeName,
                     })
                 ),
             })),
@@ -561,7 +574,7 @@ export default function AutomationImportDialog({
 
                                                         {/* Locator */}
                                                         <TableCell>
-                                                            {st.template && st.template !== 'OPEN_PAGE' ? (
+                                                            {st.template && st.template !== 'OPEN_PAGE' && st.template !== 'VERIFY_URL' ? (
                                                                 <Autocomplete
                                                                     freeSolo
                                                                     size="small"
@@ -582,7 +595,7 @@ export default function AutomationImportDialog({
                                                                 />
                                                             ) : (
                                                                 <Typography variant="caption" color="text.disabled">
-                                                                    N/A
+                                                                    {st.template === 'VERIFY_URL' ? '(Browser URL)' : 'N/A'}
                                                                 </Typography>
                                                             )}
                                                         </TableCell>
@@ -605,6 +618,123 @@ export default function AutomationImportDialog({
                                                                     <MenuItem value="VISIBLE">Visible</MenuItem>
                                                                     <MenuItem value="HIDDEN">Hidden</MenuItem>
                                                                 </TextField>
+                                                            ) : st.template === 'SELECT_OPTION' ? (
+                                                                <Stack direction="row" spacing={0.5}>
+                                                                    <TextField
+                                                                        select
+                                                                        size="small"
+                                                                        value={st.selectBy || 'LABEL'}
+                                                                        onChange={(e) =>
+                                                                            handleStepPatch(caseIdx, stepIdx, {
+                                                                                selectBy: e.target.value as OptionSelectBy,
+                                                                            })
+                                                                        }
+                                                                        sx={{ minWidth: 80 }}
+                                                                    >
+                                                                        <MenuItem value="LABEL">Label</MenuItem>
+                                                                        <MenuItem value="VALUE">Value</MenuItem>
+                                                                    </TextField>
+                                                                    <TextField
+                                                                        size="small"
+                                                                        fullWidth
+                                                                        placeholder="Option"
+                                                                        value={st.textValue || ''}
+                                                                        onChange={(e) =>
+                                                                            handleStepPatch(caseIdx, stepIdx, {
+                                                                                textValue: e.target.value,
+                                                                            })
+                                                                        }
+                                                                    />
+                                                                </Stack>
+                                                            ) : st.template === 'SET_CHECKBOX' ? (
+                                                                <TextField
+                                                                    select
+                                                                    size="small"
+                                                                    fullWidth
+                                                                    label="Checkbox state"
+                                                                    value={st.checkedValue == null ? '' : String(st.checkedValue)}
+                                                                    onChange={(e) =>
+                                                                        handleStepPatch(caseIdx, stepIdx, {
+                                                                            checkedValue: e.target.value === 'true',
+                                                                        })
+                                                                    }
+                                                                >
+                                                                    <MenuItem value=""><em>Select checkbox state</em></MenuItem>
+                                                                    <MenuItem value="true">Checked</MenuItem>
+                                                                    <MenuItem value="false">Unchecked</MenuItem>
+                                                                </TextField>
+                                                            ) : st.template === 'PRESS_KEY' ? (
+                                                                <Autocomplete
+                                                                    freeSolo
+                                                                    size="small"
+                                                                    options={SUPPORTED_KEY_OPTIONS.map((k) => k)}
+                                                                    value={st.keyValue ?? ''}
+                                                                    onInputChange={(_, val) =>
+                                                                        handleStepPatch(caseIdx, stepIdx, {
+                                                                            keyValue: val,
+                                                                        })
+                                                                    }
+                                                                    renderInput={(params) => (
+                                                                        <TextField
+                                                                            {...params}
+                                                                            placeholder="Key"
+                                                                        />
+                                                                    )}
+                                                                    fullWidth
+                                                                />
+                                                            ) : st.template === 'VERIFY_URL' ? (
+                                                                <Stack direction="row" spacing={0.5}>
+                                                                    <TextField
+                                                                        select
+                                                                        size="small"
+                                                                        value={st.urlComparison || 'EQUALS'}
+                                                                        onChange={(e) =>
+                                                                            handleStepPatch(caseIdx, stepIdx, {
+                                                                                urlComparison: e.target.value as UrlComparison,
+                                                                            })
+                                                                        }
+                                                                        sx={{ minWidth: 90 }}
+                                                                    >
+                                                                        <MenuItem value="EQUALS">Equals</MenuItem>
+                                                                        <MenuItem value="CONTAINS">Contains</MenuItem>
+                                                                    </TextField>
+                                                                    <TextField
+                                                                        size="small"
+                                                                        fullWidth
+                                                                        placeholder="Expected URL"
+                                                                        value={st.textValue || ''}
+                                                                        onChange={(e) =>
+                                                                            handleStepPatch(caseIdx, stepIdx, {
+                                                                                textValue: e.target.value,
+                                                                            })
+                                                                        }
+                                                                    />
+                                                                </Stack>
+                                                            ) : st.template === 'VERIFY_ATTRIBUTE' ? (
+                                                                <Stack direction="row" spacing={0.5}>
+                                                                    <TextField
+                                                                        size="small"
+                                                                        placeholder="Attribute"
+                                                                        value={st.attributeName || ''}
+                                                                        onChange={(e) =>
+                                                                            handleStepPatch(caseIdx, stepIdx, {
+                                                                                attributeName: e.target.value,
+                                                                            })
+                                                                        }
+                                                                        sx={{ flex: 1 }}
+                                                                    />
+                                                                    <TextField
+                                                                        size="small"
+                                                                        placeholder="Expected"
+                                                                        value={st.textValue ?? ''}
+                                                                        onChange={(e) =>
+                                                                            handleStepPatch(caseIdx, stepIdx, {
+                                                                                textValue: e.target.value,
+                                                                            })
+                                                                        }
+                                                                        sx={{ flex: 1 }}
+                                                                    />
+                                                                </Stack>
                                                             ) : st.template && st.template !== 'CLICK_ELEMENT' ? (
                                                                 <TextField
                                                                     size="small"

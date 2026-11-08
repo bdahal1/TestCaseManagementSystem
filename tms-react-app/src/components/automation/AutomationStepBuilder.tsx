@@ -27,8 +27,11 @@ import {
     type AutomationStepModel,
     type AutomationTemplate,
     type ElementState,
+    type OptionSelectBy,
     type ProjectLocator,
+    type UrlComparison,
     CUCUMBER_KEYWORDS,
+    SUPPORTED_KEY_OPTIONS,
     TEMPLATE_LABELS,
 } from './types';
 import ProjectLocatorsDialog from './ProjectLocatorsDialog';
@@ -64,7 +67,16 @@ export default function AutomationStepBuilder({
 
     const handleStepChange = (index: number, patch: Partial<AutomationStepModel>) => {
         const next = [...steps];
-        next[index] = { ...next[index], ...patch };
+        const updated = { ...next[index], ...patch };
+        if (patch.template) {
+            if (patch.template === 'SELECT_OPTION' && !updated.selectBy) updated.selectBy = 'LABEL';
+            if (patch.template === 'SET_CHECKBOX' && updated.checkedValue === undefined) updated.checkedValue = true;
+            if (patch.template === 'PRESS_KEY' && !updated.keyValue) updated.keyValue = 'Enter';
+            if (patch.template === 'VERIFY_URL' && !updated.urlComparison) updated.urlComparison = 'EQUALS';
+            if (patch.template === 'VERIFY_ATTRIBUTE' && !updated.attributeName) updated.attributeName = 'id';
+            if (patch.template === 'VERIFY_ELEMENT_STATE' && !updated.stateValue) updated.stateValue = 'VISIBLE';
+        }
+        next[index] = updated;
         onChange(next);
     };
 
@@ -99,8 +111,9 @@ export default function AutomationStepBuilder({
     // Helper to format Gherkin line
     const formatGherkinLine = (step: AutomationStepModel): string => {
         const kw = step.keyword || 'When';
-        const loc = step.locatorValue || '[locator]';
-        const val = step.textValue || '[value]';
+        const escape = (value: string) => JSON.stringify(value).slice(1, -1);
+        const loc = escape(step.locatorValue ?? '[locator]');
+        const val = escape(step.textValue ?? '[value]');
         const state = (step.stateValue || 'VISIBLE').toLowerCase();
 
         switch (step.template) {
@@ -116,6 +129,16 @@ export default function AutomationStepBuilder({
                 return `${kw} verify text of "${loc}" contains "${val}"`;
             case 'VERIFY_ELEMENT_STATE':
                 return `${kw} verify element "${loc}" is ${state}`;
+            case 'SELECT_OPTION':
+                return `${kw} select option "${val}" by ${(step.selectBy || 'LABEL').toLowerCase()} in "${loc}"`;
+            case 'SET_CHECKBOX':
+                return `${kw} set checkbox "${loc}" to ${step.checkedValue ? 'checked' : 'unchecked'}`;
+            case 'PRESS_KEY':
+                return `${kw} press key "${escape(step.keyValue ?? 'Enter')}" on "${loc}"`;
+            case 'VERIFY_URL':
+                return `${kw} verify url ${(step.urlComparison || 'EQUALS').toLowerCase()} "${val}"`;
+            case 'VERIFY_ATTRIBUTE':
+                return `${kw} verify attribute "${escape(step.attributeName ?? 'id')}" of "${loc}" equals "${val}"`;
             default:
                 return '';
         }
@@ -318,6 +341,195 @@ export default function AutomationStepBuilder({
                                     </>
                                 )}
 
+                                {step.template === 'SELECT_OPTION' && (
+                                    <>
+                                        <Autocomplete
+                                            freeSolo
+                                            size="small"
+                                            options={locatorOptions}
+                                            value={step.locatorValue || ''}
+                                            disabled={disabled}
+                                            onInputChange={(_, val) => handleStepChange(index, { locatorValue: val })}
+                                            renderInput={(params) => (
+                                                <TextField
+                                                    {...params}
+                                                    label="Select Locator"
+                                                    placeholder="#framework-select or Form.Select"
+                                                />
+                                            )}
+                                            sx={{ flex: 1.5 }}
+                                        />
+                                        <TextField
+                                            select
+                                            size="small"
+                                            label="By"
+                                            value={step.selectBy || 'LABEL'}
+                                            disabled={disabled}
+                                            onChange={(e) =>
+                                                handleStepChange(index, {
+                                                    selectBy: e.target.value as OptionSelectBy,
+                                                })
+                                            }
+                                            sx={{ minWidth: 100 }}
+                                        >
+                                            <MenuItem value="LABEL">Label</MenuItem>
+                                            <MenuItem value="VALUE">Value</MenuItem>
+                                        </TextField>
+                                        <TextField
+                                            size="small"
+                                            label="Option Value/Label"
+                                            value={step.textValue || ''}
+                                            disabled={disabled}
+                                            onChange={(e) => handleStepChange(index, { textValue: e.target.value })}
+                                            placeholder="Playwright or pw"
+                                            sx={{ flex: 1 }}
+                                        />
+                                    </>
+                                )}
+
+                                {step.template === 'SET_CHECKBOX' && (
+                                    <>
+                                        <Autocomplete
+                                            freeSolo
+                                            size="small"
+                                            options={locatorOptions}
+                                            value={step.locatorValue || ''}
+                                            disabled={disabled}
+                                            onInputChange={(_, val) => handleStepChange(index, { locatorValue: val })}
+                                            renderInput={(params) => (
+                                                <TextField
+                                                    {...params}
+                                                    label="Checkbox Locator"
+                                                    placeholder="#agree-checkbox or Form.Agree"
+                                                />
+                                            )}
+                                            sx={{ flex: 1.5 }}
+                                        />
+                                        <TextField
+                                            select
+                                            size="small"
+                                            label="Desired State"
+                                            value={step.checkedValue ? 'true' : 'false'}
+                                            disabled={disabled}
+                                            onChange={(e) =>
+                                                handleStepChange(index, {
+                                                    checkedValue: e.target.value === 'true',
+                                                })
+                                            }
+                                            sx={{ minWidth: 130 }}
+                                        >
+                                            <MenuItem value="true">Checked</MenuItem>
+                                            <MenuItem value="false">Unchecked</MenuItem>
+                                        </TextField>
+                                    </>
+                                )}
+
+                                {step.template === 'PRESS_KEY' && (
+                                    <>
+                                        <Autocomplete
+                                            freeSolo
+                                            size="small"
+                                            options={locatorOptions}
+                                            value={step.locatorValue || ''}
+                                            disabled={disabled}
+                                            onInputChange={(_, val) => handleStepChange(index, { locatorValue: val })}
+                                            renderInput={(params) => (
+                                                <TextField
+                                                    {...params}
+                                                    label="Target Locator"
+                                                    placeholder="#keyboard-input or Search.Input"
+                                                />
+                                            )}
+                                            sx={{ flex: 1.5 }}
+                                        />
+                                        <Autocomplete
+                                            freeSolo
+                                            size="small"
+                                            options={SUPPORTED_KEY_OPTIONS.map((k) => k)}
+                                            value={step.keyValue || 'Enter'}
+                                            disabled={disabled}
+                                            onInputChange={(_, val) => handleStepChange(index, { keyValue: val })}
+                                            renderInput={(params) => (
+                                                <TextField
+                                                    {...params}
+                                                    label="Key"
+                                                    placeholder="Enter, Tab, Escape..."
+                                                />
+                                            )}
+                                            sx={{ minWidth: 140 }}
+                                        />
+                                    </>
+                                )}
+
+                                {step.template === 'VERIFY_URL' && (
+                                    <>
+                                        <TextField
+                                            select
+                                            size="small"
+                                            label="Comparison"
+                                            value={step.urlComparison || 'EQUALS'}
+                                            disabled={disabled}
+                                            onChange={(e) =>
+                                                handleStepChange(index, {
+                                                    urlComparison: e.target.value as UrlComparison,
+                                                })
+                                            }
+                                            sx={{ minWidth: 120 }}
+                                        >
+                                            <MenuItem value="EQUALS">Equals</MenuItem>
+                                            <MenuItem value="CONTAINS">Contains</MenuItem>
+                                        </TextField>
+                                        <TextField
+                                            size="small"
+                                            label="Expected URL"
+                                            value={step.textValue || ''}
+                                            disabled={disabled}
+                                            onChange={(e) => handleStepChange(index, { textValue: e.target.value })}
+                                            placeholder="http://localhost:8080/demo/extended or ${baseUrl}/dashboard"
+                                            sx={{ flex: 2 }}
+                                        />
+                                    </>
+                                )}
+
+                                {step.template === 'VERIFY_ATTRIBUTE' && (
+                                    <>
+                                        <Autocomplete
+                                            freeSolo
+                                            size="small"
+                                            options={locatorOptions}
+                                            value={step.locatorValue || ''}
+                                            disabled={disabled}
+                                            onInputChange={(_, val) => handleStepChange(index, { locatorValue: val })}
+                                            renderInput={(params) => (
+                                                <TextField
+                                                    {...params}
+                                                    label="Target Locator"
+                                                    placeholder="#action-btn or Form.Save"
+                                                />
+                                            )}
+                                            sx={{ flex: 1.5 }}
+                                        />
+                                        <TextField
+                                            size="small"
+                                            label="Attribute Name"
+                                            value={step.attributeName || ''}
+                                            disabled={disabled}
+                                            onChange={(e) => handleStepChange(index, { attributeName: e.target.value })}
+                                            placeholder="disabled, data-status..."
+                                            sx={{ flex: 1 }}
+                                        />
+                                        <TextField
+                                            size="small"
+                                            label="Expected Value"
+                                            value={step.textValue ?? ''}
+                                            disabled={disabled}
+                                            onChange={(e) => handleStepChange(index, { textValue: e.target.value })}
+                                            placeholder="ready, submit..."
+                                            sx={{ flex: 1 }}
+                                        />
+                                    </>
+                                )}
+
                                 {/* Action Buttons */}
                                 <Stack direction="row" spacing={0.5} sx={{ ml: 'auto' }}>
                                     <Tooltip title="Move up">
@@ -397,7 +609,7 @@ export default function AutomationStepBuilder({
                                         </TextField>
                                     </TableCell>
                                     <TableCell>
-                                        {step.template !== 'OPEN_PAGE' ? (
+                                        {step.template !== 'OPEN_PAGE' && step.template !== 'VERIFY_URL' ? (
                                             <Autocomplete
                                                 freeSolo
                                                 size="small"
@@ -414,7 +626,7 @@ export default function AutomationStepBuilder({
                                             />
                                         ) : (
                                             <Typography variant="body2" color="text.secondary">
-                                                (Browser window)
+                                                {step.template === 'VERIFY_URL' ? '(Browser URL)' : '(Browser window)'}
                                             </Typography>
                                         )}
                                     </TableCell>
@@ -468,6 +680,114 @@ export default function AutomationStepBuilder({
                                                 <MenuItem value="VISIBLE">Visible</MenuItem>
                                                 <MenuItem value="HIDDEN">Hidden</MenuItem>
                                             </TextField>
+                                        )}
+                                        {step.template === 'SELECT_OPTION' && (
+                                            <Stack direction="row" spacing={1}>
+                                                <TextField
+                                                    select
+                                                    size="small"
+                                                    value={step.selectBy || 'LABEL'}
+                                                    disabled={disabled}
+                                                    onChange={(e) =>
+                                                        handleStepChange(index, {
+                                                            selectBy: e.target.value as OptionSelectBy,
+                                                        })
+                                                    }
+                                                    sx={{ minWidth: 90 }}
+                                                >
+                                                    <MenuItem value="LABEL">Label</MenuItem>
+                                                    <MenuItem value="VALUE">Value</MenuItem>
+                                                </TextField>
+                                                <TextField
+                                                    size="small"
+                                                    value={step.textValue || ''}
+                                                    disabled={disabled}
+                                                    onChange={(e) => handleStepChange(index, { textValue: e.target.value })}
+                                                    placeholder="Option label/value"
+                                                    fullWidth
+                                                />
+                                            </Stack>
+                                        )}
+                                        {step.template === 'SET_CHECKBOX' && (
+                                            <TextField
+                                                select
+                                                size="small"
+                                                value={step.checkedValue ? 'true' : 'false'}
+                                                disabled={disabled}
+                                                onChange={(e) =>
+                                                    handleStepChange(index, {
+                                                        checkedValue: e.target.value === 'true',
+                                                    })
+                                                }
+                                                fullWidth
+                                            >
+                                                <MenuItem value="true">Checked</MenuItem>
+                                                <MenuItem value="false">Unchecked</MenuItem>
+                                            </TextField>
+                                        )}
+                                        {step.template === 'PRESS_KEY' && (
+                                            <Autocomplete
+                                                freeSolo
+                                                size="small"
+                                                options={SUPPORTED_KEY_OPTIONS.map((k) => k)}
+                                                value={step.keyValue || 'Enter'}
+                                                disabled={disabled}
+                                                onInputChange={(_, val) => handleStepChange(index, { keyValue: val })}
+                                                renderInput={(params) => (
+                                                    <TextField
+                                                        {...params}
+                                                        placeholder="Enter, Tab, Escape..."
+                                                    />
+                                                )}
+                                                fullWidth
+                                            />
+                                        )}
+                                        {step.template === 'VERIFY_URL' && (
+                                            <Stack direction="row" spacing={1}>
+                                                <TextField
+                                                    select
+                                                    size="small"
+                                                    value={step.urlComparison || 'EQUALS'}
+                                                    disabled={disabled}
+                                                    onChange={(e) =>
+                                                        handleStepChange(index, {
+                                                            urlComparison: e.target.value as UrlComparison,
+                                                        })
+                                                    }
+                                                    sx={{ minWidth: 100 }}
+                                                >
+                                                    <MenuItem value="EQUALS">Equals</MenuItem>
+                                                    <MenuItem value="CONTAINS">Contains</MenuItem>
+                                                </TextField>
+                                                <TextField
+                                                    size="small"
+                                                    value={step.textValue || ''}
+                                                    disabled={disabled}
+                                                    onChange={(e) => handleStepChange(index, { textValue: e.target.value })}
+                                                    placeholder="Expected URL or ${baseUrl}"
+                                                    fullWidth
+                                                />
+                                            </Stack>
+                                        )}
+                                        {step.template === 'VERIFY_ATTRIBUTE' && (
+                                            <Stack direction="row" spacing={1}>
+                                                <TextField
+                                                    size="small"
+                                                    value={step.attributeName || ''}
+                                                    disabled={disabled}
+                                                    onChange={(e) => handleStepChange(index, { attributeName: e.target.value })}
+                                                    placeholder="Attribute name"
+                                                    sx={{ flex: 1 }}
+                                                />
+                                                <TextField
+                                                    size="small"
+                                                    value={step.textValue ?? ''}
+                                                    disabled={disabled}
+                                                    onChange={(e) => handleStepChange(index, { textValue: e.target.value })}
+                                                    placeholder="Expected value"
+                                                    sx={{ flex: 1 }}
+                                                />
+                                            </Stack>
                                         )}
                                     </TableCell>
                                     <TableCell align="right">

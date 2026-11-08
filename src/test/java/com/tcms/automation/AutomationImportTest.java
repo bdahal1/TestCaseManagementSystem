@@ -817,7 +817,10 @@ public class AutomationImportTest {
                 .action(ImportAction.CREATE_NEW).caseName(item.getName()).testType(item.getTestType())
                 .steps(item.getSteps().stream().map(step -> AutomationStepModel.builder().order(step.getOrder()).keyword(step.getKeyword())
                         .template(step.getTemplate()).locatorType(step.getLocatorType()).locatorValue(step.getLocatorValue())
-                        .textValue(step.getTextValue()).stateValue(step.getStateValue()).build()).toList()).build()).toList()).build();
+                        .textValue(step.getTextValue()).stateValue(step.getStateValue())
+                        .selectBy(step.getSelectBy()).checkedValue(step.getCheckedValue())
+                        .keyValue(step.getKeyValue()).urlComparison(step.getUrlComparison())
+                        .attributeName(step.getAttributeName()).build()).toList()).build()).toList()).build();
     }
 
     private void configureSecret(String key,String value) {
@@ -931,6 +934,256 @@ public class AutomationImportTest {
                         .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
         assertThat(testCaseRepository.findByProjectsIdOrderByIdAsc(project.getId())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Import Cucumber feature with all five new templates, verify preview mapping and database persistence")
+    void testImportCucumberFeatureWithExtendedTemplates() throws Exception {
+        String feature = """
+                Feature: Extended Controls Feature
+                  Scenario: Exercise extended controls
+                    Given open page "https://demo.app/extended"
+                    When select option "Standard" by label from "#framework-select"
+                    And select option "cyp" by value from "#framework-select"
+                    And set checkbox "#subscribe-checkbox" to "checked"
+                    And set checkbox "#subscribe-checkbox" to "unchecked"
+                    And press key "Enter" on element "#keyboard-input"
+                    Then verify url equals "https://demo.app/extended"
+                    And verify url contains "/extended"
+                    And verify attribute "data-status" of "#action-btn" equals "ready"
+                """;
+
+        ImportPreviewResponse preview = preview("extended.feature", feature);
+        assertThat(preview.isCanSave()).isTrue();
+        assertThat(preview.isHasErrors()).isFalse();
+        assertThat(preview.getCases()).hasSize(1);
+
+        ImportCasePreview casePreview = preview.getCases().getFirst();
+        assertThat(casePreview.getSteps()).hasSize(9);
+
+        // Step 1: OPEN_PAGE
+        assertThat(casePreview.getSteps().get(0).getTemplate()).isEqualTo(AutomationTemplate.OPEN_PAGE);
+        assertThat(casePreview.getSteps().get(0).getTextValue()).isEqualTo("https://demo.app/extended");
+
+        // Step 2: SELECT_OPTION by label
+        assertThat(casePreview.getSteps().get(1).getTemplate()).isEqualTo(AutomationTemplate.SELECT_OPTION);
+        assertThat(casePreview.getSteps().get(1).getSelectBy()).isEqualTo(OptionSelectBy.LABEL);
+        assertThat(casePreview.getSteps().get(1).getTextValue()).isEqualTo("Standard");
+        assertThat(casePreview.getSteps().get(1).getLocatorValue()).isEqualTo("#framework-select");
+
+        // Step 3: SELECT_OPTION by value
+        assertThat(casePreview.getSteps().get(2).getTemplate()).isEqualTo(AutomationTemplate.SELECT_OPTION);
+        assertThat(casePreview.getSteps().get(2).getSelectBy()).isEqualTo(OptionSelectBy.VALUE);
+        assertThat(casePreview.getSteps().get(2).getTextValue()).isEqualTo("cyp");
+        assertThat(casePreview.getSteps().get(2).getLocatorValue()).isEqualTo("#framework-select");
+
+        // Step 4: SET_CHECKBOX checked
+        assertThat(casePreview.getSteps().get(3).getTemplate()).isEqualTo(AutomationTemplate.SET_CHECKBOX);
+        assertThat(casePreview.getSteps().get(3).getCheckedValue()).isTrue();
+        assertThat(casePreview.getSteps().get(3).getLocatorValue()).isEqualTo("#subscribe-checkbox");
+
+        // Step 5: SET_CHECKBOX unchecked
+        assertThat(casePreview.getSteps().get(4).getTemplate()).isEqualTo(AutomationTemplate.SET_CHECKBOX);
+        assertThat(casePreview.getSteps().get(4).getCheckedValue()).isFalse();
+        assertThat(casePreview.getSteps().get(4).getLocatorValue()).isEqualTo("#subscribe-checkbox");
+
+        // Step 6: PRESS_KEY Enter
+        assertThat(casePreview.getSteps().get(5).getTemplate()).isEqualTo(AutomationTemplate.PRESS_KEY);
+        assertThat(casePreview.getSteps().get(5).getKeyValue()).isEqualTo("Enter");
+        assertThat(casePreview.getSteps().get(5).getLocatorValue()).isEqualTo("#keyboard-input");
+
+        // Step 7: VERIFY_URL equals
+        assertThat(casePreview.getSteps().get(6).getTemplate()).isEqualTo(AutomationTemplate.VERIFY_URL);
+        assertThat(casePreview.getSteps().get(6).getUrlComparison()).isEqualTo(UrlComparison.EQUALS);
+        assertThat(casePreview.getSteps().get(6).getTextValue()).isEqualTo("https://demo.app/extended");
+
+        // Step 8: VERIFY_URL contains
+        assertThat(casePreview.getSteps().get(7).getTemplate()).isEqualTo(AutomationTemplate.VERIFY_URL);
+        assertThat(casePreview.getSteps().get(7).getUrlComparison()).isEqualTo(UrlComparison.CONTAINS);
+        assertThat(casePreview.getSteps().get(7).getTextValue()).isEqualTo("/extended");
+
+        // Step 9: VERIFY_ATTRIBUTE data-status equals ready
+        assertThat(casePreview.getSteps().get(8).getTemplate()).isEqualTo(AutomationTemplate.VERIFY_ATTRIBUTE);
+        assertThat(casePreview.getSteps().get(8).getAttributeName()).isEqualTo("data-status");
+        assertThat(casePreview.getSteps().get(8).getTextValue()).isEqualTo("ready");
+        assertThat(casePreview.getSteps().get(8).getLocatorValue()).isEqualTo("#action-btn");
+
+        // Save into library and verify persistence
+        var saveResp = mvc.perform(post("/automation/projects/" + project.getId() + "/import/save")
+                        .header("Authorization", "Bearer " + managerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(confirmed(preview))))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        var saved = mapper.readValue(saveResp.getResponse().getContentAsString(), ImportSaveResponse.class);
+        assertThat(saved.getSavedCases()).hasSize(1);
+
+        TestCase savedTc = testCaseRepository.findById(saved.getSavedCases().getFirst().getId());
+        List<TestSteps> storedSteps = testStepsRepository.findTestStepsByTestCaseAndTestTypeOrderByTestStepOrderAsc(savedTc, savedTc.getTestType());
+        assertThat(storedSteps).hasSize(9);
+
+        // Deserialise and assert round-trip
+        AutomationStepModel step2 = mapper.readValue(storedSteps.get(1).getTestStepData(), AutomationStepModel.class);
+        assertThat(step2.getTemplate()).isEqualTo(AutomationTemplate.SELECT_OPTION);
+        assertThat(step2.getSelectBy()).isEqualTo(OptionSelectBy.LABEL);
+        assertThat(step2.getTextValue()).isEqualTo("Standard");
+
+        AutomationStepModel step4 = mapper.readValue(storedSteps.get(3).getTestStepData(), AutomationStepModel.class);
+        assertThat(step4.getTemplate()).isEqualTo(AutomationTemplate.SET_CHECKBOX);
+        assertThat(step4.getCheckedValue()).isTrue();
+
+        AutomationStepModel step6 = mapper.readValue(storedSteps.get(5).getTestStepData(), AutomationStepModel.class);
+        assertThat(step6.getTemplate()).isEqualTo(AutomationTemplate.PRESS_KEY);
+        assertThat(step6.getKeyValue()).isEqualTo("Enter");
+
+        AutomationStepModel step7 = mapper.readValue(storedSteps.get(6).getTestStepData(), AutomationStepModel.class);
+        assertThat(step7.getTemplate()).isEqualTo(AutomationTemplate.VERIFY_URL);
+        assertThat(step7.getUrlComparison()).isEqualTo(UrlComparison.EQUALS);
+
+        AutomationStepModel step9 = mapper.readValue(storedSteps.get(8).getTestStepData(), AutomationStepModel.class);
+        assertThat(step9.getTemplate()).isEqualTo(AutomationTemplate.VERIFY_ATTRIBUTE);
+        assertThat(step9.getAttributeName()).isEqualTo("data-status");
+        assertThat(step9.getTextValue()).isEqualTo("ready");
+    }
+
+    @Test
+    @DisplayName("Import Keyword JSON with all five new templates, verify preview mapping and database persistence")
+    void testImportKeywordJsonWithExtendedTemplates() throws Exception {
+        String json = """
+                [
+                  {
+                    "name": "Keyword Extended Suite",
+                    "type": "KEYWORD_DRIVEN",
+                    "steps": [
+                      {
+                        "order": 1,
+                        "template": "OPEN_PAGE",
+                        "textValue": "https://demo.app/extended"
+                      },
+                      {
+                        "order": 2,
+                        "template": "SELECT_OPTION",
+                        "selectBy": "VALUE",
+                        "locatorValue": "#framework-select",
+                        "textValue": "cyp"
+                      },
+                      {
+                        "order": 3,
+                        "template": "SET_CHECKBOX",
+                        "checkedValue": true,
+                        "locatorValue": "#subscribe-checkbox"
+                      },
+                      {
+                        "order": 4,
+                        "template": "PRESS_KEY",
+                        "keyValue": "Tab",
+                        "locatorValue": "#keyboard-input"
+                      },
+                      {
+                        "order": 5,
+                        "template": "VERIFY_URL",
+                        "urlComparison": "CONTAINS",
+                        "textValue": "/extended"
+                      },
+                      {
+                        "order": 6,
+                        "template": "VERIFY_ATTRIBUTE",
+                        "attributeName": "data-status",
+                        "textValue": "ready",
+                        "locatorValue": "#action-btn"
+                      }
+                    ]
+                  }
+                ]
+                """;
+
+        ImportPreviewResponse preview = preview("extended-suite.json", json);
+        assertThat(preview.isCanSave()).isTrue();
+        assertThat(preview.isHasErrors()).isFalse();
+        assertThat(preview.getCases()).hasSize(1);
+
+        ImportCasePreview casePreview = preview.getCases().getFirst();
+        assertThat(casePreview.getSteps()).hasSize(6);
+
+        assertThat(casePreview.getSteps().get(1).getTemplate()).isEqualTo(AutomationTemplate.SELECT_OPTION);
+        assertThat(casePreview.getSteps().get(1).getSelectBy()).isEqualTo(OptionSelectBy.VALUE);
+        assertThat(casePreview.getSteps().get(1).getTextValue()).isEqualTo("cyp");
+
+        assertThat(casePreview.getSteps().get(2).getTemplate()).isEqualTo(AutomationTemplate.SET_CHECKBOX);
+        assertThat(casePreview.getSteps().get(2).getCheckedValue()).isTrue();
+
+        assertThat(casePreview.getSteps().get(3).getTemplate()).isEqualTo(AutomationTemplate.PRESS_KEY);
+        assertThat(casePreview.getSteps().get(3).getKeyValue()).isEqualTo("Tab");
+
+        assertThat(casePreview.getSteps().get(4).getTemplate()).isEqualTo(AutomationTemplate.VERIFY_URL);
+        assertThat(casePreview.getSteps().get(4).getUrlComparison()).isEqualTo(UrlComparison.CONTAINS);
+
+        assertThat(casePreview.getSteps().get(5).getTemplate()).isEqualTo(AutomationTemplate.VERIFY_ATTRIBUTE);
+        assertThat(casePreview.getSteps().get(5).getAttributeName()).isEqualTo("data-status");
+
+        // Save to DB
+        var saveResp = mvc.perform(post("/automation/projects/" + project.getId() + "/import/save")
+                        .header("Authorization", "Bearer " + managerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(confirmed(preview))))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        var saved = mapper.readValue(saveResp.getResponse().getContentAsString(), ImportSaveResponse.class);
+        TestCase savedTc = testCaseRepository.findById(saved.getSavedCases().getFirst().getId());
+        List<TestSteps> storedSteps = testStepsRepository.findTestStepsByTestCaseAndTestTypeOrderByTestStepOrderAsc(savedTc, savedTc.getTestType());
+        assertThat(storedSteps).hasSize(6);
+
+        AutomationStepModel step4 = mapper.readValue(storedSteps.get(3).getTestStepData(), AutomationStepModel.class);
+        assertThat(step4.getTemplate()).isEqualTo(AutomationTemplate.PRESS_KEY);
+        assertThat(step4.getKeyValue()).isEqualTo("Tab");
+    }
+
+    @Test
+    void allTemplateFieldsSurviveEscapedGherkinImport() throws Exception {
+        String value="He said \"Hi\" \\ path\nsecond line";
+        var originals=List.of(
+                AutomationStepModel.builder().order(1).keyword("Given").template(AutomationTemplate.OPEN_PAGE).textValue("https://example.test?q=a.b").build(),
+                AutomationStepModel.builder().order(2).keyword("When").template(AutomationTemplate.ENTER_TEXT).locatorValue("[name=\"field\"]").textValue(value).build(),
+                AutomationStepModel.builder().order(3).keyword("And").template(AutomationTemplate.SELECT_OPTION).locatorValue("#opts").textValue(value).selectBy(OptionSelectBy.VALUE).build(),
+                AutomationStepModel.builder().order(4).keyword("And").template(AutomationTemplate.SET_CHECKBOX).locatorValue("#box").checkedValue(false).build(),
+                AutomationStepModel.builder().order(5).keyword("And").template(AutomationTemplate.PRESS_KEY).locatorValue("#field").keyValue("enter").build(),
+                AutomationStepModel.builder().order(6).keyword("Then").template(AutomationTemplate.VERIFY_URL).textValue("?q=a.b").urlComparison(UrlComparison.CONTAINS).build(),
+                AutomationStepModel.builder().order(7).keyword("And").template(AutomationTemplate.VERIFY_ATTRIBUTE).locatorValue("#item").attributeName("data-value").textValue(value).build());
+        originals.stream().filter(step -> step.getLocatorValue() != null).forEach(step -> step.setLocatorType(LocatorType.CSS));
+        var serializer=new AutomationStepSerializer(mapper);
+        var result=preview("escaped.feature",serializer.toGherkinScenario("Escaped controls", originals));
+        assertThat(result.isCanSave()).isTrue();
+        var request=confirmed(result);
+        assertThat(request.getCases().getFirst().getSteps()).usingRecursiveComparison().isEqualTo(originals);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings={
+        "\"template\":\"SET_CHECKBOX\",\"checkedValue\":\"checked\"",
+        "\"template\":\"SELECT_OPTION\",\"selectBy\":\"typo\",\"textValue\":\"One\"",
+        "\"template\":\"VERIFY_URL\",\"urlComparison\":\"typo\",\"textValue\":\"/home\""
+    })
+    void invalidTypedOptionsAreNotSilentlyDefaulted(String fields) throws Exception {
+        String input="{\"name\":\"Invalid options\",\"steps\":[{\"locatorValue\":\"#target\","+fields+"}]}";
+        mvc.perform(multipart("/automation/projects/"+project.getId()+"/import/preview")
+                .file(new MockMultipartFile("file","invalid.json","application/json",input.getBytes(StandardCharsets.UTF_8)))
+                .header("Authorization","Bearer "+managerToken)).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void quotedSecretIsReferencedWithoutLeakingItsEscapedSpelling() throws Exception {
+        String secret="private\"value\\path'123";
+        configureSecret("PASSWORD",secret);
+        String source=new AutomationStepSerializer(mapper).toGherkinScenario("Secret",List.of(
+                AutomationStepModel.builder().order(1).keyword("When").template(AutomationTemplate.ENTER_TEXT)
+                        .locatorValue("#password").textValue(secret).build()));
+        var result=preview("secret.feature",source);
+        assertThat(result.isCanSave()).isTrue();
+        var step=result.getCases().getFirst().getSteps().getFirst();
+        assertThat(step.getTextValue()).isEqualTo("${PASSWORD}");
+        assertThat(step.getRawText()).contains("[REDACTED]").doesNotContain(secret,GherkinStrings.escape(secret));
     }
 
 }

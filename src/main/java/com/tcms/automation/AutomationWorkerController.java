@@ -72,6 +72,17 @@ public class AutomationWorkerController {
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
+    @PostMapping("/jobs/{jobId}/progress")
+    public ResponseEntity<Void> progress(
+            @RequestHeader(value = "X-Worker-Token", required = false) String token,
+            @RequestHeader(value = "X-Job-Lease", required = false) String leaseToken,
+            @PathVariable Long jobId,
+            @RequestParam(defaultValue = "default-worker") String workerId,
+            @RequestBody AutomationProgress progress) {
+        jobService.updateProgress(jobId, workerAccess.authorize(token), workerId, leaseToken, progress);
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/jobs/{jobId}/complete")
     public ResponseEntity<Void> completeJob(
             @RequestHeader(value = "X-Worker-Token", required = false) String token,

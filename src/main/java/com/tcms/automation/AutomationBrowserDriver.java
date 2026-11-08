@@ -2,8 +2,10 @@ package com.tcms.automation;
 
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.assertions.LocatorAssertions;
+import com.microsoft.playwright.assertions.PageAssertions;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.microsoft.playwright.options.AriaRole;
+import com.microsoft.playwright.options.SelectOption;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -14,6 +16,7 @@ public class AutomationBrowserDriver implements AutoCloseable {
     private final Map<String, String> variables;
     private final Set<String> secretValues;
     private final double stepTimeoutMs;
+    private final double navigationTimeoutMs;
     private final StringBuilder diagnosticLogs = new StringBuilder();
 
     private final java.util.function.BooleanSupplier cancelled;
@@ -53,6 +56,12 @@ public class AutomationBrowserDriver implements AutoCloseable {
             } catch (NumberFormatException ignored) {}
         }
         this.stepTimeoutMs = timeout;
+        double navigationTimeout = 30000.0;
+        if (definition.getExecutionConfig() != null) {
+            try { navigationTimeout = Double.parseDouble(definition.getExecutionConfig().getOrDefault("navigationTimeoutMs", "30000")); }
+            catch (NumberFormatException ignored) {}
+        }
+        this.navigationTimeoutMs = navigationTimeout > 0 && Double.isFinite(navigationTimeout) ? navigationTimeout : 30000.0;
     }
 
     public void init(boolean headless) {
@@ -62,12 +71,29 @@ public class AutomationBrowserDriver implements AutoCloseable {
         context = browser.newContext(new Browser.NewContextOptions().setViewportSize(1280, 720));
         page = context.newPage();
         page.setDefaultTimeout(stepTimeoutMs);
-        page.setDefaultNavigationTimeout(stepTimeoutMs);
+        page.setDefaultNavigationTimeout(navigationTimeoutMs);
         log("Browser context and page initialized with step timeout: " + (int) stepTimeoutMs + "ms");
     }
 
     public Page getPage() {
         return page;
+    }
+
+    /** Captured on the Playwright execution thread, never on the heartbeat thread. */
+    public byte[] takePreviewScreenshot() {
+        if (page == null || page.isClosed()) return null;
+        try {
+            List<Locator> masks = new ArrayList<>();
+            // Mask all form values, including password fields whose value is not an HTML attribute.
+            masks.add(page.locator("input, textarea, [contenteditable='true']"));
+            for (String secret : secretValues) masks.add(page.getByText(secret));
+            byte[] image = page.screenshot(new Page.ScreenshotOptions()
+                    .setType(com.microsoft.playwright.options.ScreenshotType.JPEG).setQuality(55)
+                    .setFullPage(false).setTimeout(1000).setMask(masks));
+            return image.length <= 512 * 1024 ? image : null;
+        } catch (RuntimeException ignored) {
+            return null;
+        }
     }
 
     public void log(String message) {
@@ -80,16 +106,7 @@ public class AutomationBrowserDriver implements AutoCloseable {
         return diagnosticLogs.toString();
     }
 
-    public String redact(String text) {
-        if (text == null) return null;
-        String result = text;
-        for (String secret : secretValues) {
-            if (secret != null && !secret.isBlank()) {
-                result = result.replace(secret, "[REDACTED]");
-            }
-        }
-        return result;
-    }
+    public String redact(String text) { return GherkinStrings.redact(text, secretValues); }
 
     public String resolveVariables(String input) {
         if (input == null) return null;
@@ -127,22 +144,11 @@ public class AutomationBrowserDriver implements AutoCloseable {
             log("Resolved named locator '" + rawLocator + "' to " + type + "='" + resolved + "'");
         }
 
+        if (type != null && LocatorType.prefixedType(resolved) == type) resolved = resolved.substring(type.prefix().length() + 1);
         if (type == null) {
-            if (resolved.startsWith("css=")) {
-                type = LocatorType.CSS;
-                resolved = resolved.substring(4);
-            } else if (resolved.startsWith("xpath=")) {
-                type = LocatorType.XPATH;
-                resolved = resolved.substring(6);
-            } else if (resolved.startsWith("id=")) {
-                type = LocatorType.ID;
-                resolved = resolved.substring(3);
-            } else if (resolved.startsWith("testid=")) {
-                type = LocatorType.TEST_ID;
-                resolved = resolved.substring(7);
-            } else if (resolved.startsWith("role=")) {
-                type = LocatorType.ROLE_NAME;
-                resolved = resolved.substring(5);
+            type = LocatorType.prefixedType(resolved);
+            if (type != null) {
+                resolved = resolved.substring(type.prefix().length() + 1);
             } else if (resolved.startsWith("//") || resolved.startsWith("./") || resolved.startsWith("(")) {
                 type = LocatorType.XPATH;
             } else {
@@ -152,11 +158,24 @@ public class AutomationBrowserDriver implements AutoCloseable {
 
         try {
             return switch (type) {
-                case ID -> page.locator("#" + resolved);
+                case ID -> page.locator("[id=\"" + cssString(resolved) + "\"]");
+                case NAME -> page.locator("[name=\"" + cssString(resolved) + "\"]");
+                case CLASS_NAME -> {
+                    String error = type.validationError(resolved);
+                    if (error != null) throw new IllegalArgumentException(error);
+                    yield page.locator("[class~=\"" + cssString(resolved) + "\"]");
+                }
                 case CSS -> page.locator(resolved);
                 case XPATH -> page.locator("xpath=" + resolved);
                 case TEST_ID -> page.getByTestId(resolved);
                 case ROLE_NAME -> resolveRoleLocator(resolved);
+                case LABEL -> page.getByLabel(resolved, new Page.GetByLabelOptions().setExact(true));
+                case PLACEHOLDER -> page.getByPlaceholder(resolved, new Page.GetByPlaceholderOptions().setExact(true));
+                case TEXT -> page.getByText(resolved, new Page.GetByTextOptions().setExact(true));
+                case LINK_TEXT -> page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName(resolved).setExact(true));
+                case PARTIAL_LINK_TEXT -> page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName(resolved).setExact(false));
+                case ALT_TEXT -> page.getByAltText(resolved, new Page.GetByAltTextOptions().setExact(true));
+                case TITLE -> page.getByTitle(resolved, new Page.GetByTitleOptions().setExact(true));
                 case NAMED -> page.locator(resolved);
             };
         } catch (Exception e) {
@@ -164,13 +183,19 @@ public class AutomationBrowserDriver implements AutoCloseable {
         }
     }
 
+    private static String cssString(String value) {
+        return value.codePoints().mapToObj(code -> "\\" + Integer.toHexString(code) + " ").collect(java.util.stream.Collectors.joining());
+    }
+
     private Locator resolveRoleLocator(String roleExpr) {
         // e.g. button[name='Sign In'] or button
-        Pattern rolePattern = Pattern.compile("([A-Za-z]+)(?:\\[name=['\"]([^'\"]+)['\"]\\])?");
+        String error = LocatorType.ROLE_NAME.validationError(roleExpr);
+        if (error != null) throw new IllegalArgumentException(error);
+        Pattern rolePattern = Pattern.compile("([A-Za-z]+)(?:\\[name=(['\"])(.*?)\\2\\])?", Pattern.DOTALL);
         Matcher m = rolePattern.matcher(roleExpr);
         if (m.matches()) {
-            String roleName = m.group(1).toUpperCase();
-            String name = m.group(2);
+            String roleName = m.group(1).toUpperCase(Locale.ROOT);
+            String name = m.group(3);
             AriaRole ariaRole = AriaRole.valueOf(roleName);
             if (name != null && !name.isBlank()) {
                 return page.getByRole(ariaRole, new Page.GetByRoleOptions().setName(name));
@@ -190,8 +215,7 @@ public class AutomationBrowserDriver implements AutoCloseable {
         requireActive();
         String url = resolveVariables(rawUrl);
         log("Navigating to URL: " + url);
-        page.navigate(url);
-        page.waitForLoadState();
+        page.navigate(url, new Page.NavigateOptions().setWaitUntil(com.microsoft.playwright.options.WaitUntilState.DOMCONTENTLOADED));
     }
 
     public void enterText(String rawLocator, String rawValue) {
@@ -251,10 +275,109 @@ public class AutomationBrowserDriver implements AutoCloseable {
         }
     }
 
+    public void selectOption(String rawLocator, String rawOption, OptionSelectBy selectBy) {
+        String option = resolveVariables(rawOption);
+        OptionSelectBy by = selectBy != null ? selectBy : OptionSelectBy.LABEL;
+        log("Selecting option '" + option + "' by " + by + " on locator: " + rawLocator);
+        try {
+            Locator locator = resolveLocator(rawLocator);
+            if (by == OptionSelectBy.VALUE) {
+                locator.selectOption(new SelectOption().setValue(option));
+            } else {
+                locator.selectOption(new SelectOption().setLabel(option));
+            }
+        } catch (PlaywrightException e) {
+            handlePlaywrightException(rawLocator, e);
+        }
+    }
+
+    public void setCheckbox(String rawLocator, boolean checked) {
+        log("Setting checkbox " + rawLocator + " to " + (checked ? "checked" : "unchecked"));
+        try {
+            Locator locator = resolveLocator(rawLocator);
+            locator.setChecked(checked);
+        } catch (PlaywrightException e) {
+            handlePlaywrightException(rawLocator, e);
+        }
+    }
+
+    public void pressKey(String rawLocator, String rawKey) {
+        String key = resolveVariables(rawKey);
+        log("Pressing key '" + key + "' on locator: " + rawLocator);
+        if (!AutomationValidator.isValidKey(key)) {
+            throw new IllegalArgumentException("Unsupported key '" + key + "'. Supported keys: " + String.join(", ", AutomationValidator.SUPPORTED_KEYS));
+        }
+        String normalizedKey = AutomationValidator.normalizeKey(key);
+        try {
+            Locator locator = resolveLocator(rawLocator);
+            locator.press(normalizedKey);
+        } catch (PlaywrightException e) {
+            handlePlaywrightException(rawLocator, e);
+        }
+    }
+
+    public void verifyUrl(String rawExpectedUrl, UrlComparison comparison) {
+        requireActive();
+        String expectedUrl = resolveVariables(rawExpectedUrl);
+        UrlComparison comp = comparison != null ? comparison : UrlComparison.EQUALS;
+        log("Verifying current URL " + comp + " '" + expectedUrl + "'");
+        try {
+            if (comp == UrlComparison.CONTAINS) {
+                Pattern pattern = Pattern.compile(".*" + escapeRegex(expectedUrl) + ".*", Pattern.DOTALL);
+                PlaywrightAssertions.assertThat(page).hasURL(pattern, new PageAssertions.HasURLOptions().setTimeout(stepTimeoutMs));
+            } else {
+                PlaywrightAssertions.assertThat(page).hasURL(expectedUrl, new PageAssertions.HasURLOptions().setTimeout(stepTimeoutMs));
+            }
+        } catch (AssertionError | PlaywrightException e) {
+            String currentUrl = page != null ? page.url() : "unknown";
+            throw new AssertionError("URL verification failed (" + comp + " '" + expectedUrl + "'). Current URL was: '" + currentUrl + "'. " + e.getMessage());
+        }
+    }
+
+    private static String escapeRegex(String input) {
+        if (input == null) return "";
+        StringBuilder sb = new StringBuilder();
+        for (char c : input.toCharArray()) {
+            if ("\\^$.|?*+(){}[]".indexOf(c) != -1) {
+                sb.append('\\');
+            }
+            sb.append(c);
+        }
+        return sb.toString();
+    }
+
+    public void verifyAttribute(String rawLocator, String rawAttributeName, String rawExpectedValue) {
+        String attributeName = resolveVariables(rawAttributeName);
+        String expectedValue = resolveVariables(rawExpectedValue);
+        log("Verifying attribute '" + attributeName + "' on " + rawLocator + " equals '" + expectedValue + "'");
+        try {
+            Locator locator = resolveLocator(rawLocator);
+            try {
+                PlaywrightAssertions.assertThat(locator).hasAttribute(attributeName, expectedValue, new LocatorAssertions.HasAttributeOptions().setTimeout(stepTimeoutMs));
+            } catch (AssertionError e) {
+                if (locator.count() > 0 && locator.getAttribute(attributeName) == null)
+                    throw new AssertionError("Element '" + rawLocator + "' does not have attribute '" + attributeName + "'. Expected value was '" + expectedValue + "'.", e);
+                throw e;
+            }
+        } catch (PlaywrightException e) {
+            handlePlaywrightException(rawLocator, e);
+        }
+    }
+
+    private static Pattern literalUrlPattern(String text) {
+        // Playwright executes this pattern in JavaScript, which does not support Java's \Q...\E quoting.
+        StringBuilder expression = new StringBuilder(".*");
+        for (char ch : text.toCharArray()) {
+            if ("\\.^$|?*+()[]{}".indexOf(ch) >= 0) expression.append('\\');
+            expression.append(ch);
+        }
+        return Pattern.compile(expression.append(".*").toString());
+    }
+
     public byte[] takeScreenshot() {
         if (page != null) {
             try {
-                return page.screenshot(new Page.ScreenshotOptions().setFullPage(true));
+                return page.screenshot(new Page.ScreenshotOptions().setFullPage(true).setTimeout(3000));
             } catch (Exception e) {
                 log("Failed to capture screenshot: " + e.getMessage());
             }

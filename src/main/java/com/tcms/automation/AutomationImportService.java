@@ -38,23 +38,18 @@ public class AutomationImportService {
     public static final int MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
     public static final int MAX_CASES_PER_IMPORT = 100;
 
-    private static final Pattern OPEN_PAGE_PATTERN =
-            Pattern.compile("(?i)^open\\s+page\\s+(?:\"([^\"]*)\"|'([^']*)'|(\\S+))$");
-
-    private static final Pattern ENTER_TEXT_PATTERN =
-            Pattern.compile("(?i)^enter\\s+text\\s+(?:\"([^\"]*)\"|'([^']*)'|(\\S+))\\s+into\\s+(?:\"([^\"]*)\"|'([^']*)'|(\\S+))$");
-
-    private static final Pattern CLICK_ELEMENT_PATTERN =
-            Pattern.compile("(?i)^click\\s+element\\s+(?:\"([^\"]*)\"|'([^']*)'|(\\S+))$");
-
-    private static final Pattern VERIFY_TEXT_EQUALS_PATTERN =
-            Pattern.compile("(?i)^verify\\s+text\\s+of\\s+(?:\"([^\"]*)\"|'([^']*)'|(\\S+))\\s+equals\\s+(?:\"([^\"]*)\"|'([^']*)'|(\\S+))$");
-
-    private static final Pattern VERIFY_TEXT_CONTAINS_PATTERN =
-            Pattern.compile("(?i)^verify\\s+text\\s+of\\s+(?:\"([^\"]*)\"|'([^']*)'|(\\S+))\\s+contains\\s+(?:\"([^\"]*)\"|'([^']*)'|(\\S+))$");
-
-    private static final Pattern VERIFY_ELEMENT_STATE_PATTERN =
-            Pattern.compile("(?i)^verify\\s+element\\s+(?:\"([^\"]*)\"|'([^']*)'|(\\S+))\\s+is\\s+(visible|hidden)$");
+    private static final String A = GherkinStrings.ARGUMENT;
+    private static final Pattern OPEN_PAGE_PATTERN = Pattern.compile("(?i)^open\\s+page\\s+" + A + "$");
+    private static final Pattern ENTER_TEXT_PATTERN = Pattern.compile("(?i)^enter\\s+text\\s+" + A + "\\s+into\\s+" + A + "$");
+    private static final Pattern CLICK_ELEMENT_PATTERN = Pattern.compile("(?i)^click\\s+element\\s+" + A + "$");
+    private static final Pattern VERIFY_TEXT_EQUALS_PATTERN = Pattern.compile("(?i)^verify\\s+text\\s+of\\s+" + A + "\\s+equals\\s+" + A + "$");
+    private static final Pattern VERIFY_TEXT_CONTAINS_PATTERN = Pattern.compile("(?i)^verify\\s+text\\s+of\\s+" + A + "\\s+contains\\s+" + A + "$");
+    private static final Pattern VERIFY_ELEMENT_STATE_PATTERN = Pattern.compile("(?i)^verify\\s+element\\s+" + A + "\\s+is\\s+(visible|hidden)$");
+    private static final Pattern SELECT_OPTION_PATTERN = Pattern.compile("(?i)^select\\s+option\\s+" + A + "(?:\\s+by\\s+(label|value))?\\s+(?:in|from)\\s+" + A + "$");
+    private static final Pattern SET_CHECKBOX_PATTERN = Pattern.compile("(?i)^set\\s+checkbox\\s+" + A + "\\s+to\\s+(?:\"(checked|unchecked)\"|'(checked|unchecked)'|(checked|unchecked))$");
+    private static final Pattern PRESS_KEY_PATTERN = Pattern.compile("(?i)^press\\s+key\\s+" + A + "\\s+on(?:\\s+element)?\\s+" + A + "$");
+    private static final Pattern VERIFY_URL_PATTERN = Pattern.compile("(?i)^verify\\s+url\\s+(equals|contains)\\s+" + A + "$");
+    private static final Pattern VERIFY_ATTRIBUTE_PATTERN = Pattern.compile("(?i)^verify\\s+attribute\\s+" + A + "\\s+of\\s+" + A + "\\s+equals\\s+" + A + "$");
 
     private final ProjectRepository projectRepository;
     private final TestCaseRepository testCaseRepository;
@@ -454,7 +449,19 @@ public class AutomationImportService {
                 .build();
     }
 
-    private ImportStepPreview matchGherkinStep(String stepText,
+    private ImportStepPreview matchGherkinStep(String text, String keyword, int line, int order,
+                                               Map<String, AutomationTestDefinition.LocatorDefinition> locators,
+                                               Map<String, String> secrets) {
+        try {
+            return parseGherkinStep(text, keyword, line, order, locators, secrets);
+        } catch (IllegalArgumentException error) {
+            return ImportStepPreview.builder().order(order).sourceLine(line).keyword(keyword)
+                    .rawText(redact(text, secrets)).mapped(false)
+                    .validationError("Invalid quoted string escape. Escape backslashes and quotes before importing.").build();
+        }
+    }
+
+    private ImportStepPreview parseGherkinStep(String stepText,
                                                String keyword,
                                                int line,
                                                int order,
@@ -629,6 +636,158 @@ public class AutomationImportService {
                     .build();
         }
 
+        // 7. SELECT_OPTION
+        m = SELECT_OPTION_PATTERN.matcher(safeText);
+        if (m.matches()) {
+            String opt = firstNonEmpty(m.group(1), m.group(2), m.group(3));
+            String byStr = m.group(4);
+            OptionSelectBy selectBy = "value".equalsIgnoreCase(byStr) ? OptionSelectBy.VALUE : OptionSelectBy.LABEL;
+            String loc = firstNonEmpty(m.group(5), m.group(6), m.group(7));
+            LocatorType locType = inferLocatorType(loc, locatorsMap);
+            AutomationStepModel model = AutomationStepModel.builder()
+                    .order(order)
+                    .keyword(keyword)
+                    .template(AutomationTemplate.SELECT_OPTION)
+                    .locatorType(locType)
+                    .locatorValue(loc)
+                    .textValue(opt)
+                    .selectBy(selectBy)
+                    .build();
+            String valErr = validateStepModel(model, locatorsMap);
+            return ImportStepPreview.builder()
+                    .order(order)
+                    .sourceLine(line)
+                    .keyword(keyword)
+                    .rawText(redact(safeText, secretValues))
+                    .template(AutomationTemplate.SELECT_OPTION)
+                    .locatorType(locType)
+                    .locatorValue(referenceSecrets(loc, secretValues))
+                    .textValue(referenceSecrets(opt, secretValues))
+                    .selectBy(selectBy)
+                    .mapped(true)
+                    .validationError(redact(valErr, secretValues))
+                    .build();
+        }
+
+        // 8. SET_CHECKBOX
+        m = SET_CHECKBOX_PATTERN.matcher(safeText);
+        if (m.matches()) {
+            String loc = firstNonEmpty(m.group(1), m.group(2), m.group(3));
+            String stateStr = firstNonEmpty(m.group(4), m.group(5), m.group(6));
+            boolean checked = "checked".equalsIgnoreCase(stateStr);
+            LocatorType locType = inferLocatorType(loc, locatorsMap);
+            AutomationStepModel model = AutomationStepModel.builder()
+                    .order(order)
+                    .keyword(keyword)
+                    .template(AutomationTemplate.SET_CHECKBOX)
+                    .locatorType(locType)
+                    .locatorValue(loc)
+                    .checkedValue(checked)
+                    .build();
+            String valErr = validateStepModel(model, locatorsMap);
+            return ImportStepPreview.builder()
+                    .order(order)
+                    .sourceLine(line)
+                    .keyword(keyword)
+                    .rawText(redact(safeText, secretValues))
+                    .template(AutomationTemplate.SET_CHECKBOX)
+                    .locatorType(locType)
+                    .locatorValue(referenceSecrets(loc, secretValues))
+                    .checkedValue(checked)
+                    .mapped(true)
+                    .validationError(redact(valErr, secretValues))
+                    .build();
+        }
+
+        // 9. PRESS_KEY
+        m = PRESS_KEY_PATTERN.matcher(safeText);
+        if (m.matches()) {
+            String key = firstNonEmpty(m.group(1), m.group(2), m.group(3));
+            String loc = firstNonEmpty(m.group(4), m.group(5), m.group(6));
+            LocatorType locType = inferLocatorType(loc, locatorsMap);
+            AutomationStepModel model = AutomationStepModel.builder()
+                    .order(order)
+                    .keyword(keyword)
+                    .template(AutomationTemplate.PRESS_KEY)
+                    .locatorType(locType)
+                    .locatorValue(loc)
+                    .keyValue(key)
+                    .build();
+            String valErr = validateStepModel(model, locatorsMap);
+            return ImportStepPreview.builder()
+                    .order(order)
+                    .sourceLine(line)
+                    .keyword(keyword)
+                    .rawText(redact(safeText, secretValues))
+                    .template(AutomationTemplate.PRESS_KEY)
+                    .locatorType(locType)
+                    .locatorValue(referenceSecrets(loc, secretValues))
+                    .keyValue(referenceSecrets(key, secretValues))
+                    .mapped(true)
+                    .validationError(redact(valErr, secretValues))
+                    .build();
+        }
+
+        // 10. VERIFY_URL
+        m = VERIFY_URL_PATTERN.matcher(safeText);
+        if (m.matches()) {
+            String compStr = m.group(1);
+            UrlComparison comp = "contains".equalsIgnoreCase(compStr) ? UrlComparison.CONTAINS : UrlComparison.EQUALS;
+            String expUrl = firstNonEmpty(m.group(2), m.group(3), m.group(4));
+            AutomationStepModel model = AutomationStepModel.builder()
+                    .order(order)
+                    .keyword(keyword)
+                    .template(AutomationTemplate.VERIFY_URL)
+                    .textValue(expUrl)
+                    .urlComparison(comp)
+                    .build();
+            String valErr = validateStepModel(model, locatorsMap);
+            return ImportStepPreview.builder()
+                    .order(order)
+                    .sourceLine(line)
+                    .keyword(keyword)
+                    .rawText(redact(safeText, secretValues))
+                    .template(AutomationTemplate.VERIFY_URL)
+                    .textValue(referenceSecrets(expUrl, secretValues))
+                    .urlComparison(comp)
+                    .mapped(true)
+                    .validationError(redact(valErr, secretValues))
+                    .build();
+        }
+
+        // 11. VERIFY_ATTRIBUTE
+        m = VERIFY_ATTRIBUTE_PATTERN.matcher(safeText);
+        if (m.matches()) {
+            String attr = firstNonEmpty(m.group(1), m.group(2), m.group(3));
+            String loc = firstNonEmpty(m.group(4), m.group(5), m.group(6));
+            String val = firstNonEmpty(m.group(7), m.group(8), m.group(9));
+            if (val == null) val = "";
+            LocatorType locType = inferLocatorType(loc, locatorsMap);
+            AutomationStepModel model = AutomationStepModel.builder()
+                    .order(order)
+                    .keyword(keyword)
+                    .template(AutomationTemplate.VERIFY_ATTRIBUTE)
+                    .locatorType(locType)
+                    .locatorValue(loc)
+                    .attributeName(attr)
+                    .textValue(val)
+                    .build();
+            String valErr = validateStepModel(model, locatorsMap);
+            return ImportStepPreview.builder()
+                    .order(order)
+                    .sourceLine(line)
+                    .keyword(keyword)
+                    .rawText(redact(safeText, secretValues))
+                    .template(AutomationTemplate.VERIFY_ATTRIBUTE)
+                    .locatorType(locType)
+                    .locatorValue(referenceSecrets(loc, secretValues))
+                    .attributeName(referenceSecrets(attr, secretValues))
+                    .textValue(referenceSecrets(val, secretValues))
+                    .mapped(true)
+                    .validationError(redact(valErr, secretValues))
+                    .build();
+        }
+
         // Unrecognized / unmapped step
         return ImportStepPreview.builder()
                 .order(order)
@@ -674,6 +833,35 @@ public class AutomationImportService {
             } catch (IllegalArgumentException ignored) {}
         }
 
+        OptionSelectBy selectBy = null;
+        if (stepNode.hasNonNull("selectBy")) {
+            try {
+                selectBy = OptionSelectBy.valueOf(stepNode.get("selectBy").asText().toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Step " + order + ": selectBy must be LABEL or VALUE");
+            }
+        }
+
+        Boolean checkedValue = null;
+        if (stepNode.hasNonNull("checkedValue")) {
+            if (!stepNode.get("checkedValue").isBoolean())
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Step " + order + ": checkedValue must be a JSON boolean");
+            checkedValue = stepNode.get("checkedValue").asBoolean();
+        }
+
+        String keyValue = stepNode.hasNonNull("keyValue") ? stepNode.get("keyValue").asText() : null;
+
+        UrlComparison urlComparison = null;
+        if (stepNode.hasNonNull("urlComparison")) {
+            try {
+                urlComparison = UrlComparison.valueOf(stepNode.get("urlComparison").asText().toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Step " + order + ": urlComparison must be EQUALS or CONTAINS");
+            }
+        }
+
+        String attributeName = stepNode.hasNonNull("attributeName") ? stepNode.get("attributeName").asText() : null;
+
         if (template != null) {
             AutomationStepModel model = AutomationStepModel.builder()
                     .order(order)
@@ -683,6 +871,11 @@ public class AutomationImportService {
                     .locatorValue(locVal)
                     .textValue(txtVal)
                     .stateValue(state)
+                    .selectBy(selectBy)
+                    .checkedValue(checkedValue)
+                    .keyValue(keyValue)
+                    .urlComparison(urlComparison)
+                    .attributeName(attributeName)
                     .build();
             String valErr = validateStepModel(model, locatorsMap);
             return ImportStepPreview.builder()
@@ -695,6 +888,11 @@ public class AutomationImportService {
                     .locatorValue(referenceSecrets(locVal, secretValues))
                     .textValue(referenceSecrets(txtVal, secretValues))
                     .stateValue(state)
+                    .selectBy(selectBy)
+                    .checkedValue(checkedValue)
+                    .keyValue(referenceSecrets(keyValue, secretValues))
+                    .urlComparison(urlComparison)
+                    .attributeName(referenceSecrets(attributeName, secretValues))
                     .mapped(true)
                     .validationError(redact(valErr, secretValues))
                     .build();
@@ -723,11 +921,8 @@ public class AutomationImportService {
     private LocatorType inferLocatorType(String locator, Map<String, AutomationTestDefinition.LocatorDefinition> locatorsMap) {
         if (locator == null || locator.isBlank()) return null;
         String trimmed = locator.trim();
-        if (trimmed.startsWith("id=")) return LocatorType.ID;
-        if (trimmed.startsWith("css=")) return LocatorType.CSS;
-        if (trimmed.startsWith("xpath=")) return LocatorType.XPATH;
-        if (trimmed.startsWith("role=")) return LocatorType.ROLE_NAME;
-        if (trimmed.startsWith("testid=")) return LocatorType.TEST_ID;
+        LocatorType prefixed = LocatorType.prefixedType(trimmed);
+        if (prefixed != null) return prefixed;
         if (locatorsMap != null && locatorsMap.containsKey(trimmed)) return LocatorType.NAMED;
         if (trimmed.matches("^[A-Za-z0-9_]+\\.[A-Za-z0-9_]+$")) return LocatorType.NAMED;
         if (trimmed.startsWith("//") || trimmed.startsWith("./") || trimmed.startsWith("(")) return LocatorType.XPATH;
@@ -737,8 +932,8 @@ public class AutomationImportService {
 
     private String firstNonEmpty(String... vals) {
         if (vals == null) return null;
-        for (String v : vals) {
-            if (v != null) return v;
+        for (int i = 0; i < vals.length; i++) {
+            if (vals[i] != null) return i < 2 ? GherkinStrings.decode(vals[i]) : vals[i];
         }
         return null;
     }
@@ -757,7 +952,7 @@ public class AutomationImportService {
         return result.toString();
     }
 
-    private String redact(String text, Map<String, String> secrets) { return replaceSecrets(text, secrets, false); }
+    private String redact(String text, Map<String, String> secrets) { return GherkinStrings.redact(text, secrets.keySet()); }
     private String referenceSecrets(String text, Map<String, String> secrets) { return replaceSecrets(text, secrets, true); }
 
     private Map<String, String> getProjectSecrets(int projectId) {
@@ -802,7 +997,7 @@ public class AutomationImportService {
                 step.setRawText(redact(step.getRawText(), secrets));
                 step.setUnsupportedSyntax(redact(step.getUnsupportedSyntax(), secrets));
                 step.setValidationError(redact(step.getValidationError(), secrets));
-                if (hasMaskedValue(step.getTextValue()) || hasMaskedValue(step.getLocatorValue()))
+                if (hasMaskedValue(step.getTextValue()) || hasMaskedValue(step.getLocatorValue()) || hasMaskedValue(step.getKeyValue()) || hasMaskedValue(step.getAttributeName()))
                     step.setValidationError("Replace masked values with a project variable reference such as ${PASSWORD}");
                 if (!step.isMapped()) unmapped++;
                 if (!step.isMapped() || step.getValidationError() != null) errors++;
@@ -876,7 +1071,8 @@ public class AutomationImportService {
             if (caseError != null)
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Case " + (i + 1) + ": " + caseError);
             for (AutomationStepModel step : item.getSteps()) {
-                if (step == null || hasMaskedValue(step.getTextValue()) || hasMaskedValue(step.getLocatorValue()))
+                if (step == null || hasMaskedValue(step.getTextValue()) || hasMaskedValue(step.getLocatorValue())
+                        || hasMaskedValue(step.getKeyValue()) || hasMaskedValue(step.getAttributeName()))
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Case " + (i + 1) + ": Replace missing or masked steps with complete values or project variable references");
             }
 
@@ -908,6 +1104,8 @@ public class AutomationImportService {
             for (AutomationStepModel step : item.getSteps()) {
                 step.setTextValue(referenceSecrets(step.getTextValue(), secretValues));
                 step.setLocatorValue(referenceSecrets(step.getLocatorValue(), secretValues));
+                step.setKeyValue(referenceSecrets(step.getKeyValue(), secretValues));
+                step.setAttributeName(referenceSecrets(step.getAttributeName(), secretValues));
             }
             TestCase savedCase;
             String actionDesc;

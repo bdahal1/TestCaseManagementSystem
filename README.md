@@ -107,7 +107,7 @@ export AUTOMATION_WORKER_PROJECT_ID="123" # use the actual project ID
 ./scripts/backend.sh spring-boot:run
 ```
 
-Keep the generated token private. The worker must receive the same token through `AUTOMATION_WORKER_TOKEN`; it can claim jobs only for that configured project. This setup supports one project per backend worker credential. Restart the backend and workers together when rotating it. Use HTTPS when workers connect over a network.
+Keep the generated token private. The worker must receive the same token through `AUTOMATION_WORKER_TOKEN`; it can claim jobs only for that configured project. You can instead put `AUTOMATION_WORKER_TOKEN` and `AUTOMATION_WORKER_PROJECT_ID` in the ignored root `.env` file and restart the backend, then run `./scripts/worker.sh`. The worker reads its token and optional `TMS_URL` from that file, with environment variables taking precedence. It reads properties directly without evaluating shell commands. This setup supports one project per backend worker credential. Restart the backend and workers together when rotating it. Use HTTPS when workers connect over a network.
 
 In a separate terminal, set that same token and the backend address, install Chromium once, then start the worker:
 
@@ -118,6 +118,12 @@ export TMS_URL="http://localhost:8080/dhtcms/api/v1"
 ./scripts/worker.sh
 ```
 
+**Browser preview and live steps** appear inside **Run automation** for both Cucumber Automation and Keyword Driven tests, including runs opened from batch details. The updated worker reports the current step before executing it, reports completed step outcomes, and captures a browser image after each step. The UI checks for updates about every 1.5 seconds without overlapping requests. This is a step-by-step screenshot preview; an image does not refresh during a long step. It works with headless browsers and remote workers. Restart workers with the updated code to enable it; older workers can still complete tests without previews.
+
+Preview images mask form inputs, textareas, editable fields, and matching known secret text. Other application content may still appear. Preview access requires project membership, and publishing requires the current worker lease. Only the latest frame per job is stored, at most 512 KB. It is available for 15 minutes after the last update and then removed by periodic cleanup. Cancelled and reclaimed attempts clear their previews. Preview failures do not change the test outcome, and live observations do not record case results; final completion remains authoritative.
+
+Page navigation allows 30 seconds by default (`navigationTimeoutMs`) and waits for DOM content. Individual actions and assertions still wait for their target elements. Background images or analytics do not need to finish before the next step. The same navigation behavior is used in downloaded projects.
+
 Project secrets are masked in the UI and API without changing the stored values. Workers receive the configured runtime values for their project, so run workers only on trusted machines. Diagnostic text is redacted on ingestion; screenshots may still show application content.
 
 **Download automation project** creates an independent Java 26 Maven project with feature files, keyword definitions, named locators, framework source, and working Maven wrappers for macOS/Linux and Windows. Extract the ZIP and follow its README. Set local values in `src/test/resources/config.properties`; secret values are replaced with placeholders in the export, and this local configuration is excluded from Git. The downloaded project requires the target application, Java, and Chromium, but does not require a running TMS server. The wrapper downloads Maven on first use.
@@ -125,3 +131,93 @@ Project secrets are masked in the UI and API without changing the stored values.
 Use **Import Automation** in the test-case library to preview `.feature` or keyword `.json` files before saving. Feature and Rule backgrounds retain their scope and order. Correct unmapped steps, required values, and case errors in the preview; replacement requires selecting the existing case explicitly. Invalid batches are rejected together.
 
 Imported inputs that contain a configured project secret become variable references such as `${PASSWORD}`, preserving their runtime values without returning the secret in the preview. Text diagnostics remain masked, and old `[REDACTED]` input values must be replaced with valid values or variable references before saving. Variable references also work in locators, both in workers and downloaded projects.
+
+### Supported Automation Templates and Examples
+
+Both Cucumber Automation and Keyword Driven authoring support 11 templates with full parity across authoring, worker execution, import recognition, and standalone exports:
+
+1. **`OPEN_PAGE`**: Navigates to a target URL (supports `${baseUrl}` and variable references).
+   - Gherkin: `Given open page "http://localhost:8080/demo/login"`
+2. **`ENTER_TEXT`**: Types text into an element located by ID, CSS, XPath, testId, role, or project named locator.
+   - Gherkin: `When enter text "admin" into "#username"`
+3. **`CLICK_ELEMENT`**: Clicks a target element.
+   - Gherkin: `When click element "#login-btn"`
+4. **`VERIFY_TEXT_EQUALS`**: Asserts the element's inner text matches the expected value.
+   - Gherkin: `Then verify text of "#welcome" equals "Welcome, admin!"`
+5. **`VERIFY_TEXT_CONTAINS`**: Asserts the element's text contains the substring.
+   - Gherkin: `Then verify text of "#welcome" contains "Welcome"`
+6. **`VERIFY_ELEMENT_STATE`**: Asserts the element is `visible` or `hidden`.
+   - Gherkin: `Then verify element "#welcome" is visible`
+7. **`SELECT_OPTION`**: Selects a native `<select>` option by label or by value.
+   - Fields: Target locator, selection method (`label` or `value`), and option string.
+   - Gherkin: `When select option "Playwright" by label in "#framework-select"`
+   - Gherkin (by value): `When select option "pw" by value in "#framework-select"`
+8. **`SET_CHECKBOX`**: Sets a checkbox to checked or unchecked idempotently (does not toggle an already-checked box).
+   - Fields: Target locator, desired state (`checked` or `unchecked`).
+   - Gherkin: `When set checkbox "#subscribe-checkbox" to checked`
+   - Gherkin (unchecked): `When set checkbox "#subscribe-checkbox" to unchecked`
+9. **`PRESS_KEY`**: Dispatches keyboard key press on the target element. Validates common keys (`Enter`, `Tab`, `Escape`, `ArrowDown`, `ArrowUp`, `ArrowLeft`, `ArrowRight`, `Backspace`, `Delete`, `Space`, `Home`, `End`, `PageUp`, `PageDown`) or single characters with clear error messages.
+   - Fields: Target locator, key name.
+   - Gherkin: `When press key "Enter" on "#keyboard-input"`
+10. **`VERIFY_URL`**: Verifies the current page URL using `equals` or `contains`. Project variables such as `${baseUrl}` are resolved.
+    - Fields: Comparison (`equals` or `contains`), expected URL.
+    - Gherkin: `Then verify url equals "http://localhost:8080/demo/extended"`
+    - Gherkin (contains): `Then verify url contains "/demo/extended"`
+11. **`VERIFY_ATTRIBUTE`**: Verifies an element's HTML attribute equals the expected value. Distinguishes a missing attribute from an empty attribute value.
+    - Fields: Target locator, attribute name, expected attribute value.
+    - Gherkin: `Then verify attribute "data-status" of "#action-btn" equals "ready"`
+    - Gherkin (empty attribute): `Then verify attribute "data-empty" of "#action-btn" equals ""`
+
+Quoted Gherkin inputs preserve escaped quotes, backslashes, and line breaks across preview, import, worker execution, and downloads. Attribute assertions wait for delayed updates and work on hidden elements; an absent attribute fails even when the expected value is empty. Key names are normalized consistently in workers and downloaded projects, and may use project variable references. JSON imports require actual booleans for checkbox states and valid selection/URL comparison modes.
+
+## Batch automation runs
+
+Execute automated test cases in bulk directly within active test plans:
+
+- **Starting a Batch**: In an active plan (`IN_PROGRESS`), use **Run All Automated** or select specific rows and choose **Run selected automation ({count})**.
+- **Pre-Confirmation Preview**: Before queuing, an inspection modal reviews eligibility across all in-scope cases and breaks down exclusions into explicit tabs:
+  - *Ready Cases*: Eligible automated cases (`CUCUMBER_AUTOMATION`, `KEYWORD_DRIVEN`) with valid step definitions.
+  - *Manual Cases Skipped*: Manual cases are safely skipped without modifying their state.
+  - *Invalid Configuration*: Cases with missing templates, empty steps, or unresolvable locators with clear diagnostic guidance.
+  - *Already Pending*: Cases with an existing `QUEUED` or `RUNNING` job (enforcing the one-pending-job-per-case constraint).
+  - *Assignment Restricted*: Cases the current user cannot execute under project and plan assignment rules.
+- **Atomic Backend Enqueueing**:
+  - Batches require an active plan (`IN_PROGRESS`) and project membership.
+  - All requested cases are validated to belong to the plan.
+  - Jobs are queued atomically under a pessimistic plan lock (`PESSIMISTIC_WRITE`) up to a maximum limit of 100 cases per batch.
+  - Every job is linked to a durable `AutomationBatch` record while remaining fully compatible with existing workers and execution policies.
+- **Consolidated Progress & Results**:
+  - Live progress bar, aggregate status chips (`QUEUED`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELLED`), and counts breakdown.
+  - Detailed case rows show individual durations, step summaries, error logs, and execution evidence links.
+  - Invariant guarantee: A completed batch containing any failed or infrastructure-error job is marked as `FAILED` and never appears as "all passed".
+  - Polling and batch monitoring persist across page refreshes via `GET /automation/batches/plan/{planId}/latest`.
+- **Cancellation & Retries**:
+  - **Cancel Batch**: Cancels authorized unfinished (`QUEUED`, `RUNNING`) jobs in an active plan while preserving other testers' jobs and completed results.
+  - **Run Failed Cases Again**: When failures occur, this action spawns a brand new `AutomationBatch` and queues jobs strictly for failed or infrastructure-error cases. Earlier batch runs, job attempts, and execution history snapshots remain immutable and intact.
+
+Batch progress is calculated from its persisted job rows, including after refreshing the page. Preview reads do not capture or change plan snapshots. Cancellation applies only to unfinished cases the current user can record in an active plan, and leaves other testers' jobs and completed results intact. “Run Failed Cases Again” creates new attempts for failed or infrastructure-error jobs; cancelled jobs are excluded. Historical details open the selected job, including its linked failure evidence. When a case already has ten evidence files, the result is still recorded and the diagnostic log explains why another screenshot was omitted.
+
+## Automation run history and failure investigation
+
+Trace, investigate, and compare historical automated test executions across plans and batches:
+
+- **Project Automation History**:
+  - Accessible via the **Automation History** navigation item in the project sidebar.
+  - Lists individual job attempts with case name, test plan, batch reference (if applicable), execution status, queued/started/finished timestamps, and execution duration.
+  - **Frozen Run Names**: Displays the frozen case name captured at queue time from the test definition snapshot, guaranteeing that future edits to the test case library do not alter execution history.
+  - **Server-Side Pagination & Filtering**: Filter by test plan, job status (`QUEUED`, `RUNNING`, `COMPLETED`, `FAILED`, `INFRASTRUCTURE_ERROR`, `CANCELLED`), date range (from/to), and case name search with stable reverse-chronological ordering (`id DESC`).
+  - Covers all execution modes: standalone single runs, original batches, and retry batches.
+- **Exact Run Details & Failure Investigation**:
+  - Clicking any history row opens that exact execution attempt in read-only mode using the automation run dialog.
+  - Displays ordered step results with duration and failure messages, complete diagnostic execution logs, and failure screenshot evidence download links.
+  - Clear empty states indicate when diagnostics, step outcomes, or screenshot evidence are unavailable (e.g. when cancelled or storage limits were reached).
+  - Direct links to associated test plans and batch details allow smooth navigation across execution artifacts.
+- **Side-by-Side Attempt Comparison**:
+  - From any case run details, users can click **Compare Attempt** to select and inspect earlier attempts for the same case within that plan.
+  - Compares overall status, execution duration, and step-level outcomes side by side.
+  - **Changed Step Handling**: Steps are matched by their semantic action definition rather than sequential step numbers, explicitly detecting inserted, removed, or modified steps with dedicated diff badges (`Only in current`, `Only in previous`, `Fixed`, `Regressed`).
+  - Stored execution results and historical records remain strictly immutable.
+- **Project Isolation & Secret Masking**:
+  - Every history, detail, attempt list, comparison, and evidence request enforces strict project membership authorization.
+  - Project secrets are continuously redacted (`[REDACTED]`) in all diagnostic views, step descriptions, and error messages.
+

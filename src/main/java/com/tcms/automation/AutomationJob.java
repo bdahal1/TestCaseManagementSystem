@@ -16,7 +16,7 @@ import java.time.Instant;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "automation_jobs")
+@Table(name = "automation_jobs", indexes = @Index(name = "automation_job_batch_idx", columnList = "batch_id"))
 public class AutomationJob {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,6 +36,14 @@ public class AutomationJob {
 
     @Column(name = "project_id", nullable = false)
     private Integer projectId;
+
+    @Column(name = "batch_id")
+    private Long batchId;
+
+    @Column(name = "case_name")
+    private String caseName;
+
+    private Integer failureEvidenceId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "job_status", nullable = false, length = 30)

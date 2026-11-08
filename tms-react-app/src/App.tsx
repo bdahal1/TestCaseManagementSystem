@@ -9,6 +9,12 @@ import TestPlans from "./components/testPlans/TestPlans";
 import TestPlanWorkspace from "./components/testPlans/TestPlanWorkspace";
 import AdminPage from "./pages/AdminPage";
 import ProjectReports from './components/reports/ProjectReports';
+import AutomationHistoryPage from './components/automation/AutomationHistoryPage';
+
+const AutomationHistoryRoute = () => {
+    const { projectId } = useParams();
+    return projectId ? <AutomationHistoryPage projectId={Number(projectId)} /> : <Navigate to="/dashboard" />;
+};
 
 const ProjectReportsRoute = () => {
     const { projectId } = useParams();
@@ -64,6 +70,7 @@ function AppRoutes() {
                     <Route path="project/:projectId/test-folders" element={<TestFolderRoute />} />
                     <Route path="project/:projectId/test-plans" element={<TestExecutionRoute />} />
                     <Route path="project/:projectId/test-plans/:planId" element={<TestPlanRoute />} />
+                    <Route path="project/:projectId/automation-history" element={<AutomationHistoryRoute />} />
                     <Route path="project/:projectId/reports" element={<ProjectReportsRoute />} />
                     <Route path="project/:projectId/test-executions" element={<TestExecutionRoute />} />
                     <Route path="admin" element={<AdminPage />} />

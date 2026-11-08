@@ -14,6 +14,9 @@ if [[ -z "$backend_java_home" && -n "${JAVA_HOME:-}" ]] && is_java_26 "$JAVA_HOM
 fi
 if [[ -z "$backend_java_home" && "$(uname -s)" == "Darwin" ]]; then
     backend_java_home="$(/usr/libexec/java_home -v 26 2>/dev/null || true)"
+    if [[ -z "$backend_java_home" && -d "/opt/homebrew/opt/openjdk" ]] && is_java_26 "/opt/homebrew/opt/openjdk/bin/java"; then
+        backend_java_home="/opt/homebrew/opt/openjdk"
+    fi
 fi
 if [[ -z "$backend_java_home" ]] && command -v java >/dev/null 2>&1; then
     backend_java_home="$(java -XshowSettings:properties -version 2>&1 | sed -n 's/^[[:space:]]*java.home = //p')"

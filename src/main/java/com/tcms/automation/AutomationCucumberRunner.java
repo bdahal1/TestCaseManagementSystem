@@ -22,45 +22,59 @@ public class AutomationCucumberRunner {
     }
 
     public static class StepCollectorPlugin implements ConcurrentEventListener {
-        private static final List<AutomationExecutionResult.StepResult> COLLECTED = Collections.synchronizedList(new ArrayList<>());
-        private static volatile Throwable LAST_ERROR = null;
+        private static final ThreadLocal<CollectorState> CURRENT = ThreadLocal.withInitial(CollectorState::new);
+        private static class CollectorState {
+            final List<AutomationExecutionResult.StepResult> collected = new ArrayList<>();
+            Throwable lastError;
+            AutomationBrowserDriver driver;
+            AutomationProgressListener progress = AutomationProgressListener.NONE;
+        }
 
         public static void reset() {
-            COLLECTED.clear();
-            LAST_ERROR = null;
+            CURRENT.set(new CollectorState());
         }
 
         public static List<AutomationExecutionResult.StepResult> getResults() {
-            return new ArrayList<>(COLLECTED);
+            return new ArrayList<>(CURRENT.get().collected);
         }
 
         public static Throwable getLastError() {
-            return LAST_ERROR;
+            return CURRENT.get().lastError;
         }
 
         @Override
         public void setEventPublisher(EventPublisher publisher) {
+            publisher.registerHandlerFor(TestStepStarted.class, event -> {
+                var state = CURRENT.get();
+                // After a failure Cucumber emits skipped events; keep the failing step highlighted.
+                if (event.getTestStep() instanceof PickleStepTestStep && state.lastError == null && state.driver != null)
+                    AutomationProgressListener.publish(state.progress, state.collected.size(), "RUNNING", state.collected, state.driver);
+            });
             publisher.registerHandlerFor(TestStepFinished.class, this::handleStepFinished);
         }
 
         private void handleStepFinished(TestStepFinished event) {
             if (event.getTestStep() instanceof PickleStepTestStep step) {
+                var state = CURRENT.get();
                 boolean passed = event.getResult().getStatus() == Status.PASSED;
                 long durationMs = event.getResult().getDuration().toMillis();
                 String error = null;
                 if (!passed && event.getResult().getError() != null) {
                     error = event.getResult().getError().getMessage();
-                    LAST_ERROR = event.getResult().getError();
+                    state.lastError = event.getResult().getError();
                 }
 
-                COLLECTED.add(AutomationExecutionResult.StepResult.builder()
-                        .stepOrder(COLLECTED.size() + 1)
+                int index = state.collected.size();
+                state.collected.add(AutomationExecutionResult.StepResult.builder()
+                        .stepOrder(index + 1)
                         .keyword(step.getStep().getKeyword())
                         .description(step.getStep().getKeyword() + " " + step.getStep().getText())
                         .passed(passed)
                         .durationMs(durationMs)
                         .errorMessage(error)
                         .build());
+                if (event.getResult().getStatus() != Status.SKIPPED && state.driver != null)
+                    AutomationProgressListener.publish(state.progress, index, passed ? "PASSED" : "FAILED", state.collected, state.driver);
             }
         }
     }
@@ -70,6 +84,11 @@ public class AutomationCucumberRunner {
     }
 
     public AutomationExecutionResult execute(AutomationTestDefinition definition, java.util.function.BooleanSupplier cancelled) {
+        return execute(definition, cancelled, AutomationProgressListener.NONE);
+    }
+
+    public AutomationExecutionResult execute(AutomationTestDefinition definition, java.util.function.BooleanSupplier cancelled,
+                                             AutomationProgressListener progress) {
         long startTime = System.currentTimeMillis();
         Path tempDir = null;
         AutomationBrowserDriver driver = null;
@@ -93,6 +112,8 @@ public class AutomationCucumberRunner {
 
             AutomationCucumberStepDefinitions.setDriver(driver);
             StepCollectorPlugin.reset();
+            StepCollectorPlugin.CURRENT.get().driver = driver;
+            StepCollectorPlugin.CURRENT.get().progress = progress;
 
             tempDir = Files.createTempDirectory("tcms-cucumber-");
             Path featureFile = tempDir.resolve("scenario.feature");
@@ -143,6 +164,7 @@ public class AutomationCucumberRunner {
                     .diagnosticLogs(driver != null ? driver.getDiagnosticLogs() : e.getMessage())
                     .build();
         } finally {
+            StepCollectorPlugin.CURRENT.remove();
             AutomationCucumberStepDefinitions.clearDriver();
             if (driver != null) {
                 driver.close();

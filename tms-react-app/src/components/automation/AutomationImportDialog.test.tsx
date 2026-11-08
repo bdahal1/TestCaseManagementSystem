@@ -273,4 +273,112 @@ describe('AutomationImportDialog', () => {
         expect(screen.getByText('Only CUCUMBER_AUTOMATION and KEYWORD_DRIVEN test types are supported')).toBeInTheDocument();
     });
 
+    it('preserves and submits all five new template fields on save', async () => {
+        const data: ImportPreviewResponse = {
+            fileName: 'extended.feature',
+            fileType: 'FEATURE',
+            hasErrors: false,
+            canSave: true,
+            globalErrors: [],
+            totalCases: 1,
+            totalSteps: 5,
+            cases: [
+                {
+                    name: 'Extended Controls Case',
+                    testType: 'CUCUMBER_AUTOMATION',
+                    sourceLine: 1,
+                    conflict: false,
+                    action: 'CREATE_NEW',
+                    unmappedCount: 0,
+                    errorCount: 0,
+                    steps: [
+                        {
+                            order: 1,
+                            keyword: 'When',
+                            rawText: 'select option "pw" by value in "#framework-select"',
+                            template: 'SELECT_OPTION',
+                            locatorType: 'CSS',
+                            locatorValue: '#framework-select',
+                            textValue: 'pw',
+                            selectBy: 'VALUE',
+                            mapped: true,
+                        },
+                        {
+                            order: 2,
+                            keyword: 'When',
+                            rawText: 'set checkbox "#subscribe-checkbox" to checked',
+                            template: 'SET_CHECKBOX',
+                            locatorType: 'CSS',
+                            locatorValue: '#subscribe-checkbox',
+                            checkedValue: true,
+                            mapped: true,
+                        },
+                        {
+                            order: 3,
+                            keyword: 'When',
+                            rawText: 'press key "Enter" on "#keyboard-input"',
+                            template: 'PRESS_KEY',
+                            locatorType: 'CSS',
+                            locatorValue: '#keyboard-input',
+                            keyValue: 'Enter',
+                            mapped: true,
+                        },
+                        {
+                            order: 4,
+                            keyword: 'Then',
+                            rawText: 'verify url contains "/demo/extended"',
+                            template: 'VERIFY_URL',
+                            textValue: '/demo/extended',
+                            urlComparison: 'CONTAINS',
+                            mapped: true,
+                        },
+                        {
+                            order: 5,
+                            keyword: 'Then',
+                            rawText: 'verify attribute "data-status" of "#action-btn" equals "ready"',
+                            template: 'VERIFY_ATTRIBUTE',
+                            locatorType: 'CSS',
+                            locatorValue: '#action-btn',
+                            attributeName: 'data-status',
+                            textValue: 'ready',
+                            mapped: true,
+                        },
+                    ],
+                },
+            ],
+        };
+
+        await openPreview(data);
+        expect(screen.getByText('Save to Test Case Library')).not.toBeDisabled();
+        vi.mocked(api.post).mockResolvedValueOnce({ data: { createdCount: 1, replacedCount: 0, savedCases: [] } });
+        fireEvent.click(screen.getByText('Save to Test Case Library'));
+        await screen.findByText('Import Completed Successfully!');
+
+        const saveCall = vi.mocked(api.post).mock.calls[1][1] as any;
+        expect(saveCall.cases[0].steps).toEqual([
+            expect.objectContaining({ template: 'SELECT_OPTION', selectBy: 'VALUE', textValue: 'pw' }),
+            expect.objectContaining({ template: 'SET_CHECKBOX', checkedValue: true }),
+            expect.objectContaining({ template: 'PRESS_KEY', keyValue: 'Enter' }),
+            expect.objectContaining({ template: 'VERIFY_URL', urlComparison: 'CONTAINS', textValue: '/demo/extended' }),
+            expect.objectContaining({ template: 'VERIFY_ATTRIBUTE', attributeName: 'data-status', textValue: 'ready' }),
+        ]);
+    });
+
+    it('requires an explicit missing checkbox state and preserves variable key input', async () => {
+        const data=structuredClone(mockPreviewData); data.hasErrors=true; data.canSave=false;
+        data.cases[0].steps=[
+            {order:1,template:'SET_CHECKBOX',locatorValue:'#box',mapped:true,validationError:'Choose Checked or Unchecked'},
+            {order:2,template:'PRESS_KEY',locatorValue:'#input',keyValue:'${key}',mapped:true},
+        ];
+        await openPreview(data);
+        expect(screen.getByText('Save to Test Case Library')).toBeDisabled();
+        fireEvent.mouseDown(screen.getByRole('combobox', {name:'Checkbox state'}));
+        fireEvent.click(await screen.findByRole('option',{name:'Unchecked'}));
+        await waitFor(()=>expect(screen.getByText('Save to Test Case Library')).not.toBeDisabled());
+        vi.mocked(api.post).mockResolvedValueOnce({data:{createdCount:1,replacedCount:0,savedCases:[]}});
+        fireEvent.click(screen.getByText('Save to Test Case Library'));
+        await screen.findByText('Import Completed Successfully!');
+        expect(vi.mocked(api.post).mock.calls[1][1]).toMatchObject({cases:[{steps:[{checkedValue:false},{keyValue:'${key}'}]}]});
+    });
+
 });

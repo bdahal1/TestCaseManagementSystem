@@ -12,6 +12,8 @@ public interface TestCaseExecutionRepository extends PagingAndSortingRepository<
 
     Optional<TestCaseExecutions> findByTestExecutionsIdAndTestCaseId(Integer executionId, Integer testCaseId);
 
+    java.util.List<TestCaseExecutions> findByTestExecutionsId(Integer executionId);
+
     Optional<TestCaseExecutions> findById(Integer id);
 
     @org.springframework.data.jpa.repository.Query("select count(l) from TestCaseExecutions l where l.testCase.id = :caseId "

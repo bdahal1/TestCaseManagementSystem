@@ -66,4 +66,70 @@ public class DemoAppController {
 </html>
 """;
     }
+
+    @GetMapping(value = "/extended", produces = MediaType.TEXT_HTML_VALUE)
+    public String extendedPage() {
+        return """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Demo Extended Controls</title>
+    <style>
+        body { font-family: sans-serif; padding: 40px; background: #f4f6f8; }
+        .container { background: white; padding: 24px; border-radius: 8px; max-width: 600px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .section { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #e1e4e8; }
+        label { display: block; margin-bottom: 6px; font-weight: bold; }
+        select, input[type="text"] { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .badge { display: inline-block; padding: 4px 8px; background: #eef; border-radius: 4px; margin-top: 6px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Extended Controls Demo</h1>
+
+        <!-- 1. Dropdown -->
+        <div class="section">
+            <label for="framework-select">Select Framework</label>
+            <select id="framework-select" data-testid="framework-select" onchange="document.getElementById('selected-framework').textContent = this.options[this.selectedIndex].text">
+                <option value="sel">Selenium</option>
+                <option value="pw">Playwright</option>
+                <option value="cyp">Cypress</option>
+            </select>
+            <div id="selected-framework" class="badge">Selenium</div>
+        </div>
+
+        <!-- 2. Checkbox -->
+        <div class="section">
+            <label>
+                <input type="checkbox" id="subscribe-checkbox" data-testid="subscribe-checkbox" onchange="document.getElementById('checkbox-status').textContent = this.checked ? 'Checked' : 'Unchecked'" />
+                Subscribe to updates
+            </label>
+            <div id="checkbox-status" class="badge">Unchecked</div>
+        </div>
+
+        <!-- 3. Key Press -->
+        <div class="section">
+            <label for="keyboard-input">Keyboard Input</label>
+            <input type="text" id="keyboard-input" data-testid="keyboard-input" placeholder="Type here and press Enter"
+                   onkeydown="document.getElementById('last-key').textContent = event.key; if(event.key === 'Enter') { document.getElementById('submitted-query').textContent = this.value; }" />
+            <div>Last key: <span id="last-key" class="badge">None</span></div>
+            <div>Submitted: <span id="submitted-query" class="badge"></span></div>
+        </div>
+
+        <!-- 4. Navigation -->
+        <div class="section">
+            <a id="nav-login-link" href="/demo/login">Go to Login Page</a>
+        </div>
+
+        <!-- 5. Attributes -->
+        <div class="section">
+            <button id="action-btn" type="submit" disabled="disabled" data-status="ready" data-empty="" role="button">Action Button</button>
+            <div id="attr-output"></div>
+        </div>
+    </div>
+</body>
+</html>
+""";
+    }
 }

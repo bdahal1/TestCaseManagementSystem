@@ -29,34 +29,46 @@ public class AutomationCucumberStepDefinitions {
         return d;
     }
 
-    @Given("^open page \"([^\"]*)\"$")
-    public void openPage(String url) {
-        driver().openPage(url);
-    }
+    private static final String Q = GherkinStrings.QUOTED;
 
-    @When("^enter text \"([^\"]*)\" into \"([^\"]*)\"$")
-    public void enterText(String value, String locator) {
-        driver().enterText(locator, value);
-    }
+    @Given("^open page " + Q + "$")
+    public void openPage(String url) { driver().openPage(GherkinStrings.decode(url)); }
 
-    @When("^click element \"([^\"]*)\"$")
-    public void clickElement(String locator) {
-        driver().clickElement(locator);
-    }
+    @When("^enter text " + Q + " into " + Q + "$")
+    public void enterText(String value, String locator) { driver().enterText(GherkinStrings.decode(locator), GherkinStrings.decode(value)); }
 
-    @Then("^verify text of \"([^\"]*)\" equals \"([^\"]*)\"$")
-    public void verifyTextEquals(String locator, String expected) {
-        driver().verifyTextEquals(locator, expected);
-    }
+    @When("^click element " + Q + "$")
+    public void clickElement(String locator) { driver().clickElement(GherkinStrings.decode(locator)); }
 
-    @Then("^verify text of \"([^\"]*)\" contains \"([^\"]*)\"$")
-    public void verifyTextContains(String locator, String expected) {
-        driver().verifyTextContains(locator, expected);
-    }
+    @Then("^verify text of " + Q + " equals " + Q + "$")
+    public void verifyTextEquals(String locator, String expected) { driver().verifyTextEquals(GherkinStrings.decode(locator), GherkinStrings.decode(expected)); }
 
-    @Then("^verify element \"([^\"]*)\" is (visible|hidden)$")
+    @Then("^verify text of " + Q + " contains " + Q + "$")
+    public void verifyTextContains(String locator, String expected) { driver().verifyTextContains(GherkinStrings.decode(locator), GherkinStrings.decode(expected)); }
+
+    @Then("^verify element " + Q + " is (visible|hidden)$")
     public void verifyElementState(String locator, String state) {
-        ElementState elementState = "hidden".equalsIgnoreCase(state) ? ElementState.HIDDEN : ElementState.VISIBLE;
-        driver().verifyElementState(locator, elementState);
+        driver().verifyElementState(GherkinStrings.decode(locator), "hidden".equals(state) ? ElementState.HIDDEN : ElementState.VISIBLE);
+    }
+
+    @When("^select option " + Q + " by (label|value) (?:in|from) " + Q + "$")
+    public void selectOption(String option, String by, String locator) {
+        driver().selectOption(GherkinStrings.decode(locator), GherkinStrings.decode(option), "value".equals(by) ? OptionSelectBy.VALUE : OptionSelectBy.LABEL);
+    }
+
+    @When("^set checkbox " + Q + " to (checked|unchecked)$")
+    public void setCheckbox(String locator, String state) { driver().setCheckbox(GherkinStrings.decode(locator), "checked".equals(state)); }
+
+    @When("^press key " + Q + " on(?: element)? " + Q + "$")
+    public void pressKey(String key, String locator) { driver().pressKey(GherkinStrings.decode(locator), GherkinStrings.decode(key)); }
+
+    @Then("^verify url (equals|contains) " + Q + "$")
+    public void verifyUrl(String comparison, String url) {
+        driver().verifyUrl(GherkinStrings.decode(url), "contains".equals(comparison) ? UrlComparison.CONTAINS : UrlComparison.EQUALS);
+    }
+
+    @Then("^verify attribute " + Q + " of " + Q + " equals " + Q + "$")
+    public void verifyAttribute(String attribute, String locator, String expected) {
+        driver().verifyAttribute(GherkinStrings.decode(locator), GherkinStrings.decode(attribute), GherkinStrings.decode(expected));
     }
 }

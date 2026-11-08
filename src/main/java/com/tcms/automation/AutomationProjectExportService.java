@@ -207,6 +207,7 @@ public class AutomationProjectExportService {
         sb.append("baseUrl=http://localhost:8080\n");
         sb.append("headless=true\n");
         sb.append("stepTimeoutMs=8000\n\n");
+        sb.append("navigationTimeoutMs=30000\n\n");
         sb.append("# Sample Variables (populate with your local testing values):\n");
 
         List<ProjectVariable> vars = variableRepository.findByProjectIdOrderByVariableKeyAsc(projectId);
@@ -360,8 +361,10 @@ package com.tcms.standalone;
 
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.assertions.LocatorAssertions;
+import com.microsoft.playwright.assertions.PageAssertions;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.microsoft.playwright.options.AriaRole;
+import com.microsoft.playwright.options.SelectOption;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
@@ -378,6 +381,7 @@ public class StandaloneDriver implements AutoCloseable {
     private BrowserContext context;
     private Page page;
     private double stepTimeoutMs = 8000.0;
+    private double navigationTimeoutMs = 30000.0;
 
     public StandaloneDriver() {
         loadConfig();
@@ -399,6 +403,10 @@ public class StandaloneDriver implements AutoCloseable {
         if (config.containsKey("stepTimeoutMs")) {
             try { stepTimeoutMs = Double.parseDouble(config.getProperty("stepTimeoutMs")); } catch (Exception ignored) {}
         }
+        try {
+            double timeout = Double.parseDouble(config.getProperty("navigationTimeoutMs", "30000"));
+            if (timeout > 0 && Double.isFinite(timeout)) navigationTimeoutMs = timeout;
+        } catch (NumberFormatException ignored) {}
     }
 
     private void loadLocators() {
@@ -417,7 +425,7 @@ public class StandaloneDriver implements AutoCloseable {
         context = browser.newContext(new Browser.NewContextOptions().setViewportSize(1280, 720));
         page = context.newPage();
         page.setDefaultTimeout(stepTimeoutMs);
-        page.setDefaultNavigationTimeout(stepTimeoutMs);
+        page.setDefaultNavigationTimeout(navigationTimeoutMs);
     }
 
     public String resolveVariables(String input) {
@@ -436,49 +444,66 @@ public class StandaloneDriver implements AutoCloseable {
         return sb.toString();
     }
 
+    private static final Map<String, String> LOCATOR_PREFIXES = Map.ofEntries(__LOCATOR_PREFIXES__);
+
+    public String typedLocator(String type, String value) {
+        if (value == null || type == null || type.equals("NAMED")) return value;
+        if (LOCATOR_PREFIXES.keySet().stream().anyMatch(value::startsWith)) return value;
+        for (var prefix : LOCATOR_PREFIXES.entrySet()) if (prefix.getValue().equals(type)) return prefix.getKey() + value;
+        throw new IllegalArgumentException("Unknown locator type: " + type);
+    }
+
     public Locator resolveLocator(String raw) {
+        if (raw == null || raw.isBlank()) throw new IllegalArgumentException("Target locator is empty");
         String resolved = resolveVariables(raw).trim();
-        String type = "CSS";
+        String type = null;
         if (locators.containsKey(resolved)) {
             var def = locators.get(resolved);
             type = def.getOrDefault("type", "CSS");
             resolved = resolveVariables(def.getOrDefault("value", resolved));
-        } else if (resolved.startsWith("css=")) {
-            type = "CSS"; resolved = resolved.substring(4);
-        } else if (resolved.startsWith("xpath=")) {
-            type = "XPATH"; resolved = resolved.substring(6);
-        } else if (resolved.startsWith("id=")) {
-            type = "ID"; resolved = resolved.substring(3);
-        } else if (resolved.startsWith("testid=")) {
-            type = "TEST_ID"; resolved = resolved.substring(7);
-        } else if (resolved.startsWith("role=")) {
-            type = "ROLE_NAME"; resolved = resolved.substring(5);
-        } else if (resolved.startsWith("//") || resolved.startsWith("(")) {
-            type = "XPATH";
         }
+        for (var prefix : LOCATOR_PREFIXES.entrySet()) {
+            if (resolved.startsWith(prefix.getKey()) && (type == null || type.equals(prefix.getValue()))) {
+                type = prefix.getValue(); resolved = resolved.substring(prefix.getKey().length()); break;
+            }
+        }
+        if (type == null) type = resolved.startsWith("//") || resolved.startsWith("./") || resolved.startsWith("(") ? "XPATH" : "CSS";
 
-        return switch (type.toUpperCase()) {
-            case "ID" -> page.locator("#" + resolved);
+        return switch (type.toUpperCase(Locale.ROOT)) {
+            case "ID" -> page.locator("[id=\\\"" + cssString(resolved) + "\\\"]");
+            case "NAME" -> page.locator("[name=\\\"" + cssString(resolved) + "\\\"]");
+            case "CLASS_NAME" -> {
+                if (resolved.codePoints().anyMatch(Character::isWhitespace)) throw new IllegalArgumentException("Class name accepts one class; use CSS for a combination of classes");
+                yield page.locator("[class~=\\\"" + cssString(resolved) + "\\\"]");
+            }
             case "CSS" -> page.locator(resolved);
             case "XPATH" -> page.locator("xpath=" + resolved);
             case "TEST_ID" -> page.getByTestId(resolved);
+            case "LABEL" -> page.getByLabel(resolved, new Page.GetByLabelOptions().setExact(true));
+            case "PLACEHOLDER" -> page.getByPlaceholder(resolved, new Page.GetByPlaceholderOptions().setExact(true));
+            case "TEXT" -> page.getByText(resolved, new Page.GetByTextOptions().setExact(true));
+            case "LINK_TEXT" -> page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName(resolved).setExact(true));
+            case "PARTIAL_LINK_TEXT" -> page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName(resolved).setExact(false));
+            case "ALT_TEXT" -> page.getByAltText(resolved, new Page.GetByAltTextOptions().setExact(true));
+            case "TITLE" -> page.getByTitle(resolved, new Page.GetByTitleOptions().setExact(true));
             case "ROLE_NAME" -> {
-                Pattern rolePat = Pattern.compile("([A-Za-z]+)(?:\\\\[name=['\\\"]([^'\\\"]+)['\\\"]\\\\])?");
+                Pattern rolePat = Pattern.compile("([A-Za-z]+)(?:\\\\[name=(['\\\"])(.*?)\\\\2\\\\])?", Pattern.DOTALL);
                 Matcher m = rolePat.matcher(resolved);
-                if (m.matches()) {
-                    AriaRole role = AriaRole.valueOf(m.group(1).toUpperCase());
-                    String name = m.group(2);
-                    yield name != null ? page.getByRole(role, new Page.GetByRoleOptions().setName(name)) : page.getByRole(role);
-                }
-                yield page.locator(resolved);
+                if (!m.matches()) throw new IllegalArgumentException("Expected role[name='accessibleName']");
+                AriaRole role = AriaRole.valueOf(m.group(1).toUpperCase(Locale.ROOT));
+                String name = m.group(3);
+                yield name != null ? page.getByRole(role, new Page.GetByRoleOptions().setName(name)) : page.getByRole(role);
             }
-            default -> page.locator(resolved);
+            default -> throw new IllegalArgumentException("Unknown locator type: " + type);
         };
     }
 
+    private static String cssString(String value) {
+        return value.codePoints().mapToObj(code -> "\\\\" + Integer.toHexString(code) + " ").collect(java.util.stream.Collectors.joining());
+    }
+
     public void openPage(String url) {
-        page.navigate(resolveVariables(url));
-        page.waitForLoadState();
+        page.navigate(resolveVariables(url), new Page.NavigateOptions().setWaitUntil(com.microsoft.playwright.options.WaitUntilState.DOMCONTENTLOADED));
     }
 
     public void enterText(String loc, String val) {
@@ -505,6 +530,99 @@ public class StandaloneDriver implements AutoCloseable {
         }
     }
 
+    public void selectOption(String loc, String val, String by) {
+        String option = resolveVariables(val);
+        Locator locator = resolveLocator(loc);
+        if ("value".equalsIgnoreCase(by)) {
+            locator.selectOption(new SelectOption().setValue(option));
+        } else {
+            locator.selectOption(new SelectOption().setLabel(option));
+        }
+    }
+
+    public void setCheckbox(String loc, boolean checked) {
+        resolveLocator(loc).setChecked(checked);
+    }
+
+    public static final List<String> SUPPORTED_KEYS = List.of(
+        "Enter", "Tab", "Escape", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight",
+        "Backspace", "Delete", "Space", "Home", "End", "PageUp", "PageDown"
+    );
+
+    public static boolean isValidKey(String key) {
+        if (key == null || key.isBlank()) return false;
+        for (String k : SUPPORTED_KEYS) {
+            if (k.equalsIgnoreCase(key.trim())) return true;
+        }
+        return key.trim().length() == 1;
+    }
+
+    public static String normalizeKey(String key) {
+        if (key == null) return "";
+        String trimmed = key.trim();
+        for (String k : SUPPORTED_KEYS) {
+            if (k.equalsIgnoreCase(trimmed)) return k;
+        }
+        return trimmed;
+    }
+
+    public void pressKey(String loc, String key) {
+        String resolved = resolveVariables(key);
+        if (!isValidKey(resolved)) throw new IllegalArgumentException("Unsupported key '" + resolved + "'");
+        resolveLocator(loc).press(normalizeKey(resolved));
+    }
+
+    public void verifyUrl(String exp, String comparison) {
+        String expectedUrl = resolveVariables(exp);
+        try {
+            if ("contains".equalsIgnoreCase(comparison)) {
+                Pattern pattern = Pattern.compile(".*" + escapeRegex(expectedUrl) + ".*", Pattern.DOTALL);
+                PlaywrightAssertions.assertThat(page).hasURL(pattern, new PageAssertions.HasURLOptions().setTimeout(stepTimeoutMs));
+            } else {
+                PlaywrightAssertions.assertThat(page).hasURL(expectedUrl, new PageAssertions.HasURLOptions().setTimeout(stepTimeoutMs));
+            }
+        } catch (AssertionError | PlaywrightException e) {
+            String currentUrl = page != null ? page.url() : "unknown";
+            throw new AssertionError("URL verification failed (" + comparison + " '" + expectedUrl + "'). Current URL was: '" + currentUrl + "'. " + e.getMessage());
+        }
+    }
+
+    private static String escapeRegex(String input) {
+        if (input == null) return "";
+        StringBuilder sb = new StringBuilder();
+        for (char c : input.toCharArray()) {
+            if ("\\\\^$.|?*+(){}[]".indexOf(c) != -1) {
+                sb.append('\\\\');
+            }
+            sb.append(c);
+        }
+        return sb.toString();
+    }
+
+    public void verifyAttribute(String loc, String attr, String exp) {
+        String attributeName = resolveVariables(attr);
+        String expectedValue = resolveVariables(exp);
+        Locator locator = resolveLocator(loc);
+        try {
+            PlaywrightAssertions.assertThat(locator).hasAttribute(attributeName, expectedValue, new LocatorAssertions.HasAttributeOptions().setTimeout(stepTimeoutMs));
+        } catch (AssertionError error) {
+            if (locator.count() > 0 && locator.getAttribute(attributeName) == null)
+                throw new AssertionError("Element '" + loc + "' does not have attribute '" + attributeName + "'. Expected: '" + expectedValue + "'", error);
+            throw error;
+        }
+    }
+
+    private static Pattern literalUrlPattern(String text) {
+        // Playwright executes this pattern in JavaScript, which does not support Java's \\Q...\\E quoting.
+        StringBuilder expression = new StringBuilder(".*");
+        for (char ch : text.toCharArray()) {
+            if ("\\\\.^$|?*+()[]{}".indexOf(ch) >= 0) expression.append('\\\\');
+            expression.append(ch);
+        }
+        return Pattern.compile(expression.append(".*").toString());
+    }
+
+
     @Override
     public void close() {
         try { if (context != null) context.close(); } catch (Exception ignored) {}
@@ -512,48 +630,71 @@ public class StandaloneDriver implements AutoCloseable {
         try { if (playwright != null) playwright.close(); } catch (Exception ignored) {}
     }
 }
-""";
+""".replace("__LOCATOR_PREFIXES__", Arrays.stream(LocatorType.values())
+                .filter(type -> type.prefix() != null)
+                .map(type -> "Map.entry(\"" + type.prefix() + "=\", \"" + type.name() + "\")")
+                .collect(java.util.stream.Collectors.joining(", ")));
     }
 
     private String generateStandaloneStepsJava() {
         return """
 package com.tcms.standalone;
 
-import io.cucumber.java.After;
 import io.cucumber.java.Before;
+import io.cucumber.java.After;
 import io.cucumber.java.en.*;
+import tools.jackson.databind.ObjectMapper;
 
 public class StandaloneSteps {
-    private StandaloneDriver driver;
+    private StandaloneDriver current;
+    private StandaloneDriver driver() { return current; }
+    @Before public void setup() { current = new StandaloneDriver(); current.init(); }
+    @After public void teardown() { if (current != null) current.close(); }
+    private String decode(String escaped) {
+        return new ObjectMapper().readValue("\\"" + escaped + "\\"", String.class);
+    }
+    private static final String Q = "\\"((?:\\\\\\\\.|[^\\"\\\\\\\\])*)\\"";
 
-    @Before
-    public void setup() {
-        driver = new StandaloneDriver();
-        driver.init();
+    @Given("^open page " + Q + "$")
+    public void openPage(String url) { driver().openPage(decode(url)); }
+
+    @When("^enter text " + Q + " into " + Q + "$")
+    public void enterText(String value, String locator) { driver().enterText(decode(locator), decode(value)); }
+
+    @When("^click element " + Q + "$")
+    public void clickElement(String locator) { driver().clickElement(decode(locator)); }
+
+    @Then("^verify text of " + Q + " equals " + Q + "$")
+    public void verifyTextEquals(String locator, String expected) { driver().verifyTextEquals(decode(locator), decode(expected)); }
+
+    @Then("^verify text of " + Q + " contains " + Q + "$")
+    public void verifyTextContains(String locator, String expected) { driver().verifyTextContains(decode(locator), decode(expected)); }
+
+    @Then("^verify element " + Q + " is (visible|hidden)$")
+    public void verifyElementState(String locator, String state) {
+        driver().verifyElementState(decode(locator), "hidden".equals(state) ? "hidden" : "visible");
     }
 
-    @After
-    public void teardown() {
-        if (driver != null) driver.close();
+    @When("^select option " + Q + " by (label|value) (?:in|from) " + Q + "$")
+    public void selectOption(String option, String by, String locator) {
+        driver().selectOption(decode(locator), decode(option), "value".equals(by) ? "value" : "label");
     }
 
-    @Given("^open page \\"([^\\"]*)\\"$")
-    public void openPage(String url) { driver.openPage(url); }
+    @When("^set checkbox " + Q + " to (checked|unchecked)$")
+    public void setCheckbox(String locator, String state) { driver().setCheckbox(decode(locator), "checked".equals(state)); }
 
-    @When("^enter text \\"([^\\"]*)\\" into \\"([^\\"]*)\\"$")
-    public void enterText(String val, String loc) { driver.enterText(loc, val); }
+    @When("^press key " + Q + " on(?: element)? " + Q + "$")
+    public void pressKey(String key, String locator) { driver().pressKey(decode(locator), decode(key)); }
 
-    @When("^click element \\"([^\\"]*)\\"$")
-    public void clickElement(String loc) { driver.clickElement(loc); }
+    @Then("^verify url (equals|contains) " + Q + "$")
+    public void verifyUrl(String comparison, String url) {
+        driver().verifyUrl(decode(url), "contains".equals(comparison) ? "contains" : "equals");
+    }
 
-    @Then("^verify text of \\"([^\\"]*)\\" equals \\"([^\\"]*)\\"$")
-    public void verifyTextEquals(String loc, String exp) { driver.verifyTextEquals(loc, exp); }
-
-    @Then("^verify text of \\"([^\\"]*)\\" contains \\"([^\\"]*)\\"$")
-    public void verifyTextContains(String loc, String exp) { driver.verifyTextContains(loc, exp); }
-
-    @Then("^verify element \\"([^\\"]*)\\" is (visible|hidden)$")
-    public void verifyElementState(String loc, String state) { driver.verifyElementState(loc, state); }
+    @Then("^verify attribute " + Q + " of " + Q + " equals " + Q + "$")
+    public void verifyAttribute(String attribute, String locator, String expected) {
+        driver().verifyAttribute(decode(locator), decode(attribute), decode(expected));
+    }
 }
 """;
     }
@@ -621,9 +762,15 @@ public class KeywordRunnerTest {
                     driver.init();
                     for (Map<String, Object> step : steps) {
                         String template = (String) step.get("template");
-                        String loc = (String) step.get("locatorValue");
+                        String loc = driver.typedLocator((String) step.get("locatorType"), (String) step.get("locatorValue"));
                         String val = (String) step.get("textValue");
                         String state = (String) step.get("stateValue");
+                        String selectBy = (String) step.get("selectBy");
+                        Object checkedVal = step.get("checkedValue");
+                        boolean checked = checkedVal instanceof Boolean ? (Boolean) checkedVal : Boolean.parseBoolean(String.valueOf(checkedVal));
+                        String key = (String) step.get("keyValue");
+                        String urlComp = (String) step.get("urlComparison");
+                        String attr = (String) step.get("attributeName");
 
                         switch (template) {
                             case "OPEN_PAGE" -> driver.openPage(val);
@@ -632,6 +779,11 @@ public class KeywordRunnerTest {
                             case "VERIFY_TEXT_EQUALS" -> driver.verifyTextEquals(loc, val);
                             case "VERIFY_TEXT_CONTAINS" -> driver.verifyTextContains(loc, val);
                             case "VERIFY_ELEMENT_STATE" -> driver.verifyElementState(loc, state);
+                            case "SELECT_OPTION" -> driver.selectOption(loc, val, selectBy);
+                            case "SET_CHECKBOX" -> driver.setCheckbox(loc, checked);
+                            case "PRESS_KEY" -> driver.pressKey(loc, key);
+                            case "VERIFY_URL" -> driver.verifyUrl(val, urlComp);
+                            case "VERIFY_ATTRIBUTE" -> driver.verifyAttribute(loc, attr, val);
                         }
                     }
                 }

@@ -21,4 +21,9 @@ public class AutomationStepModel {
     private String locatorValue;
     private String textValue;
     private ElementState stateValue;
+    private OptionSelectBy selectBy;
+    private Boolean checkedValue;
+    private String keyValue;
+    private UrlComparison urlComparison;
+    private String attributeName;
 }
